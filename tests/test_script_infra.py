@@ -364,6 +364,28 @@ def test_scan_bat_propagates_cli_exit_code():
     assert "exit /b %RC%" in text
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="cmd.exe batch test")
+def test_build_nuitka_bat_computes_appver4_under_cmd():
+    """CI-004: Verify build_nuitka.bat computes APPVER4 cleanly under cmd.exe
+    and reaches NAME validation without for /f quote-stripping errors.
+    """
+    import subprocess
+
+    proc = subprocess.run(
+        ["cmd.exe", "/c", r"scripts\build_nuitka.bat", "standalone", "bad/name"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
+    assert proc.returncode == 1
+    assert "Version konnte nicht" not in proc.stdout, proc.stdout + proc.stderr
+    assert "Ungueltiger NAME" in proc.stdout, proc.stdout + proc.stderr
+    assert proc.stderr.strip() == "", proc.stderr
+
+
 def test_vm_deepsec_propagates_test_failure_and_reports_missing_count():
     text = (ROOT / "scripts" / "vm_deepsec_test.bat").read_text(encoding="utf-8")
     assert "if errorlevel 1" in text
