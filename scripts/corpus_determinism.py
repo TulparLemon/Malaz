@@ -207,14 +207,22 @@ def pin_no_7zip():
     the snapshot recorded. ``pin_no_7zip`` is for measurements; real scans in
     the GUI keep using an installed 7-Zip.
     """
+    from malaz.analysis.capa import CapaScanner
+    from malaz.analysis.die import DieScanner
     from malaz.core import sevenzip
 
-    original = sevenzip.find_7z_binary
+    orig_7z = sevenzip.find_7z_binary
+    orig_die = DieScanner._locate
+    orig_capa = CapaScanner._locate
     sevenzip.find_7z_binary = lambda: None
+    DieScanner._locate = lambda self: None  # type: ignore[method-assign]
+    CapaScanner._locate = lambda self: None  # type: ignore[method-assign]
     try:
         yield
     finally:
-        sevenzip.find_7z_binary = original
+        sevenzip.find_7z_binary = orig_7z
+        DieScanner._locate = orig_die  # type: ignore[method-assign]
+        CapaScanner._locate = orig_capa  # type: ignore[method-assign]
 
 
 @contextmanager

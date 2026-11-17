@@ -404,14 +404,30 @@ def test_jeder_signaturtyp_kommt_im_snapshot_vor():
 
 
 def test_7zip_pin_is_effective(monkeypatch):
-    """The pin must remove a real binary from the measurement path."""
+    """The pin must remove optional host CLI binaries (7z, DIE, capa) from measurements."""
+    from malaz.analysis.capa import CapaScanner
+    from malaz.analysis.die import DieScanner
     from malaz.core import sevenzip
 
-    monkeypatch.setattr(sevenzip, "find_7z_binary", lambda: Path("C:/fake/7z.exe"))
-    assert sevenzip.find_7z_binary() is not None
+    fake_7z = Path("C:/fake/7z.exe")
+    fake_die = Path("C:/fake/diec.exe")
+    fake_capa = Path("C:/fake/capa.exe")
+    monkeypatch.setattr(sevenzip, "find_7z_binary", lambda: fake_7z)
+    monkeypatch.setattr(DieScanner, "_locate", lambda self: fake_die)
+    monkeypatch.setattr(CapaScanner, "_locate", lambda self: fake_capa)
+
+    assert sevenzip.find_7z_binary() == fake_7z
+    assert DieScanner().binary == fake_die
+    assert CapaScanner(enabled=True).binary == fake_capa
+
     with det.pin_no_7zip():
         assert sevenzip.find_7z_binary() is None
-    assert sevenzip.find_7z_binary() is not None
+        assert DieScanner().binary is None
+        assert CapaScanner(enabled=True).binary is None
+
+    assert sevenzip.find_7z_binary() == fake_7z
+    assert DieScanner().binary == fake_die
+    assert CapaScanner(enabled=True).binary == fake_capa
 
 
 def test_run_corpus_lists_severity_weighted_rules():

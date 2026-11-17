@@ -1117,7 +1117,6 @@
   },
   "malicious/with_pdb.exe": {
     "notes": [
-      "DIE_DEBUG_DATA",
       "PE_HEADER",
       "PE_IMPHASH",
       "PE_MITIGATION_NOTE",
@@ -3622,7 +3621,6 @@
   },
   "v2/nested_electron_installer.exe": {
     "notes": [
-      "DIE_ARCHIVE",
       "PE_HEADER",
       "PE_IMPHASH",
       "PE_MITIGATION_NOTE"
