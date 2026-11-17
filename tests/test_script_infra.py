@@ -483,6 +483,79 @@ def test_build_nuitka_bat_computes_appver4_under_cmd(tmp_path):
     assert good_name.stderr.strip() == "", good_name.stderr
 
 
+def test_check_tests_bite_defeats_same_second_same_size_pyc_collision(
+    tmp_path, monkeypatch
+):
+    """CI-006: Two consecutive '+10 byte' ('False and ') mutations on the same
+    module within the same integer second share (int(st_mtime), st_size) in PEP 552
+    .pyc headers. Deterministic reproduction via fixed os.utime (zero sleep).
+    """
+    import importlib.util
+    import py_compile
+
+    import check_tests_bite as bite
+
+    fixed_ts = 1_700_000_000
+    tree = tmp_path / "tree"
+    pkg = tree / "src" / "demo_pkg"
+    tests_dir = tree / "tests"
+    pkg.mkdir(parents=True)
+    tests_dir.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (tree / "conftest.py").write_text(
+        "import sys; from pathlib import Path\n"
+        "sys.path.insert(0, str(Path(__file__).resolve().parent / 'src'))\n",
+        encoding="utf-8",
+    )
+
+    mod = pkg / "target.py"
+    original_src = (
+        "def first_guard() -> bool:\n"
+        "    if True:\n"
+        "        return True\n"
+        "    return False\n\n"
+        "def second_guard() -> bool:\n"
+        "    if True:\n"
+        "        return True\n"
+        "    return False\n"
+    )
+    mut1_src = original_src.replace("    if True:\n", "    if False and True:\n", 1)
+    mod.write_text(mut1_src, encoding="utf-8")
+    os.utime(mod, (fixed_ts, fixed_ts))
+
+    pyc_path = Path(importlib.util.cache_from_source(str(mod)))
+    py_compile.compile(str(mod), cfile=str(pyc_path), doraise=True)
+    mod.write_text(original_src, encoding="utf-8")
+
+    (tests_dir / "test_target.py").write_text(
+        "from demo_pkg.target import second_guard\n\n"
+        "def test_second():\n"
+        "    assert second_guard() is True\n",
+        encoding="utf-8",
+    )
+
+    real_write_text = Path.write_text
+
+    def pinned_write_text(self: Path, data: str, *args, **kwargs):
+        res = real_write_text(self, data, *args, **kwargs)
+        if self == mod:
+            os.utime(self, (fixed_ts, fixed_ts))
+        return res
+
+    monkeypatch.setattr(Path, "write_text", pinned_write_text)
+
+    mut2 = bite.Mutation(
+        name="second-guard-off",
+        file="src/demo_pkg/target.py",
+        old="def second_guard() -> bool:\n    if True:\n",
+        new="def second_guard() -> bool:\n    if False and True:\n",
+        test="tests/test_target.py::test_second",
+        why="second_guard must bite even when (int(mtime), size) matches prior .pyc",
+    )
+    ok, note = bite.run(mut2, tree)
+    assert ok is True, f"Expected mutation to be caught, got: {note}"
+
+
 def test_vm_deepsec_propagates_test_failure_and_reports_missing_count():
     text = (ROOT / "scripts" / "vm_deepsec_test.bat").read_text(encoding="utf-8")
     assert "if errorlevel 1" in text

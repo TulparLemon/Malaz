@@ -44,11 +44,14 @@ der Pruefung eingecheckt worden, die sie verhindern soll.
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -590,12 +593,24 @@ def run(mutation: Mutation, tree: Path) -> tuple[bool, str]:
     mutated = _apply(original, mutation)
     if mutated is None:
         return False, f"Anker nicht eindeutig gefunden ({mutation.file})"
+    def _evict_pyc(py_file: Path) -> None:
+        with suppress(Exception):
+            Path(importlib.util.cache_from_source(str(py_file))).unlink(missing_ok=True)
+        shutil.rmtree(py_file.parent / "__pycache__", ignore_errors=True)
+
     try:
         path.write_text(mutated, encoding="utf-8")
+        _evict_pyc(path)
+        env = dict(os.environ)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        src_dir = str(tree / "src")
+        existing_pp = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{src_dir}{os.pathsep}{existing_pp}" if existing_pp else src_dir
         with tempfile.TemporaryDirectory(prefix="malaz_bite_run_") as basetemp:
             proc = subprocess.run(
                 [
                     str(PY),
+                    "-B",
                     "-m",
                     "pytest",
                     mutation.test,
@@ -606,6 +621,7 @@ def run(mutation: Mutation, tree: Path) -> tuple[bool, str]:
                     basetemp,
                 ],
                 cwd=tree,
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=900,
@@ -617,6 +633,7 @@ def run(mutation: Mutation, tree: Path) -> tuple[bool, str]:
         return False, "Test lief in die Zeitgrenze"
     finally:
         path.write_text(original, encoding="utf-8")
+        _evict_pyc(path)
 
 
 def main() -> int:
