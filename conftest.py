@@ -17,6 +17,22 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 
+def pytest_configure(config):
+    """Create the PARENT of ``--basetemp`` so a fresh checkout can run the suite.
+
+    pytest creates the basetemp directory itself, but without ``parents=True``.
+    CI and the docs call ``--basetemp=.pytest-tmp/ci``; on a fresh clone
+    ``.pytest-tmp`` does not exist (it is gitignored), and every test errored
+    with FileNotFoundError before running (measured: 1911 errors on GitHub
+    Actions, 1916 on a freshly cloned C:\\Malaz). Only the parent is created;
+    the basetemp itself stays pytest's job, so its clean-up semantics are
+    unchanged.
+    """
+    basetemp = getattr(config.option, "basetemp", None)
+    if basetemp:
+        Path(basetemp).resolve().parent.mkdir(parents=True, exist_ok=True)
+
+
 @pytest.fixture(autouse=True)
 def _isolate_user_threat_intel(tmp_path_factory, monkeypatch):
     """Point both imported-list config values at empty temp paths.
