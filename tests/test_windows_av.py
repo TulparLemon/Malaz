@@ -643,3 +643,40 @@ def test_mpcmdrun_remediation_beats_skipped_line(tmp_path):
     assert r.scanned is True
     assert r.threat_found is True
     assert r.remediated is True
+
+
+def test_mpcmdrun_multiline_echo_without_trailing_dot_stays_clean(tmp_path):
+    """SEC-008 (M2): Multiline clean echo 'Scanning ... was skipped' (no dot) stays clean."""
+    scanner = _scanner_with_fake_binary(tmp_path)
+    target = tmp_path / "backup was skipped"
+    target.write_bytes(b"benign")
+    raw_out = f"Scanning {target}\r\nKeine Bedrohungen gefunden.".encode()
+    with mock.patch(
+        "malaz.analysis.windows_av.run_tool",
+        return_value=(0, raw_out, b""),
+    ):
+        r = scanner.scan_path(target)
+    assert r.scanned is True
+    assert r.clean is True
+    assert r.threat_found is False
+
+
+def test_skipped_detectors_are_linear_on_adversarial_whitespace():
+    """SEC-008 (M1): Ensure zero polynomial regex backtracking on adversarial output."""
+    import time
+
+    from malaz.analysis.windows_av import _has_raw_skipped_line, _looks_skipped
+
+    adversarial = (
+        "\r\n" * 5000
+        + "Scanning"
+        + (" " * 25000)
+        + "x\r\nwurde "
+        + ("bersprungen" * 2000)
+        + "!"
+    )
+    t0 = time.perf_counter()
+    assert _has_raw_skipped_line(adversarial) is False
+    assert _looks_skipped(adversarial) is False
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 0.2, f"Expected linear O(N) runtime, took {elapsed:.3f}s"
