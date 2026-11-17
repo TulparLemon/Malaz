@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CURRENT_DOCS = (
     "README.md",
     "SECURITY.md",
+    "CODE_SIGNING_POLICY.md",
     ".github/CONTRIBUTING.md",
     "docs/INSTALLATION.md",
     "docs/USAGE.md",

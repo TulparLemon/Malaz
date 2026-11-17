@@ -486,3 +486,21 @@ def test_merge_gate_accepts_local_spec_and_rejects_traversal(tmp_path: Path) -> 
     assert mg._validate_spec_ref(tmp_path, "a" * 40, "LOCAL_SPEC:003-english-public-repo.md") is None
     assert mg._validate_spec_ref(tmp_path, "a" * 40, "LOCAL_SPEC:../README.md") is not None
     assert mg._validate_spec_ref(tmp_path, "a" * 40, "LOCAL_SPEC:bad") is not None
+
+
+def test_repo_hygiene_gate_allows_code_signing_policy_in_root(tmp_path: Path) -> None:
+    hygiene = _load_script("repo_hygiene_gate")
+    assert "CODE_SIGNING_POLICY.md" in hygiene.ALLOWED_ROOT_FILES
+
+    git = _git_exe()
+    subprocess.run([git, "init", "-b", "docs/test", str(tmp_path)], check=True, capture_output=True)
+    subprocess.run([git, "-C", str(tmp_path), "config", "user.name", "t"], check=True)
+    subprocess.run([git, "-C", str(tmp_path), "config", "user.email", "t@t"], check=True)
+    (tmp_path / "CODE_SIGNING_POLICY.md").write_text("# Policy\n", encoding="utf-8")
+    subprocess.run([git, "-C", str(tmp_path), "add", "CODE_SIGNING_POLICY.md"], check=True)
+    subprocess.run(
+        [git, "-C", str(tmp_path), "commit", "-m", "docs: add policy"],
+        check=True,
+        capture_output=True,
+    )
+    assert hygiene.run_checks(tmp_path, scan_all=True) == []

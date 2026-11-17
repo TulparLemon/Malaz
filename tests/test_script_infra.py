@@ -265,6 +265,21 @@ def test_doc_claims_markdown_links_validate_targets_and_ignore_code(tmp_path, mo
     assert not any("vorhanden.md" in p for p in problems), problems
 
 
+def test_doc_claims_validates_code_signing_policy_links(tmp_path, monkeypatch):
+    assert "CODE_SIGNING_POLICY.md" in check_doc_claims.CURRENT_DOCS
+    assert "CODE_SIGNING_POLICY.md" in check_doc_claims.LINK_CHECK_DOCS
+
+    (tmp_path / "CODE_SIGNING_POLICY.md").write_text(
+        "# Policy\n\nBroken link: [broken](docs/DOES_NOT_EXIST.md)\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(check_doc_claims, "ROOT", tmp_path)
+    problems = check_doc_claims.check_markdown_links()
+    assert any(
+        "CODE_SIGNING_POLICY.md" in p and "DOES_NOT_EXIST.md" in p for p in problems
+    ), problems
+
+
 def test_doc_claims_licence_scan_uses_project_root(tmp_path, monkeypatch):
     # Der Begriff wird zusammengesetzt, damit dieser Test nicht selbst von der
     # Pruefung als Widerspruch gemeldet wird (sie durchsucht auch .py-Dateien).
