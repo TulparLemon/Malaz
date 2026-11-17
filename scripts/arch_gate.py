@@ -111,9 +111,10 @@ def check_architecture(src_malaz: Path) -> list[str]:
                         f"reporting/pdf_report.py erlaubt (gefunden: '{mod}')"
                     )
 
-            elif layer == "workers":
-                if _matches_pkg(mod, "gui") or mod.startswith("PySide6.QtWidgets"):
-                    err = f"{rel}:{lineno}: 'workers' darf weder 'gui' noch 'QtWidgets' importieren ('{mod}')"
+            elif layer == "workers" and (
+                _matches_pkg(mod, "gui") or mod.startswith("PySide6.QtWidgets")
+            ):
+                err = f"{rel}:{lineno}: 'workers' darf weder 'gui' noch 'QtWidgets' importieren ('{mod}')"
 
             if err and (lineno, err) not in seen_file_errors:
                 seen_file_errors.add((lineno, err))
