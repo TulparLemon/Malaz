@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "corpus": {
+    "id": "example-structure-only",
+    "created": "2026-01-01",
+    "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+    "notes": "Beispiel für die Manifest-Struktur. Alle SHA-256-Werte sind erfunden (erkennbar an den wiederholten Mustern). Es sind keine Proben, keine Payloads und keine echten Hashes enthalten."
+  },
+  "files": [
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+      "name": "nested_archive.zip",
+      "type": "zip",
+      "family": "synthetic_nested",
+      "label": "malicious",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-01",
+      "split": "dev",
+      "notes": "Platzhalter für ZIP-in-ZIP."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+      "name": "invoice.pdf",
+      "type": "pdf",
+      "family": "synthetic_pdf",
+      "label": "malicious",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-01",
+      "split": "dev",
+      "notes": "Platzhalter für ein PDF-Fixture."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+      "name": "macro.docm",
+      "type": "office",
+      "family": "synthetic_office",
+      "label": "malicious",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-02",
+      "split": "test",
+      "notes": "Platzhalter für ein OOXML-Makro."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+      "name": "dropper.exe",
+      "type": "pe",
+      "family": "synthetic_pe",
+      "label": "malicious",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-02",
+      "split": "test",
+      "notes": "Platzhalter für eine PE-Struktur."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+      "name": "phishing.eml",
+      "type": "email",
+      "family": "synthetic_mail",
+      "label": "malicious",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-03",
+      "split": "test",
+      "notes": "Platzhalter für eine Phishing-Mail."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000006",
+      "name": "normal_report.pdf",
+      "type": "pdf",
+      "family": "benign_office",
+      "label": "benign",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-01",
+      "split": "dev",
+      "notes": "Harmlose Gegenprobe."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+      "name": "normal_installer.zip",
+      "type": "zip",
+      "family": "benign_installer",
+      "label": "benign",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-01",
+      "split": "dev",
+      "notes": "Verschachtelter Go-/Electron-Installer als Gegenprobe."
+    },
+    {
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+      "name": "normal_image.png",
+      "type": "image",
+      "family": "benign_image",
+      "label": "benign",
+      "source": "SYNTHETIC-FIXTURE-NOT-A-SAMPLE",
+      "first_seen": "2026-01-04",
+      "split": "test",
+      "notes": "Harmloses Bild."
+    }
+  ]
+}

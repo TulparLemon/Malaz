@@ -1,0 +1,3 @@
+# Ensure POSIX shell hooks always retain LF line endings on Windows
+scripts/hooks/* text eol=lf
+*.sh text eol=lf

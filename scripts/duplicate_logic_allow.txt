@@ -1,0 +1,7 @@
+# Erlaubte Dopplungen - je Zeile Eintrag + "#" + Begruendung.
+# Ein Eintrag ohne Begruendung ist selbst ein Fehler und wird gemeldet.
+#
+# Format:  <regex-literal ODER Name=wert ODER NAME:<name>>  # warum
+#
+# Beispiel (bewusst auskommentiert, damit die Datei leer startet):
+# [\w.-]{1,255}  # liegt in zwei Modulen, weil ... - und weil ...

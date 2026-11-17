@@ -1,0 +1,14 @@
+#!/bin/sh
+# Malaz pre-merge-commit - verhindert unautorisierte Merges nach main/stable.
+set -e
+
+BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo detached)"
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "stable" ]; then
+    if [ "${MALAZ_MERGE_GATE_ACTIVE:-0}" != "1" ]; then
+        echo "[pre-merge-commit] BLOCKIERT: Direkter 'git merge' auf '$BRANCH' ist verboten!"
+        echo "Nutze nach dem isolierten Goldfish-Review ausschliesslich:"
+        echo "  .venv/Scripts/python.exe scripts/merge_gate.py --merge <branch>"
+        exit 1
+    fi
+fi
+exit 0

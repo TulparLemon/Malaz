@@ -1,0 +1,3217 @@
+{
+  "version": 1,
+  "count": 456,
+  "families": [
+    "archives",
+    "edge",
+    "images",
+    "lnk",
+    "mail",
+    "office",
+    "pdf",
+    "pe",
+    "rtf",
+    "scripts",
+    "shortcuts",
+    "swf"
+  ],
+  "kinds": {
+    "benign": 133,
+    "malicious": 286,
+    "edge": 37
+  },
+  "fixtures": [
+    {
+      "name": "script_ps_encoded_0_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 61
+    },
+    {
+      "name": "script_ps_encoded_0_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 61
+    },
+    {
+      "name": "script_ps_encoded_0_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 61
+    },
+    {
+      "name": "script_ps_encoded_0_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 61
+    },
+    {
+      "name": "script_ps_encoded_0_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 60
+    },
+    {
+      "name": "script_ps_cradle_1_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 94
+    },
+    {
+      "name": "script_ps_cradle_1_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 94
+    },
+    {
+      "name": "script_ps_cradle_1_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 94
+    },
+    {
+      "name": "script_ps_cradle_1_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 94
+    },
+    {
+      "name": "script_ps_cradle_1_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 93
+    },
+    {
+      "name": "script_certutil_2_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 72
+    },
+    {
+      "name": "script_certutil_2_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 72
+    },
+    {
+      "name": "script_certutil_2_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 72
+    },
+    {
+      "name": "script_certutil_2_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 72
+    },
+    {
+      "name": "script_certutil_2_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 71
+    },
+    {
+      "name": "script_mshta_3_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 47
+    },
+    {
+      "name": "script_mshta_3_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 47
+    },
+    {
+      "name": "script_mshta_3_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 47
+    },
+    {
+      "name": "script_mshta_3_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 47
+    },
+    {
+      "name": "script_mshta_3_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 46
+    },
+    {
+      "name": "script_regsvr32_4_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 74
+    },
+    {
+      "name": "script_regsvr32_4_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 74
+    },
+    {
+      "name": "script_regsvr32_4_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 74
+    },
+    {
+      "name": "script_regsvr32_4_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 74
+    },
+    {
+      "name": "script_regsvr32_4_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 73
+    },
+    {
+      "name": "script_bitsadmin_5_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 77
+    },
+    {
+      "name": "script_bitsadmin_5_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 77
+    },
+    {
+      "name": "script_bitsadmin_5_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 77
+    },
+    {
+      "name": "script_bitsadmin_5_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 77
+    },
+    {
+      "name": "script_bitsadmin_5_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 76
+    },
+    {
+      "name": "script_wmic_6_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 81
+    },
+    {
+      "name": "script_wmic_6_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 81
+    },
+    {
+      "name": "script_wmic_6_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 81
+    },
+    {
+      "name": "script_wmic_6_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 81
+    },
+    {
+      "name": "script_wmic_6_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 80
+    },
+    {
+      "name": "script_run_key_7_ps1.ps1",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 133
+    },
+    {
+      "name": "script_run_key_7_bat.bat",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 133
+    },
+    {
+      "name": "script_run_key_7_cmd.cmd",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 133
+    },
+    {
+      "name": "script_run_key_7_vbs.vbs",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 133
+    },
+    {
+      "name": "script_run_key_7_js.js",
+      "family": "scripts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 132
+    },
+    {
+      "name": "benign_script_0_0.ps1",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_0_1.ps1",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_0_2.ps1",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_0_3.ps1",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_1_0.bat",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_1_1.bat",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_1_2.bat",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_1_3.bat",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_2_0.cmd",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_2_1.cmd",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_2_2.cmd",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_2_3.cmd",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_3_0.vbs",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_3_1.vbs",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_3_2.vbs",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_3_3.vbs",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_4_0.js",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_4_1.js",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_4_2.js",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_4_3.js",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_5_0.wsf",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_5_1.wsf",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_5_2.wsf",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_5_3.wsf",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_6_0.hta",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_6_1.hta",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_6_2.hta",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_6_3.hta",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_7_0.sh",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "benign_script_8_0.py",
+      "family": "scripts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 56
+    },
+    {
+      "name": "pdf_js_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 195
+    },
+    {
+      "name": "pdf_js_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 195
+    },
+    {
+      "name": "pdf_js_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 195
+    },
+    {
+      "name": "pdf_launch_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 185
+    },
+    {
+      "name": "pdf_launch_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 185
+    },
+    {
+      "name": "pdf_launch_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 185
+    },
+    {
+      "name": "pdf_openaction_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 179
+    },
+    {
+      "name": "pdf_openaction_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 179
+    },
+    {
+      "name": "pdf_openaction_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 179
+    },
+    {
+      "name": "pdf_embedded_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 209
+    },
+    {
+      "name": "pdf_embedded_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 209
+    },
+    {
+      "name": "pdf_embedded_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 209
+    },
+    {
+      "name": "pdf_aa_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 203
+    },
+    {
+      "name": "pdf_aa_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 203
+    },
+    {
+      "name": "pdf_aa_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 203
+    },
+    {
+      "name": "pdf_uri_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 199
+    },
+    {
+      "name": "pdf_uri_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 199
+    },
+    {
+      "name": "pdf_uri_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 199
+    },
+    {
+      "name": "pdf_obfuscated_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 183
+    },
+    {
+      "name": "pdf_obfuscated_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 183
+    },
+    {
+      "name": "pdf_obfuscated_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 183
+    },
+    {
+      "name": "pdf_richmedia_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 206
+    },
+    {
+      "name": "pdf_richmedia_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 206
+    },
+    {
+      "name": "pdf_richmedia_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 206
+    },
+    {
+      "name": "pdf_objstm_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 211
+    },
+    {
+      "name": "pdf_objstm_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 211
+    },
+    {
+      "name": "pdf_objstm_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 211
+    },
+    {
+      "name": "pdf_action_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 203
+    },
+    {
+      "name": "pdf_action_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 203
+    },
+    {
+      "name": "pdf_action_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 203
+    },
+    {
+      "name": "pdf_appended_0.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 244
+    },
+    {
+      "name": "pdf_appended_1.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 244
+    },
+    {
+      "name": "pdf_appended_2.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 244
+    },
+    {
+      "name": "pdf_appended_3.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 244
+    },
+    {
+      "name": "pdf_appended_4.pdf",
+      "family": "pdf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 244
+    },
+    {
+      "name": "benign_pdf_0.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 414
+    },
+    {
+      "name": "benign_pdf_1.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 513
+    },
+    {
+      "name": "benign_pdf_2.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 612
+    },
+    {
+      "name": "benign_pdf_3.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 711
+    },
+    {
+      "name": "benign_pdf_4.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 414
+    },
+    {
+      "name": "benign_pdf_5.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 513
+    },
+    {
+      "name": "benign_pdf_6.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 612
+    },
+    {
+      "name": "benign_pdf_7.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 711
+    },
+    {
+      "name": "benign_pdf_8.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 414
+    },
+    {
+      "name": "benign_pdf_9.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 513
+    },
+    {
+      "name": "benign_pdf_10.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 612
+    },
+    {
+      "name": "benign_pdf_11.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 711
+    },
+    {
+      "name": "benign_pdf_12.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 414
+    },
+    {
+      "name": "benign_pdf_13.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 513
+    },
+    {
+      "name": "benign_pdf_14.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 612
+    },
+    {
+      "name": "benign_pdf_15.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 711
+    },
+    {
+      "name": "benign_pdf_16.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 414
+    },
+    {
+      "name": "benign_pdf_17.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 513
+    },
+    {
+      "name": "benign_pdf_18.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 612
+    },
+    {
+      "name": "benign_pdf_19.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 711
+    },
+    {
+      "name": "ooxml_external_0.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_1.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_2.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_3.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_4.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_5.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_6.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_7.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_8.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_external_9.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1121
+    },
+    {
+      "name": "ooxml_dde_0.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1157
+    },
+    {
+      "name": "ooxml_dde_1.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_2.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_3.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_4.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_5.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_6.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_7.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_8.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_dde_9.docx",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1158
+    },
+    {
+      "name": "ooxml_macro_0.docm",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1720
+    },
+    {
+      "name": "ooxml_macro_1.docm",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1720
+    },
+    {
+      "name": "ooxml_macro_2.docm",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1720
+    },
+    {
+      "name": "ooxml_macro_3.docm",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1721
+    },
+    {
+      "name": "ooxml_macro_4.docm",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 1721
+    },
+    {
+      "name": "legacy_vba_0.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_1.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_2.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_3.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_4.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_5.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_6.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_7.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_8.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "legacy_vba_9.doc",
+      "family": "office",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 13312
+    },
+    {
+      "name": "benign_office_0.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 814
+    },
+    {
+      "name": "benign_office_1.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4841
+    },
+    {
+      "name": "benign_office_2.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 815
+    },
+    {
+      "name": "benign_office_3.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4841
+    },
+    {
+      "name": "benign_office_4.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 815
+    },
+    {
+      "name": "benign_office_5.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4841
+    },
+    {
+      "name": "benign_office_6.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 815
+    },
+    {
+      "name": "benign_office_7.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4841
+    },
+    {
+      "name": "benign_office_8.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 815
+    },
+    {
+      "name": "benign_office_9.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4841
+    },
+    {
+      "name": "benign_office_10.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 815
+    },
+    {
+      "name": "benign_office_11.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4842
+    },
+    {
+      "name": "benign_office_12.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 815
+    },
+    {
+      "name": "benign_office_13.xlsx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4843
+    },
+    {
+      "name": "benign_office_14.docx",
+      "family": "office",
+      "kind": "benign",
+      "expected": "green",
+      "size": 816
+    },
+    {
+      "name": "pe_packer_0_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_0_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_1_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_1_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_2_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_2_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_3_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_3_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_4_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_packer_4_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_0_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_0_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_0_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_1_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_1_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_1_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_2_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_2_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_2_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_3_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_3_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_3_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_4_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_4_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_4_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_5_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_5_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_import_5_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_weak_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_weak_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_weak_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_weak_3.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_weak_4.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2056
+    },
+    {
+      "name": "pe_overlay_0.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3080
+    },
+    {
+      "name": "pe_overlay_1.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3080
+    },
+    {
+      "name": "pe_overlay_2.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3080
+    },
+    {
+      "name": "pe_overlay_3.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3080
+    },
+    {
+      "name": "pe_overlay_4.exe",
+      "family": "pe",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3080
+    },
+    {
+      "name": "benign_pe_0.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "benign_pe_1.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "benign_pe_2.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "benign_pe_3.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "benign_pe_4.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "benign_pe_5.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "benign_pe_6.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2056
+    },
+    {
+      "name": "png_trailer_0.png",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2155
+    },
+    {
+      "name": "png_trailer_1.png",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2155
+    },
+    {
+      "name": "png_trailer_2.png",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2155
+    },
+    {
+      "name": "png_trailer_3.png",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2155
+    },
+    {
+      "name": "png_trailer_4.png",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2155
+    },
+    {
+      "name": "jpeg_trailer_0.jpg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3003
+    },
+    {
+      "name": "jpeg_trailer_1.jpg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3003
+    },
+    {
+      "name": "jpeg_trailer_2.jpg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3003
+    },
+    {
+      "name": "jpeg_trailer_3.jpg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3003
+    },
+    {
+      "name": "jpeg_trailer_4.jpg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 3003
+    },
+    {
+      "name": "svg_script_0.svg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 97
+    },
+    {
+      "name": "svg_script_1.svg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 97
+    },
+    {
+      "name": "svg_script_2.svg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 97
+    },
+    {
+      "name": "svg_script_3.svg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 97
+    },
+    {
+      "name": "svg_script_4.svg",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 97
+    },
+    {
+      "name": "heic_0.heic",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 20032
+    },
+    {
+      "name": "heic_1.heic",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 20032
+    },
+    {
+      "name": "heic_2.heic",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 20032
+    },
+    {
+      "name": "heic_3.heic",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 20032
+    },
+    {
+      "name": "heic_4.heic",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 20032
+    },
+    {
+      "name": "benign_webp.webp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4112
+    },
+    {
+      "name": "benign_mp3.mp3",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4106
+    },
+    {
+      "name": "benign_mp4.mp4",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 4124
+    },
+    {
+      "name": "benign_tiff.tiff",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 74
+    },
+    {
+      "name": "tiff_noise.tiff",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 4106
+    },
+    {
+      "name": "ico_noise.ico",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 4118
+    },
+    {
+      "name": "gif_comment_0.gif",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2108
+    },
+    {
+      "name": "gif_comment_1.gif",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2108
+    },
+    {
+      "name": "gif_comment_2.gif",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2108
+    },
+    {
+      "name": "gif_comment_3.gif",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2108
+    },
+    {
+      "name": "gif_comment_4.gif",
+      "family": "images",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2108
+    },
+    {
+      "name": "benign_image_0.png",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 69
+    },
+    {
+      "name": "benign_image_1.jpg",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 632
+    },
+    {
+      "name": "benign_image_2.gif",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 30
+    },
+    {
+      "name": "benign_image_3.bmp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 58
+    },
+    {
+      "name": "benign_image_4.ico",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 86
+    },
+    {
+      "name": "benign_image_5.webp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 17
+    },
+    {
+      "name": "benign_image_6.png",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 77
+    },
+    {
+      "name": "benign_image_7.jpg",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 633
+    },
+    {
+      "name": "benign_image_8.gif",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 30
+    },
+    {
+      "name": "benign_image_9.bmp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 58
+    },
+    {
+      "name": "benign_image_10.ico",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 86
+    },
+    {
+      "name": "benign_image_11.webp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 17
+    },
+    {
+      "name": "benign_image_12.png",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 77
+    },
+    {
+      "name": "benign_image_13.jpg",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 633
+    },
+    {
+      "name": "benign_image_14.gif",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 30
+    },
+    {
+      "name": "benign_image_15.bmp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 58
+    },
+    {
+      "name": "benign_image_16.ico",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 86
+    },
+    {
+      "name": "benign_image_17.webp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 17
+    },
+    {
+      "name": "benign_image_18.png",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 77
+    },
+    {
+      "name": "benign_image_19.jpg",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 633
+    },
+    {
+      "name": "benign_image_20.gif",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 30
+    },
+    {
+      "name": "benign_image_21.bmp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 58
+    },
+    {
+      "name": "benign_image_22.ico",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 86
+    },
+    {
+      "name": "benign_image_23.webp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 17
+    },
+    {
+      "name": "benign_image_24.png",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 78
+    },
+    {
+      "name": "benign_image_25.jpg",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 633
+    },
+    {
+      "name": "benign_image_26.gif",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 30
+    },
+    {
+      "name": "benign_image_27.bmp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 58
+    },
+    {
+      "name": "benign_image_28.ico",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 86
+    },
+    {
+      "name": "benign_image_29.webp",
+      "family": "images",
+      "kind": "benign",
+      "expected": "green",
+      "size": 17
+    },
+    {
+      "name": "zip_slip_0_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 127
+    },
+    {
+      "name": "zip_slip_0_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 127
+    },
+    {
+      "name": "zip_slip_1_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 131
+    },
+    {
+      "name": "zip_slip_1_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 131
+    },
+    {
+      "name": "zip_slip_2_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 127
+    },
+    {
+      "name": "zip_slip_2_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 127
+    },
+    {
+      "name": "zip_slip_3_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 137
+    },
+    {
+      "name": "zip_slip_3_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 137
+    },
+    {
+      "name": "zip_slip_4_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 147
+    },
+    {
+      "name": "zip_slip_4_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 147
+    },
+    {
+      "name": "zip_bomb_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 5224
+    },
+    {
+      "name": "zip_bomb_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 5224
+    },
+    {
+      "name": "zip_bomb_2.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 5225
+    },
+    {
+      "name": "zip_bomb_3.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 5225
+    },
+    {
+      "name": "zip_bomb_4.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 5225
+    },
+    {
+      "name": "zip_encrypted_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 181
+    },
+    {
+      "name": "zip_encrypted_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 181
+    },
+    {
+      "name": "zip_encrypted_2.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 181
+    },
+    {
+      "name": "zip_encrypted_3.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 181
+    },
+    {
+      "name": "zip_encrypted_4.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 181
+    },
+    {
+      "name": "zip_nested_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 189
+    },
+    {
+      "name": "zip_nested_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 189
+    },
+    {
+      "name": "zip_nested_2.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 189
+    },
+    {
+      "name": "zip_nested_3.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 189
+    },
+    {
+      "name": "zip_nested_4.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 190
+    },
+    {
+      "name": "zip_exe_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 779
+    },
+    {
+      "name": "zip_exe_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 779
+    },
+    {
+      "name": "zip_exe_2.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 779
+    },
+    {
+      "name": "zip_exe_3.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 779
+    },
+    {
+      "name": "zip_exe_4.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 779
+    },
+    {
+      "name": "zip_many_0.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 11426
+    },
+    {
+      "name": "zip_many_1.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 11426
+    },
+    {
+      "name": "zip_many_2.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 11426
+    },
+    {
+      "name": "zip_many_3.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 11426
+    },
+    {
+      "name": "zip_many_4.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 11426
+    },
+    {
+      "name": "tar_payload_0.tar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 10240
+    },
+    {
+      "name": "tar_payload_1.tar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 10241
+    },
+    {
+      "name": "tar_payload_2.tar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 10242
+    },
+    {
+      "name": "tar_payload_3.tar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 10243
+    },
+    {
+      "name": "tar_payload_4.tar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 10244
+    },
+    {
+      "name": "rar_0.rar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 57
+    },
+    {
+      "name": "rar_1.rar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 57
+    },
+    {
+      "name": "rar_2.rar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 57
+    },
+    {
+      "name": "rar_3.rar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 57
+    },
+    {
+      "name": "rar_4.rar",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 57
+    },
+    {
+      "name": "iso_0.iso",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 38913
+    },
+    {
+      "name": "iso_1.iso",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 38913
+    },
+    {
+      "name": "iso_2.iso",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 38913
+    },
+    {
+      "name": "iso_3.iso",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 38913
+    },
+    {
+      "name": "iso_4.iso",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "any",
+      "size": 38913
+    },
+    {
+      "name": "benign_zip_0.zip",
+      "family": "archives",
+      "kind": "benign",
+      "expected": "green",
+      "size": 129
+    },
+    {
+      "name": "benign_zip_1.zip",
+      "family": "archives",
+      "kind": "benign",
+      "expected": "green",
+      "size": 129
+    },
+    {
+      "name": "benign_zip_2.zip",
+      "family": "archives",
+      "kind": "benign",
+      "expected": "green",
+      "size": 129
+    },
+    {
+      "name": "benign_zip_3.zip",
+      "family": "archives",
+      "kind": "benign",
+      "expected": "green",
+      "size": 129
+    },
+    {
+      "name": "benign_zip_4.zip",
+      "family": "archives",
+      "kind": "benign",
+      "expected": "green",
+      "size": 129
+    },
+    {
+      "name": "mail_spf_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 441
+    },
+    {
+      "name": "mail_spf_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 441
+    },
+    {
+      "name": "mail_spf_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 441
+    },
+    {
+      "name": "mail_spf_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 441
+    },
+    {
+      "name": "mail_spf_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 441
+    },
+    {
+      "name": "mail_display_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 449
+    },
+    {
+      "name": "mail_display_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 449
+    },
+    {
+      "name": "mail_display_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 449
+    },
+    {
+      "name": "mail_display_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 449
+    },
+    {
+      "name": "mail_display_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 449
+    },
+    {
+      "name": "mail_reply_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 459
+    },
+    {
+      "name": "mail_reply_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 459
+    },
+    {
+      "name": "mail_reply_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 459
+    },
+    {
+      "name": "mail_reply_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 459
+    },
+    {
+      "name": "mail_reply_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 459
+    },
+    {
+      "name": "mail_return_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_return_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_return_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_return_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_return_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_shortlink_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 460
+    },
+    {
+      "name": "mail_shortlink_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 460
+    },
+    {
+      "name": "mail_shortlink_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 460
+    },
+    {
+      "name": "mail_shortlink_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 460
+    },
+    {
+      "name": "mail_shortlink_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 460
+    },
+    {
+      "name": "mail_iplink_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_iplink_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_iplink_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_iplink_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_iplink_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 464
+    },
+    {
+      "name": "mail_attach_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 805
+    },
+    {
+      "name": "mail_attach_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 805
+    },
+    {
+      "name": "mail_attach_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 805
+    },
+    {
+      "name": "mail_attach_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 805
+    },
+    {
+      "name": "mail_attach_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 805
+    },
+    {
+      "name": "mail_html_0.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 868
+    },
+    {
+      "name": "mail_html_1.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 868
+    },
+    {
+      "name": "mail_html_2.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 868
+    },
+    {
+      "name": "mail_html_3.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 868
+    },
+    {
+      "name": "mail_html_4.eml",
+      "family": "mail",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 868
+    },
+    {
+      "name": "benign_mail_0.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_1.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_2.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_3.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_4.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_5.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_6.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_7.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_8.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_9.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 649
+    },
+    {
+      "name": "benign_mail_10.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 651
+    },
+    {
+      "name": "benign_mail_11.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 651
+    },
+    {
+      "name": "benign_mail_12.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 651
+    },
+    {
+      "name": "benign_mail_13.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 651
+    },
+    {
+      "name": "benign_mail_14.eml",
+      "family": "mail",
+      "kind": "benign",
+      "expected": "green",
+      "size": 651
+    },
+    {
+      "name": "lnk_0_0.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 212
+    },
+    {
+      "name": "lnk_0_1.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 212
+    },
+    {
+      "name": "lnk_1_0.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 220
+    },
+    {
+      "name": "lnk_1_1.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 220
+    },
+    {
+      "name": "lnk_2_0.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 176
+    },
+    {
+      "name": "lnk_2_1.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 176
+    },
+    {
+      "name": "lnk_3_0.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 242
+    },
+    {
+      "name": "lnk_3_1.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 242
+    },
+    {
+      "name": "lnk_4_0.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 270
+    },
+    {
+      "name": "lnk_4_1.lnk",
+      "family": "lnk",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 270
+    },
+    {
+      "name": "rtf_ole_0.rtf",
+      "family": "rtf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2106
+    },
+    {
+      "name": "rtf_ole_1.rtf",
+      "family": "rtf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2106
+    },
+    {
+      "name": "rtf_ole_2.rtf",
+      "family": "rtf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2106
+    },
+    {
+      "name": "rtf_ole_3.rtf",
+      "family": "rtf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2106
+    },
+    {
+      "name": "rtf_ole_4.rtf",
+      "family": "rtf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 2106
+    },
+    {
+      "name": "swf_0.swf",
+      "family": "swf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 84
+    },
+    {
+      "name": "swf_1.swf",
+      "family": "swf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 84
+    },
+    {
+      "name": "swf_2.swf",
+      "family": "swf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 84
+    },
+    {
+      "name": "swf_3.swf",
+      "family": "swf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 84
+    },
+    {
+      "name": "swf_4.swf",
+      "family": "swf",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 84
+    },
+    {
+      "name": "url_benign.url",
+      "family": "shortcuts",
+      "kind": "benign",
+      "expected": "green",
+      "size": 119
+    },
+    {
+      "name": "url_file.url",
+      "family": "shortcuts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 62
+    },
+    {
+      "name": "url_unc.url",
+      "family": "shortcuts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 54
+    },
+    {
+      "name": "url_javascript.url",
+      "family": "shortcuts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 59
+    },
+    {
+      "name": "url_ip.url",
+      "family": "shortcuts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 53
+    },
+    {
+      "name": "url_credentials.url",
+      "family": "shortcuts",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 61
+    },
+    {
+      "name": "edge_empty.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 0
+    },
+    {
+      "name": "edge_one_byte.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 1
+    },
+    {
+      "name": "edge_truncated_pe.exe",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 12
+    },
+    {
+      "name": "edge_truncated_pdf.pdf",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 16
+    },
+    {
+      "name": "edge_truncated_zip.zip",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 14
+    },
+    {
+      "name": "edge_high_entropy.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 65536
+    },
+    {
+      "name": "edge_nulls.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 1048576
+    },
+    {
+      "name": "edge_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 1
+    },
+    {
+      "name": "edge_unicode_äöü_日本語.txt",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 5
+    },
+    {
+      "name": "edge_bidi_‮evil.txt",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 5
+    },
+    {
+      "name": "edge_double_extension.pdf.exe",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 34
+    },
+    {
+      "name": "edge_motw.txt",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 26
+    },
+    {
+      "name": "edge_lnk_empty.lnk",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4
+    },
+    {
+      "name": "edge_swf_empty.swf",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 12
+    },
+    {
+      "name": "edge_rtf_empty.rtf",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 7
+    },
+    {
+      "name": "edge_eml_empty.eml",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 13
+    },
+    {
+      "name": "edge_json.json",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 8
+    },
+    {
+      "name": "edge_xml.xml",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 7
+    },
+    {
+      "name": "edge_svg.svg",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 6
+    },
+    {
+      "name": "edge_iso.iso",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 38912
+    },
+    {
+      "name": "edge_random_0.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4096
+    },
+    {
+      "name": "edge_random_1.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4133
+    },
+    {
+      "name": "edge_random_2.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4170
+    },
+    {
+      "name": "edge_random_3.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4207
+    },
+    {
+      "name": "edge_random_4.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4244
+    },
+    {
+      "name": "edge_random_5.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4281
+    },
+    {
+      "name": "edge_random_6.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4318
+    },
+    {
+      "name": "edge_random_7.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4355
+    },
+    {
+      "name": "edge_random_8.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4392
+    },
+    {
+      "name": "edge_random_9.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4429
+    },
+    {
+      "name": "edge_random_10.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4466
+    },
+    {
+      "name": "edge_random_11.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4503
+    },
+    {
+      "name": "edge_random_12.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4540
+    },
+    {
+      "name": "edge_random_13.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4577
+    },
+    {
+      "name": "edge_random_14.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4614
+    },
+    {
+      "name": "edge_random_15.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4651
+    },
+    {
+      "name": "edge_random_16.bin",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 4688
+    },
+    {
+      "name": "nested_archive.zip",
+      "family": "archives",
+      "kind": "malicious",
+      "expected": "flag",
+      "size": 381
+    },
+    {
+      "name": "nested_electron_installer.exe",
+      "family": "pe",
+      "kind": "benign",
+      "expected": "green",
+      "size": 2258
+    }
+  ]
+}

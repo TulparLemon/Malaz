@@ -1,0 +1,26 @@
+# Malaz Entwicklungs- und Qualitäts-Werkzeuge (nicht Runtime).
+# Installieren mit:  pip install -r requirements-dev.txt
+# Der Quality Gate (scripts/run_quality_checks.py) und CI setzen diese voraus.
+
+pytest>=8.0
+setuptools>=77
+ruff
+bandit
+mypy
+coverage
+pytest-cov
+pip-audit
+hypothesis
+pytest-qt
+# Hook-Test
+pyzipper
+# CI-Konfiguration strukturell prüfen (tests/test_ci_config.py,
+# scripts/ci_gate.py --check-workflow). Nur Entwicklung, nicht im Release.
+pyyaml
+# Regel-Linter (Trail-of-Bits-Skill yara-authoring). Die Engine ist BSD-lizenziert
+# und damit auch für die GPL-3.0-Distribution unbedenklich; sie wird zur
+# Laufzeit NICHT gebraucht — Malaz selbst nutzt yara-python (siehe requirements.txt).
+yara-x
+
+# SBOM-Erzeugung (scripts/make_sbom.py): Requirement-Parsing/Marker.
+packaging>=23

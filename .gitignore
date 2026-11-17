@@ -1,0 +1,126 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Nuitka build artifacts
+*.build/
+*.dist/
+*.onefile-build/
+*.exe
+nuitka-crash-report.xml
+
+# Test / cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local scan artefacts / reports
+reports/
+*.local
+
+# Lokale Übergabe-Backups; bleiben erhalten, werden aber nicht versioniert.
+backups/
+report.html
+malaz_report*.html
+
+# Temp concept dump
+_concept_dump.txt
+# Generierte Testkorpora (zur Laufzeit erzeugt, nicht eingecheckt) — aber der
+# Golden-Snapshot IST der Referenzwert des Drift-Tests und wird getrackt. Ein
+# Verzeichnis-Muster ("tests/data/") lässt keine Ausnahme zu, daher der Stern.
+tests/data/*
+!tests/data/golden_snapshot.json
+!tests/data/corpus_v2_manifest.json
+!tests/data/tool_comparison.json
+!tests/data/realworld_manifest.schema.json
+!tests/data/realworld_manifest.example.json
+!tests/data/golden_images/
+!tests/data/golden_images/**
+.mimosa/
+commit_message.txt
+.pytest-tmp/
+.pytest-tmp*/
+.pytest_tmp/
+.pdf_pages/
+# Heruntergeladener externer YARA-Feed + lokale Sperrliste (Runtime-Artefakte).
+# Die Lizenz-/Herkunftstexte bleiben getrackt, die Binaries nicht.
+rules/yara/external/*
+!rules/yara/external/README-externe-regeln.txt
+!rules/yara/external/LICENSE-MIT-ReversingLabs.txt
+# Zweite Regelquelle: Neo23x0/signature-base (DRL 1.1) — ebenfalls reines
+# Runtime-Artefakt einer bewussten Nutzeraktion, wird nicht mitgeliefert.
+rules/yara/signature_base/*
+!rules/yara/signature_base/README-signature-base.txt
+!rules/yara/signature_base/LICENSE-DRL-1.1.txt
+!rules/yara/signature_base/LICENSES-EINZELREGELN.txt
+rules/yara/external_disabled.txt
+malaz.log
+malaz.log.*
+
+# Falschpositiv-Korpus: echte Dateien aus dem Netz, nur zur Kalibrierung.
+# Gehoert nicht ins Repo (fremde Inhalte, gross) — scripts/run_fp_check.py
+# holt ihn bei Bedarf neu.
+fp_korpus/
+
+# Streu-Verzeichnisse aus Testlaeufen mit --basetemp im Repo-Wurzelverzeichnis.
+# Sie enthalten die ERZEUGTEN Korpus-Fixtures — darunter echte Dropper-Dateien
+# (.wsf/.hta/.ps1) — die das Projekt bewusst nicht versioniert.
+# Die Regel hiess ".audit_tmppytest*/" und traf damit nur EINEN Namen. Ein Lauf
+# mit --basetemp=.audit-final-pytest-<datum> schluepfte durch — und beim
+# naechsten "git add -A" landeten 282 Dateien im Index, darunter genau die
+# Dropper-Fixtures, die hier draussen bleiben sollen. GEMESSEN.
+.audit*pytest*/
+.audit_tmppytest*/
+
+# Artefakte des Security-Audits: Berichte, keine Quellen. Waren nie versioniert.
+audit/
+# Die Berichte tragen das Datum im NAMEN, nicht in einem Ordner — sie fielen
+# deshalb durch die Regel darueber. GEMESSEN: AUDIT_2026-09-23.md lag beim
+# naechsten "git add -A" im Index.
+AUDIT_*.md
+# Uebergaben sind Berichte ueber einen Moment, keine Quellen — wie die
+# Audit-Berichte darueber. Sie liegen im Baum, damit die naechste Sitzung sie
+# findet, und werden nicht versioniert: ihr Inhalt veraltet mit dem naechsten
+# Commit, und eine veraltete Uebergabe im Repo ist schlimmer als keine.
+HANDOVER*.md
+
+# CI-Artefakte (Coverage/JUnit) und lokale Laufberichte
+artifacts/
+# Local machine installs and target test artifacts (not part of the repository)
+tools/
+Malaz starten.bat
+inner.pdf
+readme.txt
+real.cab
+real.ddf
+real.iso
+real_cab_test.py
+setup.inf
+setup.rpt
+pytest-*.log
+.enginetest/
+.clamtest/
+
+# Governance scratch & review stamps
+.scratch/
+artifacts/reviews/

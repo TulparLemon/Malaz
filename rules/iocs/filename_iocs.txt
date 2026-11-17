@@ -1,0 +1,16 @@
+# Malaz Filename-IOCs (Loki-style)
+#
+# Eine Regex pro Zeile. Optional: ;Score (0-100) und ;Beschreibung.
+#   regex
+#   regex;score
+#   regex;score;Beschreibung
+#
+# Score-Mapping: >= 50 -> CRITICAL (Anker, Rot) | >= 30 -> HIGH | >= 15 -> MEDIUM | sonst LOW
+# Treffer werden case-insensitiv per re.search auf den Dateipfad angewendet.
+#
+# Eigene Regeln ergänzen — weitere Dateien in diesem Ordner werden ebenfalls geladen.
+
+# Klassisches Phishing-Muster: Doppel-Endung, hinten ein ausführbares Format.
+\.(pdf|docx?|xlsx?|pptx?|png|jpe?g|txt)\.(exe|scr|bat|cmd|com|ps1|vbs|js|jar)$;50;Ausführbare Doppel-Endung (Phishing-Muster)
+# Alternative Reihenfolge: scheinbar harmlose Endung nach ausführbarer Datei.
+\.(exe|scr|bat|cmd|com)\.(pdf|docx?|xlsx?|jpe?g|png)$;30;Verschleierte Endungs-Reihenfolge

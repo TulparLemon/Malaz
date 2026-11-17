@@ -1,0 +1,2458 @@
+{
+  "summaries": [
+    {
+      "tool": "clamav",
+      "malicious_total": 69,
+      "malicious_detected": 2,
+      "benign_total": 29,
+      "benign_flagged": 0,
+      "errors": 0,
+      "p95_ms": 161
+    },
+    {
+      "tool": "malaz",
+      "malicious_total": 69,
+      "malicious_detected": 48,
+      "benign_total": 29,
+      "benign_flagged": 0,
+      "errors": 0,
+      "p95_ms": 576
+    },
+    {
+      "tool": "oletools",
+      "malicious_total": 6,
+      "malicious_detected": 3,
+      "benign_total": 2,
+      "benign_flagged": 0,
+      "errors": 0,
+      "p95_ms": 759
+    },
+    {
+      "tool": "yara",
+      "malicious_total": 69,
+      "malicious_detected": 17,
+      "benign_total": 29,
+      "benign_flagged": 0,
+      "errors": 0,
+      "p95_ms": 3
+    }
+  ],
+  "rows": [
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "js_obfuscated.pdf",
+      "detected": false,
+      "duration_ms": 144,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "js_no_autostart.pdf",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "embedded_file.pdf",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "object_stream.pdf",
+      "detected": false,
+      "duration_ms": 114,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "color_on_color.pdf",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "macro_autoopen.doc",
+      "detected": false,
+      "duration_ms": 154,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "macro_obfuscated.doc",
+      "detected": false,
+      "duration_ms": 152,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "macro_lolbin.doc",
+      "detected": false,
+      "duration_ms": 161,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "dde_formula.xlsx",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "remote_formula.xlsx",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "obfuscated.js",
+      "detected": false,
+      "duration_ms": 115,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "cradle.ps1",
+      "detected": false,
+      "duration_ms": 291,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "download_cradle.ps1",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "persistence.ps1",
+      "detected": false,
+      "duration_ms": 113,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "certutil.txt",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "regsvr32.txt",
+      "detected": false,
+      "duration_ms": 112,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "lolbin_url.txt",
+      "detected": false,
+      "duration_ms": 169,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "download.bat",
+      "detected": false,
+      "duration_ms": 111,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "dropper.hta",
+      "detected": true,
+      "duration_ms": 428,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "dropper.wsf",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "mismatch.pdf",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "high_entropy_exe.bin",
+      "detected": false,
+      "duration_ms": 125,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "dropper.elf",
+      "detected": false,
+      "duration_ms": 114,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "mirai.elf",
+      "detected": false,
+      "duration_ms": 631,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "dropper.macho",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "zipslip.zip",
+      "detected": false,
+      "duration_ms": 115,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "deep_nesting.zip",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "many_members.zip",
+      "detected": false,
+      "duration_ms": 133,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "bomb_size.zip",
+      "detected": false,
+      "duration_ms": 120,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "encrypted_aes.zip",
+      "detected": false,
+      "duration_ms": 129,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "corrupt.zip",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "bad.7z",
+      "detected": false,
+      "duration_ms": 118,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "traversal.tar",
+      "detected": false,
+      "duration_ms": 126,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "trailing_payload.png",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "trailing_payload.jpg",
+      "detected": false,
+      "duration_ms": 120,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "with_exif.png",
+      "detected": false,
+      "duration_ms": 121,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "pdf_inside.png",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "object.rtf",
+      "detected": false,
+      "duration_ms": 125,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "rechnung.pdf.exe",
+      "detected": false,
+      "duration_ms": 121,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "blocklisted.bin",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "lure.lnk",
+      "detected": false,
+      "duration_ms": 124,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "phish_headers.eml",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "phish_mixed_script.eml",
+      "detected": false,
+      "duration_ms": 114,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "phish_links.eml",
+      "detected": true,
+      "duration_ms": 128,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "phish_attachments.eml",
+      "detected": false,
+      "duration_ms": 120,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "phish_body.eml",
+      "detected": false,
+      "duration_ms": 113,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "phish_schemes.eml",
+      "detected": false,
+      "duration_ms": 120,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "mail_broken.eml",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "mail_no_headers.eml",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "plain.exe",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "packed_upx.exe",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "packed_aspack.exe",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "weak_mitigations.exe",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "no_cfg.exe",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "high_entropy_sections.exe",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "overlay_payload.exe",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "signed_overlay.exe",
+      "detected": false,
+      "duration_ms": 124,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "no_imports.exe",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "with_pdb.exe",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "tls_callbacks.exe",
+      "detected": false,
+      "duration_ms": 142,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "tls_empty.exe",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "broken_header.exe",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "import_injection.exe",
+      "detected": false,
+      "duration_ms": 116,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "import_keylog.exe",
+      "detected": false,
+      "duration_ms": 121,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "import_download_exec.exe",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "import_rva_broken.exe",
+      "detected": false,
+      "duration_ms": 124,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "encrypted_user.pdf",
+      "detected": false,
+      "duration_ms": 210,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "cut_off.jpg",
+      "detected": false,
+      "duration_ms": 118,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "malicious",
+      "path": "cut_off.png",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "harmlos.bz2",
+      "detected": false,
+      "duration_ms": 115,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "harmlos.xz",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "animation.swf",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "klasse.class",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "abbild.iso",
+      "detected": false,
+      "duration_ms": 128,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "IMG_0042.HEIC",
+      "detected": false,
+      "duration_ms": 130,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "bild.avif",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "bericht.txt",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "kontakte.txt",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "umlaute.txt",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "artikel.csv",
+      "detected": false,
+      "duration_ms": 127,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "konfiguration.json",
+      "detected": false,
+      "duration_ms": 119,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "rechnung.xml",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "handbuch.html",
+      "detected": false,
+      "duration_ms": 139,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "logo.png",
+      "detected": false,
+      "duration_ms": 120,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "screenshot.png",
+      "detected": false,
+      "duration_ms": 123,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "foto.jpg",
+      "detected": false,
+      "duration_ms": 118,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "animation.gif",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "diagramm.bmp",
+      "detected": false,
+      "duration_ms": 120,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "vertrag.pdf",
+      "detected": false,
+      "duration_ms": 117,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "preisliste.xlsx",
+      "detected": false,
+      "duration_ms": 124,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "dokument.docx",
+      "detected": false,
+      "duration_ms": 118,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "unterlagen.zip",
+      "detected": false,
+      "duration_ms": 118,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "quellen.tar.gz",
+      "detected": false,
+      "duration_ms": 115,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "bundle.zip",
+      "detected": false,
+      "duration_ms": 124,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "wartung.bat",
+      "detected": false,
+      "duration_ms": 118,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "inventar.ps1",
+      "detected": false,
+      "duration_ms": 125,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "rechnung.eml",
+      "detected": false,
+      "duration_ms": 124,
+      "error": ""
+    },
+    {
+      "tool": "clamav",
+      "group": "benign",
+      "path": "handbuch.lnk",
+      "detected": false,
+      "duration_ms": 122,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "js_obfuscated.pdf",
+      "detected": true,
+      "duration_ms": 5,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "js_no_autostart.pdf",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "embedded_file.pdf",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "object_stream.pdf",
+      "detected": false,
+      "duration_ms": 8,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "color_on_color.pdf",
+      "detected": false,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "macro_autoopen.doc",
+      "detected": true,
+      "duration_ms": 550,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "macro_obfuscated.doc",
+      "detected": true,
+      "duration_ms": 81,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "macro_lolbin.doc",
+      "detected": true,
+      "duration_ms": 85,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "dde_formula.xlsx",
+      "detected": true,
+      "duration_ms": 33,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "remote_formula.xlsx",
+      "detected": false,
+      "duration_ms": 31,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "obfuscated.js",
+      "detected": false,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "cradle.ps1",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "download_cradle.ps1",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "persistence.ps1",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "certutil.txt",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "regsvr32.txt",
+      "detected": true,
+      "duration_ms": 4,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "lolbin_url.txt",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "download.bat",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "dropper.hta",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "dropper.wsf",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "mismatch.pdf",
+      "detected": true,
+      "duration_ms": 635,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "high_entropy_exe.bin",
+      "detected": true,
+      "duration_ms": 536,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "dropper.elf",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "mirai.elf",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "dropper.macho",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "zipslip.zip",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "deep_nesting.zip",
+      "detected": true,
+      "duration_ms": 9,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "many_members.zip",
+      "detected": true,
+      "duration_ms": 769,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "bomb_size.zip",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "encrypted_aes.zip",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "corrupt.zip",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "bad.7z",
+      "detected": true,
+      "duration_ms": 16,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "traversal.tar",
+      "detected": true,
+      "duration_ms": 5,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "trailing_payload.png",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "trailing_payload.jpg",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "with_exif.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "pdf_inside.png",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "object.rtf",
+      "detected": true,
+      "duration_ms": 208,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "rechnung.pdf.exe",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "blocklisted.bin",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "lure.lnk",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "phish_headers.eml",
+      "detected": true,
+      "duration_ms": 9,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "phish_mixed_script.eml",
+      "detected": true,
+      "duration_ms": 5,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "phish_links.eml",
+      "detected": true,
+      "duration_ms": 8,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "phish_attachments.eml",
+      "detected": true,
+      "duration_ms": 68,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "phish_body.eml",
+      "detected": true,
+      "duration_ms": 7,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "phish_schemes.eml",
+      "detected": true,
+      "duration_ms": 9,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "mail_broken.eml",
+      "detected": true,
+      "duration_ms": 4,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "mail_no_headers.eml",
+      "detected": true,
+      "duration_ms": 4,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "plain.exe",
+      "detected": false,
+      "duration_ms": 584,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "packed_upx.exe",
+      "detected": true,
+      "duration_ms": 573,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "packed_aspack.exe",
+      "detected": true,
+      "duration_ms": 557,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "weak_mitigations.exe",
+      "detected": false,
+      "duration_ms": 562,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "no_cfg.exe",
+      "detected": false,
+      "duration_ms": 594,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "high_entropy_sections.exe",
+      "detected": true,
+      "duration_ms": 576,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "overlay_payload.exe",
+      "detected": false,
+      "duration_ms": 498,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "signed_overlay.exe",
+      "detected": false,
+      "duration_ms": 488,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "no_imports.exe",
+      "detected": true,
+      "duration_ms": 564,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "with_pdb.exe",
+      "detected": false,
+      "duration_ms": 549,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "tls_callbacks.exe",
+      "detected": false,
+      "duration_ms": 541,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "tls_empty.exe",
+      "detected": false,
+      "duration_ms": 558,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "broken_header.exe",
+      "detected": false,
+      "duration_ms": 577,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "import_injection.exe",
+      "detected": false,
+      "duration_ms": 560,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "import_keylog.exe",
+      "detected": false,
+      "duration_ms": 570,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "import_download_exec.exe",
+      "detected": true,
+      "duration_ms": 568,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "import_rva_broken.exe",
+      "detected": true,
+      "duration_ms": 548,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "encrypted_user.pdf",
+      "detected": true,
+      "duration_ms": 71,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "cut_off.jpg",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "malicious",
+      "path": "cut_off.png",
+      "detected": false,
+      "duration_ms": 5,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "harmlos.bz2",
+      "detected": false,
+      "duration_ms": 6,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "harmlos.xz",
+      "detected": false,
+      "duration_ms": 7,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "animation.swf",
+      "detected": false,
+      "duration_ms": 4,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "klasse.class",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "abbild.iso",
+      "detected": false,
+      "duration_ms": 7,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "IMG_0042.HEIC",
+      "detected": false,
+      "duration_ms": 5,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "bild.avif",
+      "detected": false,
+      "duration_ms": 5,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "bericht.txt",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "kontakte.txt",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "umlaute.txt",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "artikel.csv",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "konfiguration.json",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "rechnung.xml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "handbuch.html",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "logo.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "screenshot.png",
+      "detected": false,
+      "duration_ms": 4,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "foto.jpg",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "animation.gif",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "diagramm.bmp",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "vertrag.pdf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "preisliste.xlsx",
+      "detected": false,
+      "duration_ms": 30,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "dokument.docx",
+      "detected": false,
+      "duration_ms": 11,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "unterlagen.zip",
+      "detected": false,
+      "duration_ms": 6,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "quellen.tar.gz",
+      "detected": false,
+      "duration_ms": 6,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "bundle.zip",
+      "detected": false,
+      "duration_ms": 6,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "wartung.bat",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "inventar.ps1",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "rechnung.eml",
+      "detected": false,
+      "duration_ms": 9,
+      "error": ""
+    },
+    {
+      "tool": "malaz",
+      "group": "benign",
+      "path": "handbuch.lnk",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "malicious",
+      "path": "macro_autoopen.doc",
+      "detected": true,
+      "duration_ms": 759,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "malicious",
+      "path": "macro_obfuscated.doc",
+      "detected": true,
+      "duration_ms": 735,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "malicious",
+      "path": "macro_lolbin.doc",
+      "detected": true,
+      "duration_ms": 735,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "malicious",
+      "path": "dde_formula.xlsx",
+      "detected": false,
+      "duration_ms": 717,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "malicious",
+      "path": "remote_formula.xlsx",
+      "detected": false,
+      "duration_ms": 735,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "malicious",
+      "path": "object.rtf",
+      "detected": false,
+      "duration_ms": 195,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "benign",
+      "path": "preisliste.xlsx",
+      "detected": false,
+      "duration_ms": 723,
+      "error": ""
+    },
+    {
+      "tool": "oletools",
+      "group": "benign",
+      "path": "dokument.docx",
+      "detected": false,
+      "duration_ms": 727,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "js_obfuscated.pdf",
+      "detected": false,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "js_no_autostart.pdf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "embedded_file.pdf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "object_stream.pdf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "color_on_color.pdf",
+      "detected": false,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "macro_autoopen.doc",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "macro_obfuscated.doc",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "macro_lolbin.doc",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "dde_formula.xlsx",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "remote_formula.xlsx",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "obfuscated.js",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "cradle.ps1",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "download_cradle.ps1",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "persistence.ps1",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "certutil.txt",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "regsvr32.txt",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "lolbin_url.txt",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "download.bat",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "dropper.hta",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "dropper.wsf",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "mismatch.pdf",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "high_entropy_exe.bin",
+      "detected": false,
+      "duration_ms": 4,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "dropper.elf",
+      "detected": true,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "mirai.elf",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "dropper.macho",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "zipslip.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "deep_nesting.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "many_members.zip",
+      "detected": false,
+      "duration_ms": 10,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "bomb_size.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "encrypted_aes.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "corrupt.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "bad.7z",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "traversal.tar",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "trailing_payload.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "trailing_payload.jpg",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "with_exif.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "pdf_inside.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "object.rtf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "rechnung.pdf.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "blocklisted.bin",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "lure.lnk",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "phish_headers.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "phish_mixed_script.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "phish_links.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "phish_attachments.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "phish_body.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "phish_schemes.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "mail_broken.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "mail_no_headers.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "plain.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "packed_upx.exe",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "packed_aspack.exe",
+      "detected": true,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "weak_mitigations.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "no_cfg.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "high_entropy_sections.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "overlay_payload.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "signed_overlay.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "no_imports.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "with_pdb.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "tls_callbacks.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "tls_empty.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "broken_header.exe",
+      "detected": false,
+      "duration_ms": 3,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "import_injection.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "import_keylog.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "import_download_exec.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "import_rva_broken.exe",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "encrypted_user.pdf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "cut_off.jpg",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "malicious",
+      "path": "cut_off.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "harmlos.bz2",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "harmlos.xz",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "animation.swf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "klasse.class",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "abbild.iso",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "IMG_0042.HEIC",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "bild.avif",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "bericht.txt",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "kontakte.txt",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "umlaute.txt",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "artikel.csv",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "konfiguration.json",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "rechnung.xml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "handbuch.html",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "logo.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "screenshot.png",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "foto.jpg",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "animation.gif",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "diagramm.bmp",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "vertrag.pdf",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "preisliste.xlsx",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "dokument.docx",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "unterlagen.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "quellen.tar.gz",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "bundle.zip",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "wartung.bat",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "inventar.ps1",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "rechnung.eml",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    },
+    {
+      "tool": "yara",
+      "group": "benign",
+      "path": "handbuch.lnk",
+      "detected": false,
+      "duration_ms": 2,
+      "error": ""
+    }
+  ]
+}

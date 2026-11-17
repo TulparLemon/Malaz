@@ -1,0 +1,45 @@
+#!/bin/sh
+# Malaz pre-commit - schnelle & verbindliche Gates vor jedem Commit.
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+PY=".venv/Scripts/python.exe"
+[ -x "$PY" ] || PY="python"
+
+echo "[pre-commit] Repo-Hygiene & Branch-Disziplin ..."
+"$PY" scripts/repo_hygiene_gate.py --pre-commit
+
+echo "[pre-commit] Architektur-Schichten-Gate ..."
+"$PY" scripts/arch_gate.py
+
+echo "[pre-commit] Lizenz- & Notices-Gate ..."
+"$PY" scripts/license_gate.py
+
+echo "[pre-commit] ruff check ..."
+"$PY" -m ruff check src tests scripts fuzz conftest.py
+
+echo "[pre-commit] mypy ..."
+"$PY" -m mypy src/malaz
+
+echo "[pre-commit] schnelle Tests ..."
+"$PY" -m pytest -q \
+    --basetemp="$ROOT/.pytest-tmp" \
+    tests/test_governance_gates.py \
+    tests/test_magic.py tests/test_scoring.py tests/test_entropy.py \
+    tests/test_escaping.py tests/test_safe_extract.py tests/test_limits.py \
+    tests/test_clamav_status.py tests/test_hashlist.py tests/test_lnk.py \
+    tests/test_script_deobf.py tests/test_batch.py tests/test_properties.py \
+    tests/test_eml_analysis.py tests/test_regex_safety.py tests/test_gui.py
+
+echo "[pre-commit] Doku-Behauptungen ..."
+"$PY" scripts/check_doc_claims.py
+
+echo "[pre-commit] Bisspruefung (Mutationen aus dem Audit) ..."
+"$PY" scripts/check_tests_bite.py
+
+echo "[pre-commit] Doppelte Logik in mehreren Modulen ..."
+"$PY" scripts/check_duplicate_logic.py
+
+echo "[pre-commit] OK - Commit freigegeben."

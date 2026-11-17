@@ -1,0 +1,12 @@
+# Fuzzing nur für Linux/WSL — NICHT auf Windows installierbar.
+#
+# Atheris baut auf libFuzzer/Clang auf und hat kein Windows-Wheel. Die
+# Windows-Abdeckung läuft über dieselben Harnesses ohne Instrumentierung
+# (scripts/run_fuzz_smoke.py) plus die Hypothesis-Property-Tests in
+# tests/test_properties.py; siehe .github/CONTRIBUTING.md.
+#
+#   python -m venv .venv-fuzz
+#   .venv-fuzz/bin/pip install -r requirements.txt -r requirements-fuzz.txt
+#
+# Atheris ist Apache-2.0 (siehe THIRD_PARTY_NOTICES.md).
+atheris>=2.3

@@ -1,0 +1,6282 @@
+{
+  "benign/IMG_0042.HEIC": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "heic"
+  },
+  "benign/abbild.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "benign/animation.gif": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gif"
+  },
+  "benign/animation.swf": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "swf"
+  },
+  "benign/archiv.cab": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "cab"
+  },
+  "benign/archiv.rar": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rar"
+  },
+  "benign/artikel.csv": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "benign/bericht.txt": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "benign/bild.avif": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "avif"
+  },
+  "benign/bundle.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "benign/diagramm.bmp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bmp"
+  },
+  "benign/dokument.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "benign/foto.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "jpeg"
+  },
+  "benign/handbuch.html": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "html"
+  },
+  "benign/handbuch.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "lnk"
+  },
+  "benign/harmlos.bz2": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bzip2"
+  },
+  "benign/harmlos.xz": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "xz"
+  },
+  "benign/inventar.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ps1"
+  },
+  "benign/klasse.class": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "class"
+  },
+  "benign/konfiguration.json": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "json"
+  },
+  "benign/kontakte.txt": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "benign/logo.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "benign/paket.deb": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING",
+      "GEN_EMBEDDED"
+    ],
+    "score": 35,
+    "type": "deb"
+  },
+  "benign/paket.rpm": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rpm"
+  },
+  "benign/preisliste.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "benign/quellen.tar.gz": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gzip"
+  },
+  "benign/rechnung.eml": {
+    "notes": [
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_AUTH_UNVERIFIABLE",
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "MAIL_NO_RECEIVED"
+    ],
+    "score": 5,
+    "type": "eml"
+  },
+  "benign/rechnung.xml": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "xml"
+  },
+  "benign/screenshot.png": {
+    "notes": [
+      "GEN_ENTROPY"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "benign/umlaute.txt": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "benign/unterlagen.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "benign/vertrag.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "benign/wartung.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "malicious/bad.7z": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "7z"
+  },
+  "malicious/blocklisted.bin": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "unknown"
+  },
+  "malicious/bomb_size.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_BOMB_RATIO",
+      "ARCH_BOMB_SIZE",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 85,
+    "type": "zip"
+  },
+  "malicious/broken_header.exe": {
+    "notes": [
+      "PE_IMPORT_PARSE_WARN"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_PARSE_WARN"
+    ],
+    "score": 5,
+    "type": "pe"
+  },
+  "malicious/certutil.txt": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse"
+    ],
+    "score": 75,
+    "type": "text"
+  },
+  "malicious/color_on_color.pdf": {
+    "notes": [
+      "PDF_COLOR_ON_COLOR",
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "malicious/corrupt.zip": {
+    "notes": [
+      "ARCH_BADZIP"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ZIP_ERROR"
+    ],
+    "score": 25,
+    "type": "zip"
+  },
+  "malicious/cradle.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_ENCODED",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 75,
+    "type": "ps1"
+  },
+  "malicious/cut_off.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [
+      "JPEG_NO_EOI"
+    ],
+    "score": 15,
+    "type": "jpeg"
+  },
+  "malicious/cut_off.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [
+      "PNG_NO_IEND"
+    ],
+    "score": 15,
+    "type": "png"
+  },
+  "malicious/dde_formula.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_FORMULA"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "malicious/deep_nesting.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_DEPTH_LIMIT",
+      "ARCH_NESTED_ARCHIVE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "malicious/download.bat": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "malicious/download_cradle.ps1": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_PowerShell_Modern_Cradle",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ps1"
+  },
+  "malicious/dropper.elf": {
+    "notes": [
+      "BINARY_IOC",
+      "ELF_HEADER",
+      "ELF_STRUCTURE_WARN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "YARA_ELF_Cryptominer",
+      "YARA_ELF_Dropper_Download_Chain"
+    ],
+    "score": 55,
+    "type": "elf"
+  },
+  "malicious/dropper.hta": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "html"
+  },
+  "malicious/dropper.macho": {
+    "notes": [
+      "BINARY_IOC",
+      "MACHO_HEADER",
+      "MACHO_NO_CODE_SIGNATURE",
+      "MACHO_STRUCTURE_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "YARA_MachO_Dropper_Behavior"
+    ],
+    "score": 30,
+    "type": "macho"
+  },
+  "malicious/dropper.wsf": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse",
+      "YARA_Suspicious_VBA_Shell",
+      "YARA_WSF_Script_Dropper"
+    ],
+    "score": 100,
+    "type": "xml"
+  },
+  "malicious/embedded_file.pdf": {
+    "notes": [
+      "PDF_KW_EmbeddedFile",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_EMBEDDED_FILES"
+    ],
+    "score": 20,
+    "type": "pdf"
+  },
+  "malicious/encrypted_aes.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ENCRYPTED",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "malicious/encrypted_user.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_ENCRYPTED",
+      "PDF_KW_Encrypt"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "malicious/high_entropy_exe.bin": {
+    "notes": [
+      "PE_IMPORT_PARSE_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY",
+      "PE_PARSE_WARN"
+    ],
+    "score": 35,
+    "type": "pe"
+  },
+  "malicious/high_entropy_sections.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE",
+      "PE_RWX_SECTION"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_HIGH_ENTROPY_SECTIONS",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "malicious/import_download_exec.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "malicious/import_injection.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_IMPORT_INJECTION",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "malicious/import_keylog.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_IMPORT_KEYLOG",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "malicious/import_rva_broken.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_NO_IMPORTS",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "malicious/js_no_autostart.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_JavaScript"
+    ],
+    "score": 20,
+    "type": "pdf"
+  },
+  "malicious/js_obfuscated.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_JS_DOC_API",
+      "PDF_JS_EXTRACTED",
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_JS_OBFUSCATED",
+      "PDF_JS_SUSPICIOUS",
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_KW_OpenAction"
+    ],
+    "score": 100,
+    "type": "pdf"
+  },
+  "malicious/lolbin_url.txt": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "text"
+  },
+  "malicious/lure.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "malicious/macro_autoopen.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "malicious/macro_lolbin.doc": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_LOLBIN",
+      "OFFICE_VBA_PERSIST",
+      "YARA_Macro_AutoExec_Shell"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "malicious/macro_obfuscated.doc": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_OBFUSCATED"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "malicious/mail_broken.eml": {
+    "notes": [
+      "MAIL_AUTH_UNVERIFIABLE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_NO_RECEIVED"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "malicious/mail_no_headers.eml": {
+    "notes": [
+      "MAIL_AUTH_UNVERIFIABLE",
+      "MAIL_NO_MESSAGE_ID"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_NO_RECEIVED"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "malicious/many_members.zip": {
+    "notes": [
+      "ARCH_TOO_MANY"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_MEMBER_STOP"
+    ],
+    "score": 25,
+    "type": "zip"
+  },
+  "malicious/mirai.elf": {
+    "notes": [
+      "ELF_HEADER"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "YARA_ELF_Botnet_Family_Markers"
+    ],
+    "score": 30,
+    "type": "elf"
+  },
+  "malicious/mismatch.pdf": {
+    "notes": [
+      "PE_IMPORT_PARSE_WARN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FORMAT_MISMATCH",
+      "PE_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 50,
+    "type": "pe"
+  },
+  "malicious/no_cfg.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_UNSIGNED"
+    ],
+    "score": 5,
+    "type": "pe"
+  },
+  "malicious/no_imports.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_NO_IMPORTS",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "malicious/obfuscated.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "YARA_JS_Obfuscation_Unescape"
+    ],
+    "score": 15,
+    "type": "js"
+  },
+  "malicious/object.rtf": {
+    "notes": [
+      "OFFICE_DDE_PARSE_WARN",
+      "OFFICE_VBA_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_CONTAINER_WARN"
+    ],
+    "score": 25,
+    "type": "rtf"
+  },
+  "malicious/object_stream.pdf": {
+    "notes": [
+      "PDF_KW_ObjStm",
+      "PDF_OBJSTM"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "malicious/overlay_payload.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "malicious/packed_aspack.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 50,
+    "type": "pe"
+  },
+  "malicious/packed_upx.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 50,
+    "type": "pe"
+  },
+  "malicious/pdf_inside.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 20,
+    "type": "png"
+  },
+  "malicious/persistence.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS"
+    ],
+    "score": 15,
+    "type": "ps1"
+  },
+  "malicious/phish_attachments.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "PE_IMPORT_PARSE_WARN",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_ATTACH_NAME_TRICK",
+      "MAIL_ATTACH_RISKY_TYPE",
+      "MAIL_AUTH_ABSENT",
+      "MAIL_BODY_CREDENTIALS",
+      "PE_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "malicious/phish_body.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_ABSENT",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_BODY_HIDDEN_TEXT",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNUSUAL"
+    ],
+    "score": 45,
+    "type": "eml"
+  },
+  "malicious/phish_headers.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_ABSENT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_DISPLAY_NAME_SPOOF",
+      "MAIL_DMARC_ALIGNMENT_FAIL",
+      "MAIL_REPLY_TO_MISMATCH",
+      "MAIL_RETURN_PATH_MISMATCH"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "malicious/phish_links.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_ABSENT",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_BODY_HIDDEN_TEXT",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNUSUAL",
+      "MAIL_LINK_CREDENTIALS",
+      "MAIL_LINK_IP_LITERAL",
+      "MAIL_LINK_PUNYCODE",
+      "MAIL_LINK_RISKY_TLD",
+      "MAIL_LINK_SHORTENER",
+      "MAIL_LINK_TEXT_MISMATCH"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "malicious/phish_mixed_script.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_ABSENT",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_DISPLAY_NAME_MIXED_SCRIPT",
+      "MAIL_DISPLAY_NAME_SPOOF"
+    ],
+    "score": 80,
+    "type": "eml"
+  },
+  "malicious/phish_schemes.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_ABSENT",
+      "MAIL_LINK_DANGEROUS_SCHEME"
+    ],
+    "score": 35,
+    "type": "eml"
+  },
+  "malicious/plain.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_UNSIGNED"
+    ],
+    "score": 5,
+    "type": "pe"
+  },
+  "malicious/rechnung.pdf.exe": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "text"
+  },
+  "malicious/regsvr32.txt": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Regsvr32_SCT_Bypass"
+    ],
+    "score": 75,
+    "type": "text"
+  },
+  "malicious/remote_formula.xlsx": {
+    "notes": [
+      "GEN_IOC",
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "malicious/signed_overlay.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "malicious/tls_callbacks.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_TLS_CALLBACKS",
+      "PE_UNSIGNED"
+    ],
+    "score": 8,
+    "type": "pe"
+  },
+  "malicious/tls_empty.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE",
+      "PE_TLS_EMPTY"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_UNSIGNED"
+    ],
+    "score": 5,
+    "type": "pe"
+  },
+  "malicious/trailing_payload.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [
+      "JPEG_TRAILER"
+    ],
+    "score": 15,
+    "type": "jpeg"
+  },
+  "malicious/trailing_payload.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 45,
+    "type": "png"
+  },
+  "malicious/traversal.tar": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "tar"
+  },
+  "malicious/weak_mitigations.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_UNSIGNED",
+      "PE_WEAK_MITIGATIONS"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "malicious/with_exif.png": {
+    "notes": [
+      "IMG_EXIF"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "malicious/with_pdb.exe": {
+    "notes": [
+      "DIE_DEBUG_DATA",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE",
+      "PE_PDB"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_UNSIGNED"
+    ],
+    "score": 5,
+    "type": "pe"
+  },
+  "malicious/zipslip.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/benign_image_0.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "v2/benign_image_1.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "jpeg"
+  },
+  "v2/benign_image_10.ico": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ico"
+  },
+  "v2/benign_image_11.webp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "webp"
+  },
+  "v2/benign_image_12.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "v2/benign_image_13.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "jpeg"
+  },
+  "v2/benign_image_14.gif": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gif"
+  },
+  "v2/benign_image_15.bmp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bmp"
+  },
+  "v2/benign_image_16.ico": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ico"
+  },
+  "v2/benign_image_17.webp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "webp"
+  },
+  "v2/benign_image_18.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "v2/benign_image_19.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "jpeg"
+  },
+  "v2/benign_image_2.gif": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gif"
+  },
+  "v2/benign_image_20.gif": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gif"
+  },
+  "v2/benign_image_21.bmp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bmp"
+  },
+  "v2/benign_image_22.ico": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ico"
+  },
+  "v2/benign_image_23.webp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "webp"
+  },
+  "v2/benign_image_24.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "v2/benign_image_25.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "jpeg"
+  },
+  "v2/benign_image_26.gif": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gif"
+  },
+  "v2/benign_image_27.bmp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bmp"
+  },
+  "v2/benign_image_28.ico": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ico"
+  },
+  "v2/benign_image_29.webp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "webp"
+  },
+  "v2/benign_image_3.bmp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bmp"
+  },
+  "v2/benign_image_4.ico": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ico"
+  },
+  "v2/benign_image_5.webp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "webp"
+  },
+  "v2/benign_image_6.png": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "png"
+  },
+  "v2/benign_image_7.jpg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "jpeg"
+  },
+  "v2/benign_image_8.gif": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "gif"
+  },
+  "v2/benign_image_9.bmp": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "bmp"
+  },
+  "v2/benign_mail_0.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_1.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_10.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_11.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_12.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_13.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_14.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_2.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_3.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_4.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_5.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_6.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_7.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_8.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mail_9.eml": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "eml"
+  },
+  "v2/benign_mp3.mp3": {
+    "notes": [
+      "GEN_ENTROPY"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "mp3"
+  },
+  "v2/benign_mp4.mp4": {
+    "notes": [
+      "GEN_ENTROPY"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "mp4"
+  },
+  "v2/benign_office_0.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_1.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_10.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_11.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_12.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_13.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_14.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_2.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_3.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_4.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_5.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_6.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_7.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_8.docx": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_office_9.xlsx": {
+    "notes": [
+      "OFFICE_METADATA"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_pdf_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_10.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_11.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_12.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_13.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_14.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_15.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_16.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_17.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_18.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_19.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_3.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_4.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_5.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_6.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_7.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_8.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pdf_9.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "pdf"
+  },
+  "v2/benign_pe_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_pe_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_pe_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_pe_3.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_pe_4.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_pe_5.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_pe_6.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/benign_script_0_0.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ps1"
+  },
+  "v2/benign_script_0_1.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ps1"
+  },
+  "v2/benign_script_0_2.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ps1"
+  },
+  "v2/benign_script_0_3.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "ps1"
+  },
+  "v2/benign_script_1_0.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_1_1.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_1_2.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_1_3.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_2_0.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_2_1.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_2_2.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_2_3.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "batch"
+  },
+  "v2/benign_script_3_0.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "vbs"
+  },
+  "v2/benign_script_3_1.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "vbs"
+  },
+  "v2/benign_script_3_2.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "vbs"
+  },
+  "v2/benign_script_3_3.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "vbs"
+  },
+  "v2/benign_script_4_0.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "js"
+  },
+  "v2/benign_script_4_1.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "js"
+  },
+  "v2/benign_script_4_2.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "js"
+  },
+  "v2/benign_script_4_3.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "js"
+  },
+  "v2/benign_script_5_0.wsf": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_5_1.wsf": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_5_2.wsf": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_5_3.wsf": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_6_0.hta": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_6_1.hta": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_6_2.hta": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_6_3.hta": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_7_0.sh": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_script_8_0.py": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/benign_tiff.tiff": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "tiff"
+  },
+  "v2/benign_webp.webp": {
+    "notes": [
+      "GEN_ENTROPY"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "webp"
+  },
+  "v2/benign_zip_0.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_zip_1.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_zip_2.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_zip_3.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/benign_zip_4.zip": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "zip"
+  },
+  "v2/edge_bidi_‮evil.txt": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/edge_double_extension.pdf.exe": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "text"
+  },
+  "v2/edge_eml_empty.eml": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 30,
+    "type": "text"
+  },
+  "v2/edge_empty.bin": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "empty"
+  },
+  "v2/edge_high_entropy.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_iso.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "v2/edge_json.json": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "json"
+  },
+  "v2/edge_lnk_empty.lnk": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "unknown"
+  },
+  "v2/edge_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bin": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/edge_motw.txt": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/edge_nulls.bin": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "unknown"
+  },
+  "v2/edge_one_byte.bin": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "unknown"
+  },
+  "v2/edge_random_0.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_1.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_10.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_11.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_12.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_13.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_14.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_15.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_16.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_2.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_3.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_4.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_5.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_6.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_7.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_8.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_random_9.bin": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "unknown"
+  },
+  "v2/edge_rtf_empty.rtf": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "rtf"
+  },
+  "v2/edge_svg.svg": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "xml"
+  },
+  "v2/edge_swf_empty.swf": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "SWF_PARSE_ERROR"
+    ],
+    "score": 25,
+    "type": "swf"
+  },
+  "v2/edge_truncated_pdf.pdf": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/edge_truncated_pe.exe": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "unknown"
+  },
+  "v2/edge_truncated_zip.zip": {
+    "notes": [
+      "ARCH_BADZIP"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ZIP_ERROR"
+    ],
+    "score": 25,
+    "type": "zip"
+  },
+  "v2/edge_unicode_äöü_日本語.txt": {
+    "notes": [],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "text"
+  },
+  "v2/edge_xml.xml": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 30,
+    "type": "text"
+  },
+  "v2/gif_comment_0.gif": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED"
+    ],
+    "score": 30,
+    "type": "gif"
+  },
+  "v2/gif_comment_1.gif": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED"
+    ],
+    "score": 30,
+    "type": "gif"
+  },
+  "v2/gif_comment_2.gif": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED"
+    ],
+    "score": 30,
+    "type": "gif"
+  },
+  "v2/gif_comment_3.gif": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED"
+    ],
+    "score": 30,
+    "type": "gif"
+  },
+  "v2/gif_comment_4.gif": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED"
+    ],
+    "score": 30,
+    "type": "gif"
+  },
+  "v2/heic_0.heic": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "heic"
+  },
+  "v2/heic_1.heic": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "heic"
+  },
+  "v2/heic_2.heic": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "heic"
+  },
+  "v2/heic_3.heic": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "heic"
+  },
+  "v2/heic_4.heic": {
+    "notes": [
+      "GEN_ENTROPY",
+      "HEIC_EXIF_UNCHECKED"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "heic"
+  },
+  "v2/ico_noise.ico": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "ico"
+  },
+  "v2/iso_0.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "v2/iso_1.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "v2/iso_2.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "v2/iso_3.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "v2/iso_4.iso": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "iso"
+  },
+  "v2/jpeg_trailer_0.jpg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "JPEG_TRAILER"
+    ],
+    "score": 45,
+    "type": "jpeg"
+  },
+  "v2/jpeg_trailer_1.jpg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "JPEG_TRAILER"
+    ],
+    "score": 45,
+    "type": "jpeg"
+  },
+  "v2/jpeg_trailer_2.jpg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "JPEG_TRAILER"
+    ],
+    "score": 45,
+    "type": "jpeg"
+  },
+  "v2/jpeg_trailer_3.jpg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "JPEG_TRAILER"
+    ],
+    "score": 45,
+    "type": "jpeg"
+  },
+  "v2/jpeg_trailer_4.jpg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "JPEG_TRAILER"
+    ],
+    "score": 45,
+    "type": "jpeg"
+  },
+  "v2/legacy_vba_0.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_1.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_2.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_3.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_4.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_5.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_6.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_7.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_8.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/legacy_vba_9.doc": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 100,
+    "type": "ole"
+  },
+  "v2/lnk_0_0.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_0_1.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_1_0.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_1_1.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_2_0.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_2_1.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_3_0.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_3_1.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_4_0.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/lnk_4_1.lnk": {
+    "notes": [
+      "LNK_STRINGS"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "LNK_ARGUMENTS"
+    ],
+    "score": 30,
+    "type": "lnk"
+  },
+  "v2/mail_attach_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_attach_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_attach_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_attach_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_attach_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_display_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DISPLAY_NAME_SPOOF"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_display_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DISPLAY_NAME_SPOOF"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_display_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DISPLAY_NAME_SPOOF"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_display_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DISPLAY_NAME_SPOOF"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_display_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DISPLAY_NAME_SPOOF"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_html_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_DISPLAY_NAME_SPOOF",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_html_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_DISPLAY_NAME_SPOOF",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_html_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_DISPLAY_NAME_SPOOF",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_html_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_DISPLAY_NAME_SPOOF",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_html_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_ATTACHMENTS_FOUND",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_FILENAME_IOC",
+      "GEN_FORMAT_MISMATCH",
+      "MAIL_ATTACH_DOUBLE_EXT",
+      "MAIL_AUTH_FAIL",
+      "MAIL_DISPLAY_NAME_SPOOF",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 100,
+    "type": "eml"
+  },
+  "v2/mail_iplink_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_LINK_IP_LITERAL"
+    ],
+    "score": 45,
+    "type": "eml"
+  },
+  "v2/mail_iplink_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_LINK_IP_LITERAL"
+    ],
+    "score": 45,
+    "type": "eml"
+  },
+  "v2/mail_iplink_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_LINK_IP_LITERAL"
+    ],
+    "score": 45,
+    "type": "eml"
+  },
+  "v2/mail_iplink_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_LINK_IP_LITERAL"
+    ],
+    "score": 45,
+    "type": "eml"
+  },
+  "v2/mail_iplink_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_CREDENTIALS",
+      "MAIL_LINK_IP_LITERAL"
+    ],
+    "score": 45,
+    "type": "eml"
+  },
+  "v2/mail_reply_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_REPLY_TO_MISMATCH"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_reply_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_REPLY_TO_MISMATCH"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_reply_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_REPLY_TO_MISMATCH"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_reply_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_REPLY_TO_MISMATCH"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_reply_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_REPLY_TO_MISMATCH"
+    ],
+    "score": 60,
+    "type": "eml"
+  },
+  "v2/mail_return_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DMARC_ALIGNMENT_FAIL",
+      "MAIL_RETURN_PATH_MISMATCH"
+    ],
+    "score": 75,
+    "type": "eml"
+  },
+  "v2/mail_return_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DMARC_ALIGNMENT_FAIL",
+      "MAIL_RETURN_PATH_MISMATCH"
+    ],
+    "score": 75,
+    "type": "eml"
+  },
+  "v2/mail_return_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DMARC_ALIGNMENT_FAIL",
+      "MAIL_RETURN_PATH_MISMATCH"
+    ],
+    "score": 75,
+    "type": "eml"
+  },
+  "v2/mail_return_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DMARC_ALIGNMENT_FAIL",
+      "MAIL_RETURN_PATH_MISMATCH"
+    ],
+    "score": 75,
+    "type": "eml"
+  },
+  "v2/mail_return_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "RED",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_LURE_PHRASES",
+      "MAIL_BODY_UNREADABLE",
+      "MAIL_DMARC_ALIGNMENT_FAIL",
+      "MAIL_RETURN_PATH_MISMATCH"
+    ],
+    "score": 75,
+    "type": "eml"
+  },
+  "v2/mail_shortlink_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "v2/mail_shortlink_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "v2/mail_shortlink_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "v2/mail_shortlink_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "v2/mail_shortlink_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_LINKS_FOUND",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_LINK_SHORTENER"
+    ],
+    "score": 20,
+    "type": "eml"
+  },
+  "v2/mail_spf_0.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 30,
+    "type": "eml"
+  },
+  "v2/mail_spf_1.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 30,
+    "type": "eml"
+  },
+  "v2/mail_spf_2.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 30,
+    "type": "eml"
+  },
+  "v2/mail_spf_3.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 30,
+    "type": "eml"
+  },
+  "v2/mail_spf_4.eml": {
+    "notes": [
+      "GEN_IOC",
+      "MAIL_MESSAGE_ID_DOMAIN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_AUTH_FAIL",
+      "MAIL_BODY_UNREADABLE"
+    ],
+    "score": 30,
+    "type": "eml"
+  },
+  "v2/nested_archive.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_NESTED_ARCHIVE"
+    ],
+    "score": 20,
+    "type": "zip"
+  },
+  "v2/nested_electron_installer.exe": {
+    "notes": [
+      "DIE_ARCHIVE",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "GREEN",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 10,
+    "type": "pe"
+  },
+  "v2/ooxml_dde_0.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_1.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_2.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_3.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_4.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_5.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_6.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_7.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_8.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_dde_9.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 45,
+    "type": "zip"
+  },
+  "v2/ooxml_external_0.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_1.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_2.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_3.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_4.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_5.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_6.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_7.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_8.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_external_9.docx": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "OFFICE_REMOTE_TEMPLATE"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/ooxml_macro_0.docm": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "zip"
+  },
+  "v2/ooxml_macro_1.docm": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "zip"
+  },
+  "v2/ooxml_macro_2.docm": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "zip"
+  },
+  "v2/ooxml_macro_3.docm": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "zip"
+  },
+  "v2/ooxml_macro_4.docm": {
+    "notes": [
+      "BINARY_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "OFFICE_AUTOEXEC",
+      "OFFICE_MACRO",
+      "OFFICE_SUSPICIOUS_API",
+      "OFFICE_VBA_DL_EXEC",
+      "OFFICE_VBA_ENC_PS",
+      "YARA_Macro_AutoExec_Shell",
+      "YARA_Suspicious_PowerShell_Encoded",
+      "YARA_Suspicious_VBA_Shell"
+    ],
+    "score": 100,
+    "type": "zip"
+  },
+  "v2/pdf_aa_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_AA",
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 70,
+    "type": "pdf"
+  },
+  "v2/pdf_aa_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_AA",
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 70,
+    "type": "pdf"
+  },
+  "v2/pdf_aa_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_AA",
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 70,
+    "type": "pdf"
+  },
+  "v2/pdf_action_0.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_SubmitForm",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_action_1.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_SubmitForm",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_action_2.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_SubmitForm",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_appended_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_appended_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_appended_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_appended_3.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_appended_4.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN",
+      "YARA_Generic_Shellcode_Nopsled"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_embedded_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_embedded_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_embedded_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_js_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "pdf"
+  },
+  "v2/pdf_js_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "pdf"
+  },
+  "v2/pdf_js_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "pdf"
+  },
+  "v2/pdf_launch_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_Launch",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 75,
+    "type": "pdf"
+  },
+  "v2/pdf_launch_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_Launch",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 75,
+    "type": "pdf"
+  },
+  "v2/pdf_launch_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_Launch",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 75,
+    "type": "pdf"
+  },
+  "v2/pdf_obfuscated_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript_OBF",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "pdf"
+  },
+  "v2/pdf_obfuscated_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript_OBF",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "pdf"
+  },
+  "v2/pdf_obfuscated_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript_OBF",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "pdf"
+  },
+  "v2/pdf_objstm_0.pdf": {
+    "notes": [
+      "PDF_KW_ObjStm",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_objstm_1.pdf": {
+    "notes": [
+      "PDF_KW_ObjStm",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_objstm_2.pdf": {
+    "notes": [
+      "PDF_KW_ObjStm",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_openaction_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_OpenAction",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_openaction_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_OpenAction",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_openaction_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_KW_OpenAction",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 40,
+    "type": "pdf"
+  },
+  "v2/pdf_richmedia_0.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_RichMedia",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 55,
+    "type": "pdf"
+  },
+  "v2/pdf_richmedia_1.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_RichMedia",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 55,
+    "type": "pdf"
+  },
+  "v2/pdf_richmedia_2.pdf": {
+    "notes": [
+      "PDF_KW_Page"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_RichMedia",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 55,
+    "type": "pdf"
+  },
+  "v2/pdf_uri_0.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_uri_1.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pdf_uri_2.pdf": {
+    "notes": [
+      "BINARY_IOC",
+      "PDF_KW_Page"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PDF_PARSE_WARN"
+    ],
+    "score": 25,
+    "type": "pdf"
+  },
+  "v2/pe_import_0_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 70,
+    "type": "pe"
+  },
+  "v2/pe_import_0_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 70,
+    "type": "pe"
+  },
+  "v2/pe_import_0_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 70,
+    "type": "pe"
+  },
+  "v2/pe_import_1_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_1_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_1_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_2_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_2_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_2_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_3_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_3_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_3_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_4_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_4_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_4_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_import_5_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 70,
+    "type": "pe"
+  },
+  "v2/pe_import_5_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 70,
+    "type": "pe"
+  },
+  "v2/pe_import_5_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_IMPORT_DOWNLOAD_EXEC",
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 70,
+    "type": "pe"
+  },
+  "v2/pe_overlay_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "v2/pe_overlay_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "v2/pe_overlay_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "v2/pe_overlay_3.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "v2/pe_overlay_4.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_UNSIGNED"
+    ],
+    "score": 20,
+    "type": "pe"
+  },
+  "v2/pe_packer_0_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_0_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_1_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_1_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_2_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_2_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_3_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_3_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_4_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_packer_4_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 55,
+    "type": "pe"
+  },
+  "v2/pe_weak_0.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "PE_WEAK_MITIGATIONS",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 60,
+    "type": "pe"
+  },
+  "v2/pe_weak_1.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "PE_WEAK_MITIGATIONS",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 60,
+    "type": "pe"
+  },
+  "v2/pe_weak_2.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "PE_WEAK_MITIGATIONS",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 60,
+    "type": "pe"
+  },
+  "v2/pe_weak_3.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "PE_WEAK_MITIGATIONS",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 60,
+    "type": "pe"
+  },
+  "v2/pe_weak_4.exe": {
+    "notes": [
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PE_OVERLAY",
+      "PE_PACKED",
+      "PE_UNSIGNED",
+      "PE_WEAK_MITIGATIONS",
+      "YARA_PE_Packer_Sections"
+    ],
+    "score": 60,
+    "type": "pe"
+  },
+  "v2/png_trailer_0.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 45,
+    "type": "png"
+  },
+  "v2/png_trailer_1.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 45,
+    "type": "png"
+  },
+  "v2/png_trailer_2.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 45,
+    "type": "png"
+  },
+  "v2/png_trailer_3.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 45,
+    "type": "png"
+  },
+  "v2/png_trailer_4.png": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_EMBEDDED",
+      "PNG_TRAILER"
+    ],
+    "score": 45,
+    "type": "png"
+  },
+  "v2/rar_0.rar": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rar"
+  },
+  "v2/rar_1.rar": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rar"
+  },
+  "v2/rar_2.rar": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rar"
+  },
+  "v2/rar_3.rar": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rar"
+  },
+  "v2/rar_4.rar": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "rar"
+  },
+  "v2/rtf_ole_0.rtf": {
+    "notes": [
+      "OFFICE_DDE_PARSE_WARN",
+      "OFFICE_VBA_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_CONTAINER_WARN"
+    ],
+    "score": 25,
+    "type": "rtf"
+  },
+  "v2/rtf_ole_1.rtf": {
+    "notes": [
+      "OFFICE_DDE_PARSE_WARN",
+      "OFFICE_VBA_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_CONTAINER_WARN"
+    ],
+    "score": 25,
+    "type": "rtf"
+  },
+  "v2/rtf_ole_2.rtf": {
+    "notes": [
+      "OFFICE_DDE_PARSE_WARN",
+      "OFFICE_VBA_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_CONTAINER_WARN"
+    ],
+    "score": 25,
+    "type": "rtf"
+  },
+  "v2/rtf_ole_3.rtf": {
+    "notes": [
+      "OFFICE_DDE_PARSE_WARN",
+      "OFFICE_VBA_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_CONTAINER_WARN"
+    ],
+    "score": 25,
+    "type": "rtf"
+  },
+  "v2/rtf_ole_4.rtf": {
+    "notes": [
+      "OFFICE_DDE_PARSE_WARN",
+      "OFFICE_VBA_WARN"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "MAIL_CONTAINER_WARN"
+    ],
+    "score": 25,
+    "type": "rtf"
+  },
+  "v2/script_bitsadmin_5_bat.bat": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_bitsadmin_5_cmd.cmd": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_bitsadmin_5_js.js": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "js"
+  },
+  "v2/script_bitsadmin_5_ps1.ps1": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "ps1"
+  },
+  "v2/script_bitsadmin_5_vbs.vbs": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "vbs"
+  },
+  "v2/script_certutil_2_bat.bat": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_certutil_2_cmd.cmd": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_certutil_2_js.js": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse"
+    ],
+    "score": 75,
+    "type": "js"
+  },
+  "v2/script_certutil_2_ps1.ps1": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse"
+    ],
+    "score": 75,
+    "type": "ps1"
+  },
+  "v2/script_certutil_2_vbs.vbs": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Certutil_Decode_Abuse"
+    ],
+    "score": 75,
+    "type": "vbs"
+  },
+  "v2/script_mshta_3_bat.bat": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_mshta_3_cmd.cmd": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_mshta_3_js.js": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "js"
+  },
+  "v2/script_mshta_3_ps1.ps1": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "ps1"
+  },
+  "v2/script_mshta_3_vbs.vbs": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_LOLBin_With_Remote_URL"
+    ],
+    "score": 75,
+    "type": "vbs"
+  },
+  "v2/script_ps_cradle_1_bat.bat": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_ps_cradle_1_cmd.cmd": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_ps_cradle_1_js.js": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 75,
+    "type": "js"
+  },
+  "v2/script_ps_cradle_1_ps1.ps1": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 75,
+    "type": "ps1"
+  },
+  "v2/script_ps_cradle_1_vbs.vbs": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_PS_CRADLE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 75,
+    "type": "vbs"
+  },
+  "v2/script_ps_encoded_0_bat.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "batch"
+  },
+  "v2/script_ps_encoded_0_cmd.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "batch"
+  },
+  "v2/script_ps_encoded_0_js.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "js"
+  },
+  "v2/script_ps_encoded_0_ps1.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "ps1"
+  },
+  "v2/script_ps_encoded_0_vbs.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "vbs"
+  },
+  "v2/script_regsvr32_4_bat.bat": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Regsvr32_SCT_Bypass"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_regsvr32_4_cmd.cmd": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Regsvr32_SCT_Bypass"
+    ],
+    "score": 75,
+    "type": "batch"
+  },
+  "v2/script_regsvr32_4_js.js": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Regsvr32_SCT_Bypass"
+    ],
+    "score": 75,
+    "type": "js"
+  },
+  "v2/script_regsvr32_4_ps1.ps1": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Regsvr32_SCT_Bypass"
+    ],
+    "score": 75,
+    "type": "ps1"
+  },
+  "v2/script_regsvr32_4_vbs.vbs": {
+    "notes": [
+      "GEN_IOC",
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Regsvr32_SCT_Bypass"
+    ],
+    "score": 75,
+    "type": "vbs"
+  },
+  "v2/script_run_key_7_bat.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "batch"
+  },
+  "v2/script_run_key_7_cmd.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "batch"
+  },
+  "v2/script_run_key_7_js.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "js"
+  },
+  "v2/script_run_key_7_ps1.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "ps1"
+  },
+  "v2/script_run_key_7_vbs.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "vbs"
+  },
+  "v2/script_wmic_6_bat.bat": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 90,
+    "type": "batch"
+  },
+  "v2/script_wmic_6_cmd.cmd": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 90,
+    "type": "batch"
+  },
+  "v2/script_wmic_6_js.js": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 90,
+    "type": "js"
+  },
+  "v2/script_wmic_6_ps1.ps1": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 90,
+    "type": "ps1"
+  },
+  "v2/script_wmic_6_vbs.vbs": {
+    "notes": [
+      "SCRIPT_EXECUTABLE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_LOLBIN_ABUSE",
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 90,
+    "type": "vbs"
+  },
+  "v2/svg_script_0.svg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 45,
+    "type": "xml"
+  },
+  "v2/svg_script_1.svg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 45,
+    "type": "xml"
+  },
+  "v2/svg_script_2.svg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 45,
+    "type": "xml"
+  },
+  "v2/svg_script_3.svg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 45,
+    "type": "xml"
+  },
+  "v2/svg_script_4.svg": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 45,
+    "type": "xml"
+  },
+  "v2/swf_0.swf": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "swf"
+  },
+  "v2/swf_1.swf": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "swf"
+  },
+  "v2/swf_2.swf": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "swf"
+  },
+  "v2/swf_3.swf": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "swf"
+  },
+  "v2/swf_4.swf": {
+    "notes": [
+      "GEN_IOC"
+    ],
+    "risk": "RED",
+    "rules": [
+      "GEN_SUSPICIOUS_STRINGS",
+      "YARA_Suspicious_PowerShell_Encoded"
+    ],
+    "score": 60,
+    "type": "swf"
+  },
+  "v2/tar_payload_0.tar": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "tar"
+  },
+  "v2/tar_payload_1.tar": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "tar"
+  },
+  "v2/tar_payload_2.tar": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "tar"
+  },
+  "v2/tar_payload_3.tar": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "tar"
+  },
+  "v2/tar_payload_4.tar": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "tar"
+  },
+  "v2/tiff_noise.tiff": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "GEN_ENTROPY"
+    ],
+    "score": 30,
+    "type": "tiff"
+  },
+  "v2/url_benign.url": {
+    "notes": [
+      "URL_SHORTCUT_TARGET"
+    ],
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
+    "type": "url"
+  },
+  "v2/url_credentials.url": {
+    "notes": [
+      "URL_SHORTCUT_TARGET"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "URL_SHORTCUT_SUSPICIOUS"
+    ],
+    "score": 25,
+    "type": "url"
+  },
+  "v2/url_file.url": {
+    "notes": [
+      "URL_SHORTCUT_TARGET"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "URL_SHORTCUT_SUSPICIOUS"
+    ],
+    "score": 25,
+    "type": "url"
+  },
+  "v2/url_ip.url": {
+    "notes": [
+      "URL_SHORTCUT_TARGET"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "URL_SHORTCUT_SUSPICIOUS"
+    ],
+    "score": 25,
+    "type": "url"
+  },
+  "v2/url_javascript.url": {
+    "notes": [
+      "URL_SHORTCUT_TARGET"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "URL_SHORTCUT_SUSPICIOUS"
+    ],
+    "score": 25,
+    "type": "url"
+  },
+  "v2/url_unc.url": {
+    "notes": [
+      "URL_SHORTCUT_TARGET"
+    ],
+    "risk": "YELLOW",
+    "rules": [
+      "URL_SHORTCUT_SUSPICIOUS"
+    ],
+    "score": 25,
+    "type": "url"
+  },
+  "v2/zip_bomb_0.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_BOMB_RATIO"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_bomb_1.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_BOMB_RATIO"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_bomb_2.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_BOMB_RATIO"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_bomb_3.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_BOMB_RATIO"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_bomb_4.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_BOMB_RATIO"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_encrypted_0.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ENCRYPTED",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_encrypted_1.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ENCRYPTED",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_encrypted_2.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ENCRYPTED",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_encrypted_3.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ENCRYPTED",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_encrypted_4.zip": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_ENCRYPTED",
+      "ARCH_MEMBER_ERROR"
+    ],
+    "score": 30,
+    "type": "zip"
+  },
+  "v2/zip_exe_0.zip": {
+    "notes": [
+      "PDF_KW_Page",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "zip"
+  },
+  "v2/zip_exe_1.zip": {
+    "notes": [
+      "PDF_KW_Page",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "zip"
+  },
+  "v2/zip_exe_2.zip": {
+    "notes": [
+      "PDF_KW_Page",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "zip"
+  },
+  "v2/zip_exe_3.zip": {
+    "notes": [
+      "PDF_KW_Page",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "zip"
+  },
+  "v2/zip_exe_4.zip": {
+    "notes": [
+      "PDF_KW_Page",
+      "PE_HEADER",
+      "PE_IMPHASH",
+      "PE_MITIGATION_NOTE"
+    ],
+    "risk": "RED",
+    "rules": [
+      "PDF_KW_JS",
+      "PDF_KW_JavaScript",
+      "PDF_PARSE_WARN"
+    ],
+    "score": 65,
+    "type": "zip"
+  },
+  "v2/zip_many_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_many_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_many_2.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_many_3.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_many_4.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_nested_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_nested_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_nested_2.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_nested_3.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_nested_4.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP"
+    ],
+    "score": 50,
+    "type": "zip"
+  },
+  "v2/zip_slip_0_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_0_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_1_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_1_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_2_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_2_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_3_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_3_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_4_0.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  },
+  "v2/zip_slip_4_1.zip": {
+    "notes": [],
+    "risk": "RED",
+    "rules": [
+      "ARCH_ZIPSLIP",
+      "GEN_FORMAT_MISMATCH"
+    ],
+    "score": 80,
+    "type": "zip"
+  }
+}

@@ -1,0 +1,14 @@
+# Malaz Blocklist (offline Threat-Intel)
+# --------------------------------------------------------
+# Eine Zeile = ein SHA-256-Hash (Hex, Groß-/Kleinschreibung egal).
+# Zeilen mit '#' und Leerzeilen werden ignoriert. Ein Kommentar nach dem Hash
+# (durch Leerzeichen getrennt) ist erlaubt.
+#
+# Ein Treffer wird als KRITISCHER Anker-Befund gewertet (Score -> Rot).
+#
+# Beispiel-Eintrag (auskommentiert): der offizielle EICAR-Test-Hash.
+# Zum Aktivieren das '#' entfernen.
+# 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f  EICAR-Test
+
+# Eigene Hashes hier eintragen, z. B. aus internen Incident-Reports:
+# <sha256>  kurzer Kommentar

@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "malaz"
+dynamic = ["version", "dependencies"]
+description = "Native, offline-by-default desktop security triage for files on Windows 10/11"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+[project.scripts]
+malaz = "malaz.__main__:main"
+
+[project.gui-scripts]
+malaz-gui = "malaz.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["malaz*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "malaz.__version__"}
+dependencies = {file = ["requirements.txt"]}
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+extend-exclude = ["dist", "build", ".venv", "__pycache__"]
+
+# S110/S112 (except: pass/continue) are the documented defensive-degradation
+# pattern of this codebase: every pipeline and external-engine stage must
+# degrade to an informational indicator instead of crashing the scan
+# (see docs/SECURITY_MODEL.md).
+# S603: subprocess calls with argument lists and shell=False (injection-safe).
+# S105: password literals are functional (ZIP/PDF triage password lists).
+# RUF001: German UI strings deliberately use typographic characters (×, –).
+# S311: seeded random for deterministic synthetic test fixtures only.
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "PIE", "ISC", "DTZ", "S"]
+ignore = [
+    "S110",    # try/except pass — intentional defensive isolation
+    "S112",    # try/except continue — intentional defensive isolation
+    "S101",    # asserts appear in tests and corpus generators only
+    "S603",    # subprocess with argument list + shell=False — documented
+    "S105",    # password literals are functional (triage lists)
+    "RUF001",  # German typography (×, –) in UI strings
+    "S311",    # seeded random: deterministic test fixtures only
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "DTZ"]
+"tests/test_pdf_pipeline.py" = ["E402"]
+"src/malaz_exe.py" = ["E402"]
+# Explicit opt-in network modules (never called during normal offline scans;
+# URL schemes and hosts are allowlisted in each module, see docs/SECURITY_MODEL.md).
+"src/malaz/analysis/clamav_status.py" = ["S310"]
+"src/malaz/core/feeds.py" = ["S310"]
+"src/malaz/core/url_reputation.py" = ["S310"]
+"src/malaz/core/yara_signature_base.py" = ["S310"]
+"src/malaz/core/yara_update.py" = ["S310"]
+"scripts/run_fp_check.py" = ["S310"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "PySide6.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "malaz.gui.*"
+ignore_errors = true

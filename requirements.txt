@@ -1,0 +1,36 @@
+# Malaz - Runtime dependencies
+# Core GUI / async
+PySide6>=6.6,<7
+
+# Numeric / entropy
+numpy>=1.26
+
+# YARA signature engine
+yara-python>=4.5
+
+# PDF pipeline. pikepdf is MPL-2.0 and replaced PyMuPDF (AGPL). Under the
+# project's own GPL-3.0-or-later either licence would be fine; pikepdf was
+# chosen for size and API, not for licence reasons.
+pikepdf>=9.0
+
+# Office pipeline (olevba, oleid, msodde are shipped inside oletools)
+oletools>=0.60
+XLMMacroDeobfuscator>=0.2.7
+setuptools>=68  # stellt distutils unter Python 3.12 bereit (XLM-Bibliothek importiert es)
+openpyxl>=3.1
+
+# Image metadata (EXIF)
+Pillow>=10.0
+
+# PE analysis (sections, imports, imphash, overlay, TLS) — MIT license
+pefile>=2023.2.7
+
+# Build (not required at runtime)
+# nuitka>=2.0   # install separately for packaging, see scripts/build_nuitka.bat
+
+# XLMMacroDeobfuscator imports distutils.util (Python 3.12 setuptools shim).
+# Nuitka needs the top-level jaraco packages; without them the XLM stage is
+# unavailable in the standalone build (BUG-103).
+jaraco.functools>=4.0
+jaraco.text>=3.0
+jaraco.context>=6.0

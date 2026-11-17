@@ -1,0 +1,104 @@
+name: CI
+
+# Windows-only by design: the product is a Windows desktop application, and
+# the corpora exercise NTFS (alternate data streams), Win32 paths and the
+# Windows Qt platform. No test downloads a sample or opens a network socket;
+# the only network access is pip installing the declared requirements.
+#
+# The step list is mirrored in scripts/ci_gate.py. tests/test_ci_config.py
+# fails when the two drift apart.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Windows / Python 3.12
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Repository hygiene
+        run: python scripts/repo_hygiene_gate.py --all
+
+      - name: Architecture boundaries
+        run: python scripts/arch_gate.py
+
+      - name: License & SBOM gate
+        run: python scripts/license_gate.py
+
+      - name: Lint (ruff)
+        run: python -m ruff check src tests scripts fuzz conftest.py
+
+      - name: Type check (mypy)
+        run: python -m mypy src/malaz
+
+      - name: Security lint (bandit)
+        run: python -m bandit -q -ll -r src
+
+      - name: Create artifact directory
+        run: New-Item -ItemType Directory -Force artifacts/ci | Out-Null
+
+      - name: Test suite (pytest + coverage)
+        run: python -m pytest -q --basetemp=.pytest-tmp/ci --junitxml=artifacts/ci/junit.xml --cov=malaz --cov-fail-under=70 --cov-report=xml:artifacts/ci/coverage.xml --cov-report=term:skip-covered
+
+      - name: Mutation testing (30/30)
+        run: python scripts/check_tests_bite.py
+
+      - name: Golden snapshot
+        run: python scripts/make_golden_snapshot.py --check
+
+      - name: Golden UI images
+        run: python scripts/make_golden_images.py --check
+
+      - name: Documentation claims & links
+        run: python scripts/check_doc_claims.py
+
+      - name: Duplicate logic check
+        run: python scripts/check_duplicate_logic.py
+
+      - name: Upload CI reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-reports
+          path: |
+            artifacts/ci/coverage.xml
+            artifacts/ci/junit.xml
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,14 @@
+Per-Rule License Metadata Audit in signature-base (5,255 Rules)
+===============================================================
+Counted across the `license` metadata fields of 5,255 compiled rules:
+- 11x CC BY-NC 4.0 (non-commercial restriction; incompatible with GPL-3.0 bundling)
+- 8x OGL (Open Government Licence)
+- 6x Volexity
+- 6x SigmaHQ DRL
+- 4x CC BY 4.0
+- 5x BSD
+- 2,392 rules without an explicit `license` metadata field
+
+The upstream repository is published under Detection Rule License (DRL) 1.1,
+while individual rules may carry additional restrictions such as CC BY-NC 4.0.
+Accordingly, Malaz never bundles signature-base in source or binary releases.
