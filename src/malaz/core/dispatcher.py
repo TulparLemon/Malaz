@@ -315,9 +315,8 @@ def expand_scan_paths(paths, max_files: int | None = None) -> tuple[list[Path], 
             for child in sorted(collected):
                 if not _add(child):
                     return files, True
-        elif path.is_file():
-            if not _add(path):
-                return files, True
+        elif path.is_file() and not _add(path):
+            return files, True
     return files, False
 
 
