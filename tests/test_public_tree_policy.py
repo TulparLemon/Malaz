@@ -47,6 +47,8 @@ def test_is_forbidden_public_path_catches_all_twelve_rules(forbidden_path: str):
     [
         "README.md",
         "CHANGELOG.md",
+        "CODE_SIGNING_POLICY.md",
+        "Malaz-1.0.0/CODE_SIGNING_POLICY.md",
         "docs/USAGE.md",
         "docs/RELEASING.md",
         "docs/VERIFYING_RELEASES.md",

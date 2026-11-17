@@ -33,6 +33,7 @@ ALLOWED_ROOT_FILES = {
     ".gitattributes",
     ".gitignore",
     "CHANGELOG.md",
+    "CODE_SIGNING_POLICY.md",
     "LICENSE",
     "Malaz starten.bat",
     "README.md",
