@@ -67,7 +67,7 @@ if not exist "%PY%" (
 )
 
 set "APPVER4="
-for /f "usebackq delims=" %%v in (`"%PY%" -c "import re,sys; sys.path.insert(0,r'%ROOT%\src'); import malaz; v=malaz.__version__.split('+',1)[0]; nums=[min(65535,max(0,int(x))) for x in re.findall(r'\d+',v)][:4]; nums+=[0]*(4-len(nums)); print('.'.join(map(str,nums)))"`) do set "APPVER4=%%v"
+for /f "usebackq delims=" %%v in (`.venv\Scripts\python.exe -c "import re,sys; sys.path.insert(0,'src'); import malaz; v=malaz.__version__.split('+',1)[0]; nums=[min(65535,max(0,int(x))) for x in re.findall(r'\d+',v)][:4]; nums+=[0]*(4-len(nums)); print('.'.join(map(str,nums)))"`) do set "APPVER4=%%v"
 if not defined APPVER4 (
     echo Version konnte nicht aus src\malaz\__init__.py berechnet werden.
     popd

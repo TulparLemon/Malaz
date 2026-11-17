@@ -364,6 +364,56 @@ def test_scan_bat_propagates_cli_exit_code():
     assert "exit /b %RC%" in text
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="cmd.exe batch test")
+def test_build_nuitka_bat_computes_appver4_under_cmd(tmp_path):
+    """CI-004: Verify build_nuitka.bat computes APPVER4 cleanly under cmd.exe
+    even when %ROOT% contains spaces and without relying on a host ROOT/.venv.
+    """
+    import shutil
+    import subprocess
+
+    work = tmp_path / "repo with spaces"
+    (work / "scripts").mkdir(parents=True)
+    (work / "src" / "malaz").mkdir(parents=True)
+    shutil.copy2(ROOT / "scripts" / "build_nuitka.bat", work / "scripts" / "build_nuitka.bat")
+    shutil.copy2(ROOT / "src" / "malaz" / "__init__.py", work / "src" / "malaz" / "__init__.py")
+    subprocess.run(
+        [sys.executable, "-m", "venv", "--without-pip", str(work / ".venv")],
+        check=True,
+        timeout=60,
+    )
+    comspec = os.environ.get("COMSPEC", "cmd.exe")
+
+    # 1) Invalid NAME: proves APPVER4 succeeded and reached NAME validation
+    bad = subprocess.run(
+        [comspec, "/c", r"scripts\build_nuitka.bat", "standalone", "bad/name"],
+        cwd=work,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
+    assert bad.returncode == 1
+    assert "Version konnte nicht" not in bad.stdout, bad.stdout + bad.stderr
+    assert "Ungueltiger NAME" in bad.stdout, bad.stdout + bad.stderr
+    assert bad.stderr.strip() == "", bad.stderr
+
+    # 2) Valid NAME: proves realpath check + Nuitka precheck also run cleanly
+    good_name = subprocess.run(
+        [comspec, "/c", r"scripts\build_nuitka.bat", "standalone", "Malaz-Test"],
+        cwd=work,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
+    assert good_name.returncode == 1
+    assert "Nuitka nicht gefunden" in good_name.stdout, good_name.stdout + good_name.stderr
+    assert good_name.stderr.strip() == "", good_name.stderr
+
+
 def test_vm_deepsec_propagates_test_failure_and_reports_missing_count():
     text = (ROOT / "scripts" / "vm_deepsec_test.bat").read_text(encoding="utf-8")
     assert "if errorlevel 1" in text
