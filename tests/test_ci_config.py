@@ -99,3 +99,43 @@ def test_validator_bites_on_workflow_only_command(tmp_path):
     path.write_text(broken_text, encoding="utf-8")
     problems = ci_gate.check_workflow(path)
     assert any("ohne Gegenstueck" in problem for problem in problems), problems
+def test_ci_workflow_uses_requirements_lock_and_checks_exit_codes():
+    wf_text = WORKFLOW.read_text(encoding="utf-8")
+    expected = (
+        "python -m pip install -r requirements.txt -r requirements-dev.txt -c requirements.lock"
+    )
+    assert expected in wf_text
+    assert "requirements.lock" in wf_text
+    assert "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }" in wf_text
+
+
+def test_release_workflow_enforces_tag_lock_gate_and_draft():
+    """T13: structural invariants for .github/workflows/release.yml."""
+    import yaml
+
+    rel_wf = ROOT / ".github" / "workflows" / "release.yml"
+    assert rel_wf.is_file(), "release.yml fehlt"
+    raw = rel_wf.read_text(encoding="utf-8")
+    data = yaml.safe_load(raw)
+
+    assert data.get("permissions") == {"contents": "read"}
+    build_job = data["jobs"]["build"]
+    assert build_job["runs-on"] == "windows-latest"
+    assert build_job["permissions"] == {"contents": "write"}
+
+    assert 'ref: "refs/tags/${{ env.TAG }}"' in raw
+    assert "git fetch --force --tags origin" in raw
+    assert "gh release view $env:TAG" in raw
+    assert "-c requirements.lock" in raw
+    assert r".venv\Scripts\python.exe scripts/ci_gate.py" in raw
+    assert r"scripts\build_nuitka.bat standalone Malaz-%VER%" in raw
+    assert "scripts/make_release.py --tag $env:TAG" in raw
+    assert "--draft --verify-tag" in raw
+
+    for step in build_job["steps"]:
+        run_txt = str(step.get("run", "")).strip()
+        if step.get("shell") == "pwsh" and "\n" in run_txt:
+            if "gh release view" in run_txt:
+                assert "$LASTEXITCODE" in run_txt
+            else:
+                assert "if ($LASTEXITCODE -ne 0)" in run_txt, step.get("name")

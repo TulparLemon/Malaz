@@ -89,6 +89,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 7-layer architecture, static pipelines, 2 GB streaming model, multi-layer risk scoring, benchmark summary |
 | [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md) | Threat model, all 7 opt-in network paths, completeness invariant weights, parser/archive resource limits, log privacy |
 | [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md) | Verifying OpenPGP release signatures (`SHA256SUMS`), CycloneDX SBOMs, and SmartScreen / SignPath status |
+| [docs/RELEASING.md](docs/RELEASING.md) | Maintainer release pipeline: locked GitHub Actions tag builds, tag-tree parity gates, and OpenPGP signing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and security hardening summary starting at `v1.0.0` |
 | [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 30/30 mutations, and fuzzing |
 

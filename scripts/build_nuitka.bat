@@ -167,6 +167,7 @@ pushd "%ROOT%\src"
     --assume-yes-for-downloads ^
     --product-name="Malaz" ^
     --product-version="%APPVER4%" ^
+    --file-version="%APPVER4%" ^
     --file-description="Offline Datei-Sicherheits-Triage" ^
     --output-dir=..\dist ^
     --remove-output ^

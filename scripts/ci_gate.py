@@ -227,8 +227,9 @@ def check_workflow(path: Path | None = None) -> list[str]:
     # Artefaktverzeichnis sind keine Pruefschritte.
     allowed = {render(step) for step in STEPS} | {
         "python -m pip install --upgrade pip",
-        "python -m pip install -r requirements.txt -r requirements-dev.txt",
+        "python -m pip install -r requirements.txt -r requirements-dev.txt -c requirements.lock",
         "python -m pip install --no-build-isolation --no-deps -e .",
+        "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
         "New-Item -ItemType Directory -Force artifacts/ci | Out-Null",
     }
     for command in commands:

@@ -339,3 +339,64 @@ def test_source_release_gate_rejects_internal_governance_and_design_files(tmp_pa
         ".gitlab-ci.yml",
         "docs/designs/001-spec.md",
     }
+def test_tree_ref_rejects_internal_and_non_ascii_paths(tmp_path):
+    """T3 & T4: --tree-ref inspects Git commit trees (incl. non-ASCII via -z) fail-closed."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import pytest
+
+    git = check_release._git_exe(tmp_path)
+    subprocess.run(
+        [git, "init", "-b", "main", str(tmp_path)], check=True, capture_output=True
+    )
+    subprocess.run([git, "-C", str(tmp_path), "config", "user.name", "t"], check=True)
+    subprocess.run([git, "-C", str(tmp_path), "config", "user.email", "t@t"], check=True)
+
+    (tmp_path / "README.md").write_text("# Clean\n", encoding="utf-8")
+    subprocess.run([git, "-C", str(tmp_path), "add", "README.md"], check=True)
+    subprocess.run(
+        [git, "-C", str(tmp_path), "commit", "-m", "clean"], check=True, capture_output=True
+    )
+    assert check_release.scan_tree_ref(tmp_path, "main") == []
+
+    (tmp_path / "AGENTS.md").write_text("internal\n", encoding="utf-8")
+    (tmp_path / ".gitlab-ci.yml").write_text("stages: []\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "03_übersicht.md").write_text("de\n", encoding="utf-8")
+    subprocess.run([git, "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(
+        [git, "-C", str(tmp_path), "commit", "-m", "dirty"], check=True, capture_output=True
+    )
+
+    findings = check_release.scan_tree_ref(tmp_path, "HEAD")
+    flagged = {(f.path, f.kind) for f in findings}
+    assert ("AGENTS.md", "forbidden-public-path") in flagged
+    assert (".gitlab-ci.yml", "forbidden-public-path") in flagged
+    assert ("docs/03_übersicht.md", "forbidden-public-path") in flagged
+
+    bad = check_release.scan_tree_ref(tmp_path, "refs/tags/does-not-exist")
+    assert len(bad) == 1 and bad[0].kind == "invalid-target"
+
+    prefixed_zip = tmp_path / "prefixed.zip"
+    with zipfile.ZipFile(prefixed_zip, "w") as zf:
+        zf.writestr("Malaz-1.0.0/docs/03_risk.md", "de\n")
+        zf.writestr("Malaz-1.0.0/scripts/make_public_export.bat", "@echo off\n")
+    arch_findings = check_release.scan_archive(prefixed_zip, source=True)
+    assert {f.path for f in arch_findings} == {
+        "Malaz-1.0.0/docs/03_risk.md",
+        "Malaz-1.0.0/scripts/make_public_export.bat",
+    }
+
+    with pytest.raises(SystemExit) as exc:
+        check_release.main(["--tree-ref", "main", "--archive", str(prefixed_zip)])
+    assert exc.value.code == 2
+
+    proc = subprocess.run(
+        [sys.executable, str(Path(check_release.__file__).resolve()), "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0 and "--tree-ref" in proc.stdout
