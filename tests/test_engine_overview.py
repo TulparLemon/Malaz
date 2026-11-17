@@ -126,25 +126,34 @@ def test_refresh_state_pingt_den_daemon_nicht_erneut(tmp_path, monkeypatch):
     kostet jede Abfrage einen Prozessstart — fuer eine Information, die sich
     nicht geaendert hat.
     """
+    import malaz.analysis.clamav as modul
     from malaz import config
 
     db_dir = tmp_path / "db"
     db_dir.mkdir()
     (db_dir / "main.cvd").write_bytes(b"CVD" + b"\0" * 64)
     monkeypatch.setattr(config, "CLAMAV_DB_CANDIDATES", (db_dir,))
+    monkeypatch.setattr(config, "CLAMAV_SCAN_CANDIDATES", ())
+    monkeypatch.setattr(modul, "which_absolute", lambda _n: None)
 
-    fake_bin = tmp_path / "clamscan.exe"
-    fake_bin.write_bytes(b"MZ")
+    fake_clamscan = tmp_path / "clamscan.exe"
+    fake_clamscan.write_bytes(b"MZ")
+    fake_clamdscan = tmp_path / "clamdscan.exe"
+    fake_clamdscan.write_bytes(b"MZ")
     scanner = ClamAVScanner(enabled=True)
-    scanner._clamscan = fake_bin
-    scanner.binary = fake_bin          # Binary ist bekannt
-
-    import malaz.analysis.clamav as modul
+    scanner._clamscan = fake_clamscan
+    scanner._clamdscan = fake_clamdscan
+    scanner.binary = fake_clamdscan  # Daemon-Binary bereits gewaehlt
+    scanner.database = None
 
     def verboten(*_a, **_k):
-        raise AssertionError("_locate_binaries darf hier nicht laufen")
+        raise AssertionError(
+            "_locate_binaries/_clamd_reachable/_choose_binary darf hier nicht laufen"
+        )
 
     monkeypatch.setattr(modul.ClamAVScanner, "_locate_binaries", verboten)
+    monkeypatch.setattr(modul.ClamAVScanner, "_clamd_reachable", verboten)
+    monkeypatch.setattr(modul.ClamAVScanner, "_choose_binary", verboten)
     scanner.refresh_state()
     assert scanner.database == db_dir, "die Datenbank muss trotzdem gefunden werden"
 

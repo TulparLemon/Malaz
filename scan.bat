@@ -4,6 +4,8 @@ REM  Malaz — Headless-Scan (Kommandozeile)
 REM  Nutzung:  scan.bat DATEI [DATEI ...]
 REM  Erzeugt automatisch malaz_report_<Datum>.html im Projektordner.
 REM ============================================================
+setlocal
+set "PSModulePath="
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (

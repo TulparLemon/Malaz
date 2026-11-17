@@ -29,6 +29,9 @@ REM      Achtung: 'where cl gcc' beweist nichts - ein fehlender PATH-Treffer
 REM      heisst nicht, dass kein Compiler verfuegbar ist.
 REM ============================================================
 setlocal enableextensions
+REM PowerShell 7 setzt PSModulePath ohne System32\WindowsPowerShell\v1.0\Modules;
+REM beim Leeren baut powershell.exe seinen Standard-Modulpfad (Compress-Archive) neu auf.
+set "PSModulePath="
 REM Der Smoke-Test gibt die CLI-Ausgabe aus, und die enthaelt U+2212
 REM ("-" als Minuszeichen). Auf dem cp1252-stdout eines Scheduled-Task-
 REM Kontos wirft das einen UnicodeEncodeError und bricht den Build ab,

@@ -549,3 +549,97 @@ def test_gefaelschter_sauber_token_schlaegt_keinen_echten_treffer():
     for deutsch in ("Keine Bedrohungen gefunden.", "Keine Bedrohung gefunden."):
         a = _strip_result_echo(strip_scan_target(f"Scanning {verstuemmelt}\n{deutsch}", echter_name))
         assert _verdict_from_output(a) == "clean", a
+
+
+def test_mpcmdrun_was_skipped_marks_result_incomplete(tmp_path):
+    """SEC-008 (T1 a-c): Defender exclusion skips must never return clean."""
+    from malaz.analysis.clamav import ClamAVScanner
+    from malaz.core.dispatcher import Dispatcher
+    from malaz.core.yara_engine import YaraEngine
+
+    scanner = _scanner_with_fake_binary(tmp_path)
+
+    # (a) Standard English exclusion output (rc=0, measured on GitHub Actions)
+    target_a = tmp_path / "sample.txt"
+    target_a.write_bytes(b"payload")
+    out_a = (
+        f"Scan starting...\r\nScan finished.\r\nScanning {target_a} was skipped."
+    ).encode()
+
+    # (b) Extensionless file literally named "was skipped" inside an excluded dir
+    excl_dir = tmp_path / "excluded"
+    excl_dir.mkdir()
+    target_b = excl_dir / "was skipped"
+    target_b.write_bytes(b"payload")
+    out_b = (
+        f"Scan starting...\r\nScan finished.\r\nScanning {target_b} was skipped."
+    ).encode()
+
+    # (c) German output + OEM-mangled umlaut ("?bersprungen")
+    out_c_utf8 = f"Scan von {target_a} wurde übersprungen.".encode()
+    out_c_oem = f"Scan von {target_a} wurde ?bersprungen.".encode("ascii")
+
+    for tgt, raw_out in (
+        (target_a, out_a),
+        (target_b, out_b),
+        (target_a, out_c_utf8),
+        (target_a, out_c_oem),
+    ):
+        with mock.patch(
+            "malaz.analysis.windows_av.run_tool",
+            return_value=(0, raw_out, b""),
+        ):
+            r = scanner.scan_path(tgt)
+        assert r.scanned is False, raw_out
+        assert r.clean is False, raw_out
+        assert r.threat_found is False, raw_out
+        assert "übersprungen" in (r.skipped_reason or ""), r.skipped_reason
+
+    # End-to-end through Dispatcher: AV_SKIPPED -> is_incomplete=True, no AV_CLEAN
+    yara = YaraEngine()
+    yara._rules = []
+    yara.available = True
+    yara.load_error = None
+    dispatcher = Dispatcher(
+        yara=yara,
+        av_scanner=scanner,
+        clam_scanner=ClamAVScanner(enabled=False),
+    )
+    with mock.patch(
+        "malaz.analysis.windows_av.run_tool",
+        return_value=(0, out_a, b""),
+    ):
+        scan_res = dispatcher.scan_path(target_a)
+    rule_ids = {i.rule_id for i in scan_res.indicators}
+    assert "AV_SKIPPED" in rule_ids
+    assert "AV_CLEAN" not in rule_ids
+    assert scan_res.is_incomplete is True
+
+
+def test_mpcmdrun_filename_was_skipped_does_not_spoof_clean_scan(tmp_path):
+    """SEC-008 (T1 d): A genuinely scanned file named 'was skipped(.exe)' stays clean."""
+    scanner = _scanner_with_fake_binary(tmp_path)
+    for name in ("was skipped.exe", "was skipped"):
+        target = tmp_path / name
+        target.write_bytes(b"benign")
+        raw_out = f"Scanning {target} found no threats.".encode()
+        with mock.patch(
+            "malaz.analysis.windows_av.run_tool",
+            return_value=(0, raw_out, b""),
+        ):
+            r = scanner.scan_path(target)
+        assert r.scanned is True, name
+        assert r.clean is True, name
+        assert r.threat_found is False, name
+
+
+def test_mpcmdrun_remediation_beats_skipped_line(tmp_path):
+    """SEC-008 (T1 e): Remediation safety net takes precedence over a skip line."""
+    raw_out = (
+        b"File quarantined.\r\n"
+        b"Scanning C:\\Excluded\\sidecar.bin was skipped."
+    )
+    r, _ = _scan_with(tmp_path, 0, stdout=raw_out)
+    assert r.scanned is True
+    assert r.threat_found is True
+    assert r.remediated is True

@@ -519,3 +519,91 @@ def test_pdb_entries_and_names_are_capped():
     assert dropped == 4
     assert clipped == _PDB_MAX_ENTRIES
     assert all(len(path) <= _PDB_NAME_MAX for path in paths)
+
+
+def test_run_tool_strips_psmodulepath_without_mutating_caller_env(monkeypatch):
+    """SEC-008 (T2): procio.run_tool strips PSModulePath case-insensitively for PowerShell."""
+    import io
+
+    from malaz import procio
+
+    captured_envs: list[dict[str, str] | None] = []
+
+    class _FakePopen:
+        def __init__(self, args, **kwargs):
+            captured_envs.append(kwargs.get("env"))
+            self.stdin = None
+            self.stdout = io.BytesIO(b"ok")
+            self.stderr = io.BytesIO(b"")
+            self.returncode = 0
+
+        def poll(self):
+            return 0
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            pass
+
+    monkeypatch.setattr(procio.subprocess, "Popen", _FakePopen)
+
+    # 1) Explicit caller env dict: case-insensitive strip + caller dict untouched
+    caller_env = {
+        "psmodulepath": r"C:\Program Files\PowerShell\7\Modules",
+        "MALAZ_AUTH_PATH": r"C:\sample.exe",
+        "KEEP_ME": "1",
+    }
+    procio.run_tool(
+        [r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe", "-NoProfile"],
+        env=caller_env,
+    )
+    assert "psmodulepath" in caller_env, "caller env must not be mutated"
+    ps_env = captured_envs[-1]
+    assert ps_env is not None
+    assert all(k.upper() != "PSMODULEPATH" for k in ps_env)
+    assert ps_env["KEEP_ME"] == "1"
+
+    # 2) env=None with pwsh: inherits os.environ minus PSModulePath
+    monkeypatch.setenv("PSModulePath", r"C:\nonexistent_ps7_modules")
+    procio.run_tool(["pwsh.exe", "-NoProfile"])
+    pwsh_env = captured_envs[-1]
+    assert pwsh_env is not None
+    assert all(k.upper() != "PSMODULEPATH" for k in pwsh_env)
+
+    # 3) Non-PowerShell tool keeps env=None untouched
+    procio.run_tool([r"C:\Program Files\ClamAV\clamscan.exe", "f.bin"])
+    assert captured_envs[-1] is None
+
+
+@pytest.mark.skipif(
+    __import__("sys").platform != "win32",
+    reason="Get-AuthenticodeSignature requires Windows PowerShell",
+)
+def test_pe_unsigned_survives_poisoned_psmodulepath(tmp_path, monkeypatch):
+    """SEC-008 (T2): Poisoned PSModulePath must not silence PE_UNSIGNED."""
+    import shutil
+
+    from malaz.pipelines.pe_pipeline import _probe_signature
+
+    if shutil.which("powershell") is None and shutil.which("pwsh") is None:
+        pytest.skip("PowerShell not available")
+
+    monkeypatch.setenv("PSModulePath", r"C:\nonexistent_ps7_modules")
+    pe_bytes = _minimal_pe(extra=b"sec008-unique-psmodulepath-probe")
+    pe_file = tmp_path / "unsigned_probe.exe"
+    pe_file.write_bytes(pe_bytes)
+
+    _probe_signature.cache_clear()
+    try:
+        ctx = AnalysisContext(
+            path=pe_file,
+            data=pe_bytes,
+            detected_type="pe",
+            size=len(pe_bytes),
+            depth=0,
+        )
+        inds = PePipeline().analyze(ctx)
+        assert "PE_UNSIGNED" in {i.rule_id for i in inds}
+    finally:
+        _probe_signature.cache_clear()

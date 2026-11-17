@@ -345,13 +345,24 @@ def run_tool(
     (``subprocess.TimeoutExpired`` — both re-raised after cleanup, callers
     already translate them into skip reasons).
     """
+    effective_env = env
+    if args and PureWindowsPath(str(args[0])).stem.lower() in {"powershell", "pwsh"}:
+        # Strip inherited PSModulePath so Windows PowerShell 5.1 (and pwsh 7)
+        # builds its own $PSHOME\Modules path even when spawned from a
+        # cross-edition PowerShell parent (e.g. pwsh 7 on GitHub Actions or
+        # Windows Terminal).
+        source_env = os.environ if env is None else env
+        effective_env = {
+            k: v for k, v in source_env.items() if k.upper() != "PSMODULEPATH"
+        }
+
     proc = subprocess.Popen(
         args,
         stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=False,
-        env=env,
+        env=effective_env,
         creationflags=no_window_flags(),
     )
 
