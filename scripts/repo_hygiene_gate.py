@@ -17,7 +17,13 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+_SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+import _public_tree_policy  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_SECRET_SCAN_BYTES = 4 * 1024 * 1024  # 4 MiB fail-closed ceiling
@@ -36,6 +42,7 @@ ALLOWED_ROOT_FILES = {
     "pyproject.toml",
     "requirements-dev.txt",
     "requirements-fuzz.txt",
+    "requirements.lock",
     "requirements.txt",
     "scan.bat",
     "start.bat",
@@ -272,7 +279,11 @@ def check_secrets(repo: Path, *, staged_only: bool) -> list[str]:
         if not raw_entry:
             continue
         rel_clean = raw_entry.decode("utf-8", errors="surrogateescape").replace("\\", "/")
-        if not rel_clean or rel_clean.startswith(("tests/", "THIRD_PARTY_LICENSES/")):
+        if not rel_clean:
+            continue
+        if _public_tree_policy.is_forbidden_public_path(rel_clean):
+            problems.append(f"Interner Pfad im Git-Index: '{rel_clean}'")
+        if rel_clean.startswith(("tests/", "THIRD_PARTY_LICENSES/")):
             continue
         fname = rel_clean.rsplit("/", 1)[-1]
         for pat in FORBIDDEN_NAME_PATTERNS:
@@ -295,6 +306,25 @@ def check_secrets(repo: Path, *, staged_only: bool) -> list[str]:
         for kind, regex in SECRET_PATTERNS.items():
             if regex.search(data):
                 problems.append(f"Secret-Muster ({kind}) gefunden in '{rel_clean}'")
+    return problems
+
+
+def check_public_paths(repo: Path) -> list[str]:
+    """Fail-closed check for internal paths in the tracked Git index."""
+    if not (repo / ".git").exists():
+        return [f"git Dateiliste fehlgeschlagen: kein .git in {repo}"]
+    git = _git_exe(repo)
+    proc = subprocess.run([git, "-C", str(repo), "ls-files", "-z"], capture_output=True, check=False)
+    if proc.returncode != 0:
+        err_msg = proc.stderr.decode("utf-8", errors="replace").strip()
+        return [f"git Dateiliste fehlgeschlagen: {err_msg}"]
+    problems: list[str] = []
+    for raw_entry in proc.stdout.split(b"\x00"):
+        if not raw_entry:
+            continue
+        rel_clean = raw_entry.decode("utf-8", errors="surrogateescape").replace("\\", "/")
+        if rel_clean and _public_tree_policy.is_forbidden_public_path(rel_clean):
+            problems.append(f"Interner Pfad im Git-Index: '{rel_clean}'")
     return problems
 
 

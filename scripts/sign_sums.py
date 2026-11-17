@@ -50,11 +50,12 @@ def secret_keys(gpg: Path) -> list[str]:
     return keys
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--sums", required=True, type=Path)
     ap.add_argument("--key", help="Signaturschlüssel (Fingerprint oder UID)")
-    args = ap.parse_args()
+    ap.add_argument("--require-signature", action="store_true", help="Exit 1 statt 0 wenn gpg/Key fehlt")
+    args = ap.parse_args(argv)
 
     sums: Path = args.sums
     if not sums.is_file():
@@ -64,7 +65,7 @@ def main() -> int:
     gpg = find_gpg()
     if gpg is None:
         print("Kein gpg gefunden (PATH oder Git-Installation).")
-        return 0
+        return 1 if args.require_signature else 0
 
     keys = secret_keys(gpg)
     if not keys:
@@ -84,7 +85,7 @@ def main() -> int:
         print("Danach den öffentlichen Schlüssel veröffentlichen:")
         print("  gpg --armor --export <Fingerprint> > docs/RELEASE-SIGNING-KEY.asc")
         print("und in die README aufnehmen.")
-        return 0
+        return 1 if args.require_signature else 0
 
     # NEVER fall back to "the first key in the ring": on a machine with more
     # than one secret key that signs a release with the wrong identity and
@@ -137,6 +138,7 @@ def main() -> int:
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     if verify.returncode != 0:
+        out.unlink(missing_ok=True)
         print(f"FEHLER: Signatur nicht verifizierbar.\n{verify.stderr.strip()}")
         return 1
 

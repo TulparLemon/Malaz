@@ -26,3 +26,6 @@ yara-x==1.22.1
 
 # SBOM-Erzeugung (scripts/make_sbom.py): Requirement-Parsing/Marker.
 packaging==26.3
+
+# Standalone-Release-Build (nur Verpackung, nicht zur Laufzeit im Release):
+nuitka==4.3.4
