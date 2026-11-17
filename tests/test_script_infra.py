@@ -185,6 +185,75 @@ def test_smoke_build_fails_on_red_even_when_structure_is_present(tmp_path, monke
     assert smoke_build.main(["--exe", str(exe)]) == 1
 
 
+def test_smoke_build_accepts_static_only_av_skips_and_rejects_internal_stage_errors(
+    tmp_path, monkeypatch
+):
+    """CI-005: Exit 3 is accepted iff caused solely by AV_SKIPPED/CLAMAV_SKIPPED
+    with YARA=an and PDF_OBJSTM present; any bundled stage failure stays exit 1.
+    """
+    exe = tmp_path / "Malaz.exe"
+    exe.write_bytes(b"stub")
+    monkeypatch.setattr(smoke_build, "make_pdf", lambda path: path.write_bytes(b"%PDF-1.7\n"))
+
+    healthy_static_stdout = (
+        "[Engines] Defender=aus/fehlt  ClamAV=aus/fehlt  YARA=an  DIE=aus/fehlt\n"
+        "[GRÜN] object_stream.pdf  score=0/100  type=pdf  findings=5\n"
+        "    - [Hinweis] PDF_KW_ObjStm: Objekt-Stream (/ObjStm) x1\n"
+        "    - [Hinweis] PDF_OBJSTM: Objekt-Streams (/ObjStm) vorhanden\n"
+        "    - [Hinweis] PDF_JS_EXTRACTED: Eingebettetes JavaScript extrahiert\n"
+        "    - [Hinweis] AV_SKIPPED: Windows Defender: Scan übersprungen\n"
+        "    - [Hinweis] CLAMAV_SKIPPED: ClamAV: Scan übersprungen\n"
+    )
+    seen_cmds: list[list[str]] = []
+
+    def make_runner(rc: int, out: str):
+        def _run(command, **kwargs):
+            seen_cmds.append(list(command))
+            if "--version" in command:
+                return SimpleNamespace(returncode=0, stdout="Malaz 1.0.0\n", stderr="")
+            return SimpleNamespace(returncode=rc, stdout=out, stderr="")
+
+        return _run
+
+    # (a) Healthy --static-only run on runner without ClamAV -> exit 0
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, healthy_static_stdout))
+    assert smoke_build.main(["--exe", str(exe)]) == 0
+    cli_cmd = seen_cmds[-1]
+    assert cli_cmd.index("--static-only") < cli_cmd.index("--cli")
+
+    # (b) Bundled YARA broken alongside AV_SKIPPED -> exit 1
+    yara_dead = healthy_static_stdout.replace("YARA=an", "YARA=aus/fehlt")
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, yara_dead))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (c) Internal stage incomplete (e.g. YARA_LOAD_ERROR or PDF_JS_PARSE_WARN) -> exit 1
+    stage_err = healthy_static_stdout + "    - [Hinweis] YARA_LOAD_ERROR: Regelfehler\n"
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, stage_err))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (d) Mixed-case unexpected rule ID (e.g. PDF_KW_Launch or YARA_malaz_hit) -> exit 1
+    mixed_rule = healthy_static_stdout + "    - [Kritisch] PDF_KW_Launch: Launch-Action\n"
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, mixed_rule))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (e) Non-GREEN or non-zero score on exit 3 -> exit 1
+    yellow_out = healthy_static_stdout.replace("[GRÜN]", "[GELB]").replace(
+        "score=0/100", "score=25/100"
+    )
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, yellow_out))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (f) Missing positive YARA=an banner (even without literal 'YARA=aus/fehlt') -> exit 1
+    no_yara_banner = healthy_static_stdout.replace("YARA=an", "YARA=unbekannt")
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, no_yara_banner))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (g) Ignored --static-only leaking AV_CLEAN on exit 3 -> exit 1
+    av_leak = healthy_static_stdout + "    - [Hinweis] AV_CLEAN: sauber\n"
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, av_leak))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+
 # -- BUG-101: unbekannte Snapshot-Flags duerfen nichts ueberschreiben -------
 
 

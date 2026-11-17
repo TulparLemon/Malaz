@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import re
 import subprocess
 import sys
 import tempfile
@@ -45,6 +46,9 @@ def make_pdf(path: Path) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        with suppress(Exception):
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     parser = argparse.ArgumentParser()
     parser.add_argument("--exe", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=120)
@@ -72,25 +76,66 @@ def main(argv: list[str] | None = None) -> int:
         with tempfile.TemporaryDirectory(prefix="malaz_smoke_") as tmp:
             pdf = Path(tmp) / "object_stream.pdf"
             make_pdf(pdf)
+            # Run with --static-only so the smoke gate verifies the bundled
+            # binary (pikepdf/qpdf, compiled YARA rules, frozen runtime) rather
+            # than whether ClamAV is installed or %TEMP% is excluded in Defender
+            # on the build host. Because --static-only emits AV_SKIPPED /
+            # CLAMAV_SKIPPED (completeness invariant -> CLI exit 3), exit 3 is
+            # accepted ONLY when every printed indicator is in the closed
+            # smoke allowlist and bundled YARA is active.
             run = subprocess.run(
-                [str(exe), "--cli", str(pdf)], capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=args.timeout,
+                [str(exe), "--static-only", "--cli", str(pdf)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=args.timeout,
                 cwd=tmp,
             )
             output = (run.stdout or "") + (run.stderr or "")
             print(output.strip())
-            if run.returncode != 0:
-                # 2 = RED, 3 = unvollstaendiger Scan (siehe __main__.run_cli);
-                # jeder andere Code heisst ebenfalls, dass die Engine nicht
-                # sauber durchgelaufen ist. Der Strukturtreffer PDF_OBJSTM
-                # allein darf das nicht ueberdecken.
+            rule_ids = set(
+                re.findall(
+                    r"(?m)^[ \t]*-[ \t]*\[[^\]\r\n]+\][ \t]*([^\s:]+):",
+                    output,
+                )
+            )
+            host_av_skips = {"AV_SKIPPED", "CLAMAV_SKIPPED"}
+            allowed_smoke_rules = {
+                "PDF_KW_ObjStm",
+                "PDF_OBJSTM",
+                "PDF_JS_EXTRACTED",
+                "AV_SKIPPED",
+                "CLAMAV_SKIPPED",
+                "DIE_SKIPPED",
+                "CAPA_SKIPPED",
+            }
+            unexpected_rules = sorted(rule_ids - allowed_smoke_rules)
+            yara_broken = "YARA=aus/fehlt" in output or "YARA=Regelfehler" in output
+            static_only_ok = (
+                run.returncode == 3
+                and "[FEHLER]" not in output
+                and "[GRÜN]" in output
+                and "score=0/100" in output
+                and re.search(r"\bYARA=an\b", output) is not None
+                and "PDF_OBJSTM" in rule_ids
+                and bool(rule_ids & host_av_skips)
+                and not unexpected_rules
+            )
+            if yara_broken or unexpected_rules or (run.returncode != 0 and not static_only_ok):
                 detail = {
+                    0: "OK",
                     1: "keine Ergebnisse",
                     2: "Urteil RED",
                     3: "Scan unvollständig",
                 }.get(run.returncode, "unbekannter Fehler")
+                extra = (
+                    f" (unerwartete Regeln: {unexpected_rules})"
+                    if unexpected_rules
+                    else (" (YARA im Build defekt)" if yara_broken else "")
+                )
                 print(
-                    f"FEHLER: CLI meldet Exit {run.returncode} ({detail}) — "
+                    f"FEHLER: CLI meldet Exit {run.returncode} ({detail}){extra} — "
                     "der Build ist nicht freigabefähig.",
                     file=sys.stderr,
                 )
