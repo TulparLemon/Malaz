@@ -95,15 +95,16 @@ def main(argv: list[str] | None = None) -> int:
             output = (run.stdout or "") + (run.stderr or "")
             print(output.strip())
             rule_ids = set(
-                re.findall(r"(?m)^\s*-\s*\[[^\]]+\]\s*([A-Z0-9_]+):", output)
+                re.findall(
+                    r"(?m)^[ \t]*-[ \t]*\[[^\]\r\n]+\][ \t]*([^\s:]+):",
+                    output,
+                )
             )
             host_av_skips = {"AV_SKIPPED", "CLAMAV_SKIPPED"}
             allowed_smoke_rules = {
                 "PDF_KW_ObjStm",
                 "PDF_OBJSTM",
                 "PDF_JS_EXTRACTED",
-                "AV_CLEAN",
-                "CLAMAV_CLEAN",
                 "AV_SKIPPED",
                 "CLAMAV_SKIPPED",
                 "DIE_SKIPPED",
@@ -114,7 +115,10 @@ def main(argv: list[str] | None = None) -> int:
             static_only_ok = (
                 run.returncode == 3
                 and "[FEHLER]" not in output
-                and not yara_broken
+                and "[GRÜN]" in output
+                and "score=0/100" in output
+                and re.search(r"\bYARA=an\b", output) is not None
+                and "PDF_OBJSTM" in rule_ids
                 and bool(rule_ids & host_av_skips)
                 and not unexpected_rules
             )

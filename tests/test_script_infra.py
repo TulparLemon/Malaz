@@ -231,6 +231,28 @@ def test_smoke_build_accepts_static_only_av_skips_and_rejects_internal_stage_err
     monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, stage_err))
     assert smoke_build.main(["--exe", str(exe)]) == 1
 
+    # (d) Mixed-case unexpected rule ID (e.g. PDF_KW_Launch or YARA_malaz_hit) -> exit 1
+    mixed_rule = healthy_static_stdout + "    - [Kritisch] PDF_KW_Launch: Launch-Action\n"
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, mixed_rule))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (e) Non-GREEN or non-zero score on exit 3 -> exit 1
+    yellow_out = healthy_static_stdout.replace("[GRÜN]", "[GELB]").replace(
+        "score=0/100", "score=25/100"
+    )
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, yellow_out))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (f) Missing positive YARA=an banner (even without literal 'YARA=aus/fehlt') -> exit 1
+    no_yara_banner = healthy_static_stdout.replace("YARA=an", "YARA=unbekannt")
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, no_yara_banner))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
+    # (g) Ignored --static-only leaking AV_CLEAN on exit 3 -> exit 1
+    av_leak = healthy_static_stdout + "    - [Hinweis] AV_CLEAN: sauber\n"
+    monkeypatch.setattr(smoke_build.subprocess, "run", make_runner(3, av_leak))
+    assert smoke_build.main(["--exe", str(exe)]) == 1
+
 
 # -- BUG-101: unbekannte Snapshot-Flags duerfen nichts ueberschreiben -------
 
