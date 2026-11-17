@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -88,7 +89,14 @@ def _run_guard(
     ]
     if skip_eicar:
         args.append("-SkipEicar")
-    proc = subprocess.run(args, capture_output=True, text=True, timeout=120)
+    clean_env = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}
+    proc = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=clean_env,
+    )
     data = json.loads(proc.stdout)
     return proc, data
 
@@ -192,8 +200,16 @@ def test_missing_state_file_fails(tmp_path):
         capture_output=True,
         text=True,
         timeout=120,
+        env={k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"},
     )
     assert proc.returncode == 1
     data = json.loads(proc.stdout)
     assert "state" in _failing_ids(data)
     assert data["ok"] is False
+
+
+def test_guard_survives_poisoned_psmodulepath(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSModulePath", r"C:\nonexistent_ps7_modules")
+    proc, data = _run_guard(tmp_path, _clean_state())
+    assert proc.returncode == 0, proc.stderr
+    assert data["ok"] is True

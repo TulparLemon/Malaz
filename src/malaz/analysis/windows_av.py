@@ -215,6 +215,45 @@ def _looks_disabled(output: str) -> bool:
     return any(p in text for p in _DISABLED_PHRASES)
 
 
+# Phrases / structured line indicating MpCmdRun bypassed the target without
+# scanning it (e.g. path matches Defender's ExclusionPath or policy skip).
+# _has_raw_skipped_line runs in strict O(N) without regex backtracking and
+# requires MpCmdRun's trailing period ("skipped.") so a multiline echo of a
+# clean extensionless file ("Scanning C:\Dir\backup was skipped\nKeine ...")
+# cannot false-trigger AV_SKIPPED (Win32/NTFS strips trailing dots on files).
+_SKIPPED_PHRASES = (
+    "was skipped",
+    "were skipped",
+    "wurde übersprungen",
+    "wurden übersprungen",
+    "wurde uebersprungen",
+    "wurden uebersprungen",
+)
+_SKIPPED_DE_OEM_RE = re.compile(r"(?i)\bwurden?[ \t]+\S{0,2}bersprungen\b")
+
+
+def _has_raw_skipped_line(output: str) -> bool:
+    """Linear-time structured check for ``Scanning <path> was|were skipped.``."""
+    for line in output.splitlines():
+        tokens = line.strip().lower().split()
+        if (
+            len(tokens) >= 4
+            and tokens[0] == "scanning"
+            and tokens[-2] in ("was", "were")
+            and tokens[-1] == "skipped."
+        ):
+            return True
+    return False
+
+
+def _looks_skipped(output: str) -> bool:
+    """Heuristic: did Defender report that scanning the target was skipped?"""
+    text = output.lower()
+    return any(p in text for p in _SKIPPED_PHRASES) or bool(
+        _SKIPPED_DE_OEM_RE.search(text)
+    )
+
+
 # Phrases that indicate MpCmdRun could not actually run the scan (engine error /
 # scan aborted), as opposed to a detection. In these cases MpCmdRun may still
 # exit with code 2, which must NOT be read as "threat found" — otherwise every
@@ -467,11 +506,17 @@ class WindowsDefenderScanner:
         verdict = _merge_verdicts(raw_structured, _verdict_from_output(analysis_text))
         scan_failed = _looks_like_scan_failure(analysis_text)
         remediated = _remediation_detected(analysis_text)
+        skipped = _has_raw_skipped_line(output) or _looks_skipped(analysis_text)
         # Every AV decision is logged verbatim so a wrong verdict can be
         # diagnosed from malaz.log without re-running the scan.
         log.info(
-            "MpCmdRun rc=%s verdict=%s scan_failed=%s remediated=%s output=%r",
-            rc, verdict, scan_failed, remediated, output_excerpt,
+            "MpCmdRun rc=%s verdict=%s scan_failed=%s remediated=%s skipped=%s output=%r",
+            rc,
+            verdict,
+            scan_failed,
+            remediated,
+            skipped,
+            output_excerpt,
         )
 
         # 1) Threat — the output explicitly names a threat, or return code 2 from
@@ -501,7 +546,45 @@ class WindowsDefenderScanner:
                 detail=headline + output_excerpt,
             )
 
-        # 2) Clean — return code 0, or the output states no threats were found.
+        # 2) Remediation safety net: if the output reports remediation
+        #    (cleaning/removal/quarantine) yet no threat phrase matched, the
+        #    verdict is contradictory — a remediated file IS a detected threat
+        #    and takes precedence over both skip and clean branches.
+        if remediated:
+            log.warning(
+                "AV-Anomalie: Bereinigung gemeldet, aber kein Treffer-Pfad "
+                "(rc=%s) — als Bedrohung gewertet. output=%r",
+                rc,
+                output_excerpt,
+            )
+            return AVResult(
+                scanned=True,
+                threat_found=True,
+                remediated=True,
+                returncode=rc,
+                detail=(
+                    "Windows Defender hat eine Bedrohung erkannt und "
+                    "bereinigt (Anomalie-Erkennung: Bereinigung ohne klaren "
+                    "Treffer-Returncode). " + output_excerpt
+                ),
+            )
+
+        # 3) Skipped — Defender bypassed the target (e.g. path matches an active
+        #    ExclusionPath rule or policy skip) and exited with rc=0 without
+        #    scanning. Must never appear as clean (completeness invariant).
+        if skipped:
+            return AVResult(
+                scanned=False,
+                returncode=rc,
+                skipped_reason=(
+                    "Windows Defender hat den Scan dieser Datei übersprungen "
+                    "(z. B. Ausschlussliste oder Richtlinie) — Datei ist NICHT "
+                    "durch Defender geprüft"
+                ),
+                detail=output_excerpt,
+            )
+
+        # 4) Clean — return code 0, or the output states no threats were found.
         #    The output check matters in passive mode (EDR present), where the
         #    return code can differ but the verdict is still in the text.
         #    A clean phrase must NEVER override a threat return code: the phrase
@@ -509,28 +592,6 @@ class WindowsDefenderScanner:
         #    echo), while the code is Defender's own. Such a case stays unclear
         #    (handled as a failed scan below) instead of being reported clean.
         if (rc == config.AV_RC_CLEAN or verdict == "clean") and rc != config.AV_RC_THREAT:
-            # Safety net: if the output reports remediation (cleaning/removal/
-            # quarantine) yet no threat phrase matched, the verdict is
-            # contradictory — a remediated file IS a detected threat. Without
-            # this, a future phrase gap would silently record "clean" while
-            # the file is deleted (regression: VM corpus run).
-            if remediated:
-                log.warning(
-                    "AV-Anomalie: Bereinigung gemeldet, aber kein Treffer-Pfad "
-                    "(rc=%s) — als Bedrohung gewertet. output=%r",
-                    rc, output_excerpt,
-                )
-                return AVResult(
-                    scanned=True,
-                    threat_found=True,
-                    remediated=True,
-                    returncode=rc,
-                    detail=(
-                        "Windows Defender hat eine Bedrohung erkannt und "
-                        "bereinigt (Anomalie-Erkennung: Bereinigung ohne klaren "
-                        "Treffer-Returncode). " + output_excerpt
-                    ),
-                )
             return AVResult(
                 scanned=True,
                 threat_found=False,
@@ -538,7 +599,7 @@ class WindowsDefenderScanner:
                 detail="Windows Defender: keine Bedrohung gefunden. " + output_excerpt,
             )
 
-        # 3) No known code and no clear verdict. If Defender reported that it is
+        # 5) No known code and no clear verdict. If Defender reported that it is
         #    disabled (typically because a third-party EDR/AV is the primary AV
         #    and Defender is NOT in passive mode), say so explicitly.
         if _looks_disabled(analysis_text):
@@ -554,7 +615,7 @@ class WindowsDefenderScanner:
                 detail=output_excerpt,
             )
 
-        # 4) The scan itself failed/aborted (e.g. "CmdTool: Failed with hr =
+        # 6) The scan itself failed/aborted (e.g. "CmdTool: Failed with hr =
         #    0x80508023"), yet MpCmdRun exited with code 2. This is an engine
         #    error, not a detection — report it inconclusive so it never inflates
         #    the score to a false-positive critical threat.
@@ -571,7 +632,7 @@ class WindowsDefenderScanner:
                 detail=output_excerpt,
             )
 
-        # 5) Generic inconclusive — must not influence the score.
+        # 7) Generic inconclusive — must not influence the score.
         return AVResult(
             scanned=False,
             returncode=rc,

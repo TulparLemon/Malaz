@@ -482,12 +482,21 @@ def test_der_startjob_erreicht_start_clamd_wirklich(monkeypatch):
 
 def test_der_startjob_startet_nichts_bei_ausgeschalteter_stufe(monkeypatch):
     """Ist die ClamAV-Stufe aus, hat ein 170-MB-Daemon keinen Zweck."""
+    import malaz.analysis.clamav as ca
+    import malaz.analysis.clamav_update as cu
     from malaz import config
     from malaz.gui.main_window import _ClamdStartJob
 
     gerufen: list = []
-    import malaz.analysis.clamav_update as cu
 
+    monkeypatch.setattr(config, "CLAMAV_SCAN_CANDIDATES", ())
+    monkeypatch.setattr(ca, "which_absolute", lambda _n: None)
+    monkeypatch.setattr(
+        ca.ClamAVScanner,
+        "_locate_binaries",
+        lambda self: (Path("C:/x/clamscan.exe"), Path("C:/x/clamdscan.exe")),
+    )
+    monkeypatch.setattr(ca.ClamAVScanner, "_choose_binary", lambda self: None)
     monkeypatch.setattr(cu, "clamd_port_offen", lambda *a, **k: False)
     monkeypatch.setattr(cu, "start_clamd", lambda *a, **k: (gerufen.append(1), (True, ""))[1])
     monkeypatch.setattr(config, "CLAMAV_ENABLED", False)
@@ -508,12 +517,27 @@ def test_fehler_im_startjob_entkommt_nicht(monkeypatch):
     Der Test prueft ``run()``, nicht eine Zwischenmethode: genau diese Huelle
     war ungeprueft, als conftest noch den Job statt des Ausloesers stilllegte.
     """
+    import malaz.analysis.clamav as ca
     import malaz.analysis.clamav_update as cu
+    from malaz import config
     from malaz.gui.main_window import _ClamdStartJob
 
+    platzt_gerufen = False
+
     def platzt(*_a, **_k):
+        nonlocal platzt_gerufen
+        platzt_gerufen = True
         raise RuntimeError("absichtlich")
 
+    monkeypatch.setattr(config, "CLAMAV_ENABLED", True)
+    monkeypatch.setattr(config, "CLAMAV_SCAN_CANDIDATES", ())
+    monkeypatch.setattr(ca, "which_absolute", lambda _n: None)
+    monkeypatch.setattr(
+        ca.ClamAVScanner,
+        "_locate_binaries",
+        lambda self: (Path("C:/x/clamscan.exe"), Path("C:/x/clamdscan.exe")),
+    )
+    monkeypatch.setattr(ca.ClamAVScanner, "_choose_binary", lambda self: None)
     # Mitten im Entscheidungsweg, nicht am Rand: sonst wird ein Zweig
     # geprueft, der ohnehin vorher aussteigt (mit laufendem Daemon kam der
     # Test so bis "clamd laeuft." und die Huelle blieb unberuehrt).
@@ -532,5 +556,6 @@ def test_fehler_im_startjob_entkommt_nicht(monkeypatch):
     job = _ClamdStartJob(_Signale())
     job.run()  # darf NICHT werfen
 
+    assert platzt_gerufen, "clamd_port_offen wurde gar nicht erreicht"
     assert sammlung, "der Fehlschlag muss gemeldet werden, nicht stumm bleiben"
     assert "uebersprungen" in sammlung[0][0], sammlung

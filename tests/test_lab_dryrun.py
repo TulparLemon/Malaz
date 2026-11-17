@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -28,7 +29,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_dry_run_reaches_report_with_synthetic_fixtures_only(tmp_path):
+def test_dry_run_reaches_report_with_synthetic_fixtures_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSModulePath", r"C:\nonexistent_ps7_modules")
     work = tmp_path / "lab"
     result = tmp_path / "lab" / "out" / "results.csv"
     proc = subprocess.run(
@@ -48,6 +50,7 @@ def test_dry_run_reaches_report_with_synthetic_fixtures_only(tmp_path):
         capture_output=True,
         text=True,
         timeout=300,
+        env={k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"},
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
