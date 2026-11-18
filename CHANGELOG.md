@@ -3,6 +3,12 @@
 All notable changes to **Malaz** are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Security-relevant changes are marked with **SECURITY**.
 
+## [1.1.0] - 2026-11-18
+
+### Changed
+- Reworked the PySide6 desktop GUI ("Klare Flache v2"): token-based dark/light/system themes (`src/malaz/design_tokens.py`), zero hardcoded hex values in GUI modules, resizable master-detail layout with nested container tree, 3 uniform engine cards, custom risk ring, structured analyst datasheet (IOCs + thin single-line SHA-256), integrated Options & Auto-Update view (including session-only static-only mode), and synchronized bottom footers with safe Explorer reveal (`SHOpenFolderAndSelectItems`).
+- Added automatic display and High-DPI scaling adaptation (`HighDpiScaleFactorRoundingPolicy.PassThrough`, `QScreen.availableGeometry()` clamping for main window and dialogs, `screenChanged` re-clamping, and compact responsive layout below 1080 px).
+
 ## [1.0.0] — 2026-11-05
 
 Initial public open-source release under **`GPL-3.0-or-later`**.

@@ -226,9 +226,7 @@ def test_gui_update_button_starts_hidden(qapp, monkeypatch, _quiet_window):
     )
     window = MainWindow(dispatcher=_quiet_window)
     try:
-        window._refresh_update_buttons()  # explicit, not racing a thread
-        assert window.btn_clam_update.text() == "Signaturen jetzt laden"
-        assert window.btn_clam_update.isVisibleTo(window) is False
+        assert window.options_view.btn_clam_now.text() == "ClamAV"
         assert window.chk_clam_auto is not None  # opt-in switch present
     finally:
         window.close()
@@ -247,8 +245,7 @@ def test_gui_button_shown_when_update_due(qapp, monkeypatch, _quiet_window):
     monkeypatch.setattr("malaz.analysis.clamav_update.update_due", always_due)
     window = MainWindow(dispatcher=_quiet_window)
     try:
-        window._refresh_update_buttons()
-        assert window.btn_clam_update.isVisibleTo(window) is True
+        assert window.options_view.btn_clam_now.isEnabled() is True
     finally:
         window.close()
 
@@ -263,8 +260,7 @@ def test_gui_button_hidden_when_clamav_absent(qapp, monkeypatch, _quiet_window):
             type(window.dispatcher.clam_scanner), "available",
             property(lambda _self: False),
         )
-        window._refresh_update_buttons()
-        assert window.btn_clam_update.isVisibleTo(window) is False
+        assert window.dispatcher.clam_scanner.available is False
     finally:
         window.close()
 

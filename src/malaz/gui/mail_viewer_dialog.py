@@ -52,6 +52,7 @@ from ..core.eml_analysis import analyze_structure, looks_like_mail, parse_mail
 from ..core.mail_score import mechanism_label, sender_score
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip, render_mail, sender_verdict
 from ..security.escaping import mask_invisible
+from .display import clamp_dialog_to_screen
 from .theme import FONT_SUBTITLE, RISK_COLORS, RISK_MARKS
 
 # Endungen, die dieses Fenster oeffnen kann. Inhaltsbasiert waere besser, aber
@@ -84,7 +85,7 @@ class MailViewerDialog(QDialog):
             "Mail ansehen: "
             + _clip(mask_invisible(self._path.name), MAX_DISPLAY_CHARS)
         )
-        self.resize(820, 680)
+        clamp_dialog_to_screen(self, preferred_w=820, preferred_h=680)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -117,11 +118,7 @@ class MailViewerDialog(QDialog):
         oeffnet die Mail danach doch im Mailprogramm.
         """
         rahmen = QFrame()
-        rahmen.setObjectName("verdictCard")
-        rahmen.setStyleSheet(
-            "#verdictCard { background: #1c1e25; border: 1px solid #2c2e38;"
-            " border-radius: 8px; }"
-        )
+        rahmen.setObjectName("card")
         layout = QVBoxLayout(rahmen)
         layout.setContentsMargins(12, 10, 12, 10)
         text = QLabel(

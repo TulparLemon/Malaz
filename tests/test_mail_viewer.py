@@ -300,12 +300,12 @@ def test_capability_tab_title_follows_the_selection(qtbot):
     window._on_result(wenig)
 
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert "Fähigkeiten (8)" in labels, labels
+    assert not window.detail_view._btn_tab_capa.isHidden()
+    assert window.detail_view._btn_tab_capa.text() == "Fähigkeiten (8)"
 
     window.table.setCurrentItem(window.table.topLevelItem(1))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert "Fähigkeiten (1)" in labels, f"der Titel blieb stehen: {labels}"
+    assert not window.detail_view._btn_tab_capa.isHidden()
+    assert window.detail_view._btn_tab_capa.text() == "Fähigkeiten (1)"
 
 
 # Eine Mail, die eine andere Mail MITSENDET (message/rfc822 mit Dateinamen).

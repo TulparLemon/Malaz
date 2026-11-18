@@ -1,159 +1,208 @@
-"""Die Ergebnis-Karte: ein Urteil, das ein Laie auf einen Blick liest.
+"""Verdict Hero card for Malaz v11 ("Klare Fläche v2").
 
-WARUM DIESE DATEI EXISTIERT
-===========================
-Die Ergebnisse standen bisher als Fliesstext in einem QTextEdit. Fachlich
-vollstaendig, aber der erste Satz war "ERGEBNIS: Rot (blockieren) — Score
-100/100 (-8 Punkte durch AV-ohne-Fund)": eine Zahl, ein Klammerzusatz und ein
-Rechenhinweis, bevor ueberhaupt steht, was zu tun ist.
-
-Die Recherche zu dieser Aenderung (Wettbewerber + NN/g) ergab drei Regeln, die
-hier umgesetzt sind:
-
-1. **Wort vor Zahl.** Kein fuehrendes Produkt zeigt den nackten Score allein.
-   ANY.RUN zeigt nur drei Woerter, Malwarebytes nennt ausdruecklich das
-   Rating-Wort, damit der Nutzer nicht raten muss. Der Score bleibt — als
-   kleine Beizahl, fuer die, die ihn suchen.
-2. **Nie Farbe allein.** Rund 8 % der Maenner sind farbenblind. Die Stufe wird
-   IMMER doppelt kodiert: Farbe + Zeichen + Wort. Pruefregel: in Graustufen
-   muss die Einstufung noch erkennbar sein.
-3. **Eine Handlungszeile.** Die Empfehlung steht unter dem Urteil, nicht in
-   einem Abschnitt weiter unten.
-
-Der Score ist bewusst NICHT das Hauptsignal: "37/100" ist ohne Deutung nicht
-lesbar, und "1 von 70 Engines" wird von Laien leicht als Beweis gelesen.
+Displays one punchy headline + one direct action sentence on the left, paired
+with the ``ScoreRingWidget`` on the right. Enforces the monotone completeness
+invariant: a GREEN result with ``is_incomplete=True`` never renders green.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from ..models import RiskLevel
-from .theme import FONT_MARK, RISK_COLORS, RISK_MARKS
+from ..design_tokens import ARCHIVE_TYPES, MAIL_TYPES, visual_state
+from ..models import RiskLevel, ScanResult
+from .sanitize import (
+    clip_text,
+    escape_tooltip,
+    indicator_weight,
+    masked_widget_text,
+    result_is_incomplete,
+)
+from .score_ring import ScoreRingWidget
+from .theme import RISK_MARKS
 
-# Zeichen je Stufe. Die Form traegt die Aussage auch dann, wenn die Farbe
-# nicht ankommt (Farbenblindheit, Graustufendruck eines Screenshots).
-# Aus der gemeinsamen Quelle abgeleitet (gui/theme.RISK_MARKS): das Zeichen
-# darf zwischen Liste, Panel und Bericht nicht auseinanderlaufen.
+# Preserved for backward-compatibility tests asserting mark consistency.
 RISK_MARK = {level: RISK_MARKS[level.name.lower()] for level in RiskLevel}
+
+_ENCRYPTED_RULES = frozenset({"ARCH_ENCRYPTED", "SEVENZIP_ENCRYPTED", "ZIP_ENCRYPTED", "PDF_ENCRYPTED"})
+
+
+def _is_encrypted(result: ScanResult) -> bool:
+    return any(i.rule_id in _ENCRYPTED_RULES for i in result.all_indicators())
+
+
+def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
+    """Return concise (headline, 1-line action summary) for the Verdict Hero."""
+    dt = (result.detected_type or "").lower()
+    is_mail = dt in MAIL_TYPES or bool(result.mail_security)
+    is_archive = dt in ARCHIVE_TYPES or (bool(result.children) and not is_mail)
+    encrypted = _is_encrypted(result)
+
+    if state == "unk":
+        if encrypted:
+            return (
+                "Ungeprüft — Passwortgeschützt",
+                "Inhalt verschlüsselt · Nach dem Entpacken erneut prüfen.",
+            )
+        missing = [i.title for i in result.incomplete_stages[:2]]
+        detail = (
+            ", ".join(masked_widget_text(m) for m in missing)
+            if missing
+            else "Mindestens eine Prüfstufe lief nicht"
+        )
+        return (
+            "Ungeprüft — Unvollständige Prüfung",
+            clip_text(f"{detail} · Nicht als sicher einstufen.", 140),
+        )
+
+    if state == "bad":
+        if is_mail:
+            return (
+                "Gefährlich — Schädliche E-Mail",
+                "Nicht öffnen, keine Links klicken · E-Mail löschen oder IT melden.",
+            )
+        if is_archive and result.children:
+            bad_kids = sum(
+                1 for c in result.children if visual_state(c.risk_level, result_is_incomplete(c)) == "bad"
+            )
+            if bad_kids:
+                return (
+                    "Gefährlich — Schädliche Datei im Archiv",
+                    (
+                        f"{bad_kids} von {len(result.children)} Dateien "
+                        "im Archiv sind gefährlich · Nicht entpacken."
+                    ),
+                )
+        top = next(
+            (
+                i
+                for i in sorted(
+                    result.all_indicators(),
+                    key=lambda x: (-indicator_weight(x), -int(x.severity)),
+                )
+                if indicator_weight(i) > 0
+            ),
+            None,
+        )
+        if top is not None:
+            reason = clip_text(masked_widget_text(top.title), 82)
+            return ("Gefährlich — Nicht öffnen", f"{reason} · Löschen oder IT melden.")
+        return ("Gefährlich — Nicht öffnen", "Schadsoftware erkannt · Löschen oder IT melden.")
+
+    if state == "warn":
+        top = next(
+            (
+                i
+                for i in sorted(
+                    result.all_indicators(),
+                    key=lambda x: (-indicator_weight(x), -int(x.severity)),
+                )
+                if indicator_weight(i) > 0
+            ),
+            None,
+        )
+        if top is not None:
+            reason = clip_text(masked_widget_text(top.title), 88)
+            return ("Verdächtig — Vorsicht beim Öffnen", f"{reason} · Nur bei bekanntem Absender öffnen.")
+        return (
+            "Verdächtig — Vorsicht beim Öffnen",
+            "Auffälligkeiten erkannt · Im Zweifel beim Absender rückfragen.",
+        )
+
+    return (
+        "Unauffällig — Sicher zu öffnen",
+        "Alle Prüfer sauber · Keine schädlichen Inhalte oder Skripte erkannt.",
+    )
 
 
 class VerdictCard(QFrame):
-    """Farbige Karte mit Zeichen, Urteil, Score und Handlungszeile."""
+    """v11 Verdict Hero card with concise headline, action summary, and ScoreRing."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
         self.setObjectName("verdictCard")
-        self.setFrameShape(QFrame.NoFrame)
+        self.setFrameShape(QFrame.Shape.NoFrame)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(8)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(20, 16, 20, 16)
+        root.setSpacing(20)
 
-        top = QHBoxLayout()
-        top.setSpacing(16)
+        left = QVBoxLayout()
+        left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(4)
 
-        self.mark = QLabel()
-        self.mark.setObjectName("verdictMark")
-        self.mark.setAlignment(Qt.AlignCenter)
-        self.mark.setFixedWidth(38)
-        top.addWidget(self.mark)
+        self._headline = QLabel(self)
+        self._headline.setObjectName("verdictHeadline")
+        self._headline.setTextFormat(Qt.TextFormat.PlainText)
+        self._headline.setWordWrap(True)
+        left.addWidget(self._headline)
 
-        text = QVBoxLayout()
-        text.setSpacing(4)
-        self.headline = QLabel()
-        self.headline.setObjectName("verdictHeadline")
-        self.advice = QLabel()
-        self.advice.setObjectName("verdictAdvice")
-        self.advice.setWordWrap(True)
-        text.addWidget(self.headline)
-        text.addWidget(self.advice)
-        top.addLayout(text, 1)
+        self._advice = QLabel(self)
+        self._advice.setObjectName("verdictAdvice")
+        self._advice.setTextFormat(Qt.TextFormat.PlainText)
+        self._advice.setWordWrap(True)
+        left.addWidget(self._advice)
 
-        self.score = QLabel()
-        self.score.setObjectName("verdictScore")
-        self.score.setAlignment(Qt.AlignRight | Qt.AlignTop)
-        top.addWidget(self.score)
+        root.addLayout(left, 1)
 
-        layout.addLayout(top)
-        # Die Engine-Statuszeile gehoert zum Urteil, nicht in eine eigene
-        # Box darunter: sonst stehen zwischen Tabelle und Tabs drei Karten.
-        self.footer = QVBoxLayout()
-        self.footer.setContentsMargins(0, 0, 0, 0)
-        self.footer.setSpacing(8)
-        layout.addLayout(self.footer)
+        self._ring = ScoreRingWidget(self)
+        root.addWidget(self._ring, 0, Qt.AlignmentFlag.AlignVCenter)
 
-    def add_footer(self, widget) -> None:
-        """Statuszeile unter dem Urteil einsetzen (eine Karte, ein Rahmen)."""
-        self.footer.addWidget(widget)
+        # Compatibility label aliases for tests inspecting card text.
+        self._word = self._headline
+        self.headline = self._headline
+        self.advice = self._advice
+        self._mark = QLabel(self)
+        self._mark.hide()
+        self.mark = self._mark
+        self._score = QLabel(self)
+        self._score.hide()
+        self.score = self._score
 
-    def show_result(self, result) -> None:
-        """Karte fuer ein Ergebnis setzen."""
-        level = result.risk_level
-        color = RISK_COLORS[level.name.lower()]
+        self.clear()
 
-        self.mark.setText(RISK_MARK[level])
-        self.mark.setStyleSheet(f"color: {color}; font-size: {FONT_MARK};")
+    def show_result(self, result: ScanResult) -> None:
+        state = visual_state(result.risk_level, result_is_incomplete(result))
+        headline, summary = _build_verdict_copy(result, state)
 
-        # Wort zuerst, dann die Zahl — die Reihenfolge ist die Aussage.
-        if result.is_incomplete:
-            self.headline.setText(f"{level.short} (unvollständig)")
-            self.advice.setText(
-                "Nicht vollständig geprüft: "
-                f"{result.incompleteness_note()}\n{level.advice}"
-            )
-        else:
-            self.headline.setText(level.short)
-            self.advice.setText(level.advice)
+        self.setProperty("state", state)
+        self._headline.setProperty("state", state)
+        self._headline.setText(headline)
+        self._advice.setText(summary)
 
-        # Der AV-Nachlass steht als Tooltip, nicht als Klammer im Urteil:
-        # er erklaert eine Zahl, die niedriger ist als ihre Befunde, und
-        # gehoert damit zum Score, nicht zum Urteil.
-        self.score.setText(f"{result.score}/100")
-        hint = "Punkte, je hoeher desto auffaelliger"
+        # Compatibility fields
+        self._mark.setText(RISK_MARK.get(result.risk_level, "!"))
+        score_text = f"Score {result.score}/100"
         if result.av_discount:
-            # Dieselbe Wortwahl wie CLI, Bericht und Technik-Reiter
-            # ("AV-ohne-Fund"): ein Begriff, der an vier Stellen anders
-            # heisst, ist an vier Stellen zu erklaeren.
-            hint += (
-                f"\n-{result.av_discount} Punkte durch AV-ohne-Fund "
-                f"(der Virenscanner hat nichts gefunden)"
-            )
-        if result.anchored:
-            hint += "\nEin kritischer Befund erzwingt mindestens diese Stufe"
-        self.score.setToolTip(hint)
+            score_text += f" (−{result.av_discount} AV-Abzug)"
+        self._score.setText(score_text)
 
-        self.setStyleSheet(
-            f"#verdictCard {{ background: {_tint(color)}; "
-            f"border-left: 6px solid {color}; border-radius: 8px; }}"
-        )
+        tip_parts = [f"Risiko-Score: {result.score}/100"]
+        if result.av_discount:
+            tip_parts.append(f"AV-Entlastung: -{result.av_discount} Punkte")
+        if result.is_incomplete:
+            stages = ", ".join(i.rule_id for i in result.incomplete_stages[:4])
+            tip_parts.append(f"Unvollständige Prüfstufen: {stages}")
+        tooltip = escape_tooltip(" | ".join(tip_parts))
+        self._score.setToolTip(tooltip)
+        self._ring.set_score(result.score, state, tooltip=tooltip)
+
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self._headline.style().unpolish(self._headline)
+        self._headline.style().polish(self._headline)
+        self.show()
 
     def clear(self) -> None:
-        self.mark.clear()
-        self.headline.setText("Keine Datei ausgewaehlt")
-        self.headline.setStyleSheet("")
-        self.advice.setText("Waehlen Sie eine Zeile aus, um das Ergebnis zu sehen.")
-        self.score.clear()
-        # Ohne das erklaerte der Tooltip ueber dem LEEREN Score-Feld weiter
-        # den AV-Rabatt/Anker der zuletzt gewaehlten Datei (BUG-059).
-        self.score.setToolTip("")
-        self.setStyleSheet("")
-
-
-def _tint(color: str) -> str:
-    """Sehr dunkle Einfaerbung derselben Farbe fuer den Kartenhintergrund.
-
-    Der Streifen links traegt die Farbe kraeftig; die Flaeche dahinter nur
-    angedeutet, damit der Text darauf lesbar bleibt (Kontrast 4,5:1).
-    """
-    rot = int(color[1:3], 16)
-    gruen = int(color[3:5], 16)
-    blau = int(color[5:7], 16)
-    # 12 % der Farbe auf den Panel-Hintergrund gemischt.
-    mix = 0.12
-    base = (0x1C, 0x1E, 0x25)
-    r = int(base[0] * (1 - mix) + rot * mix)
-    g = int(base[1] * (1 - mix) + gruen * mix)
-    b = int(base[2] * (1 - mix) + blau * mix)
-    return f"#{r:02x}{g:02x}{b:02x}"
+        self.setProperty("state", "")
+        self._headline.setProperty("state", "")
+        self._headline.setText("")
+        self._advice.setText("")
+        self._mark.setText("")
+        self._score.setText("")
+        self._score.setToolTip("")
+        self._ring.clear()
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.hide()

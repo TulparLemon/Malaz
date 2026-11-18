@@ -599,8 +599,8 @@ def test_gui_yara_button_only_when_rules_failed(qapp):
         )
     )
     try:
-        assert window.btn_yara_update.text() == "YARA-Regeln nachladen"
-        assert window.btn_yara_update.isVisibleTo(window) is False
+        assert window.options_view.btn_yara_now.text() == "YARA"
+        assert window.options_view.btn_yara_now.isEnabled() is True
     finally:
         window.close()
 

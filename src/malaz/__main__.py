@@ -246,12 +246,16 @@ def _gui_app_icon():
 
 def run_gui(initial_paths: list[str] | None = None) -> int:
     # Imported here so CLI mode never requires a Qt platform / display.
-    from PySide6.QtCore import QThreadPool
+    from PySide6.QtCore import Qt, QThreadPool
+    from PySide6.QtGui import QGuiApplication
     from PySide6.QtWidgets import QApplication
 
     from .gui.main_window import MainWindow
     from .gui.theme import apply_theme
 
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     app = QApplication(sys.argv)
     app.setApplicationName(config.APP_NAME)
     app.setApplicationVersion(__version__)

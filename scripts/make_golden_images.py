@@ -27,8 +27,11 @@ diff.
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
+
+os.environ.setdefault("QT_SCALE_FACTOR", "1")
 from pathlib import Path
 
 _SRC = Path(__file__).resolve().parents[1] / "src"
@@ -165,6 +168,10 @@ def erzeuge(ziel: Path | None = None) -> dict[str, Path]:
     from malaz.models import RiskLevel
 
     app = QApplication.instance() or QApplication([])
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from qt_fonts import ensure_fonts
+
+    ensure_fonts()
     apply_theme(app)
     ordner = ziel or BILD_DIR
     ordner.mkdir(parents=True, exist_ok=True)
@@ -175,8 +182,7 @@ def erzeuge(ziel: Path | None = None) -> dict[str, Path]:
         av_scanner=WindowsDefenderScanner(enabled=False),
         clam_scanner=ClamAVScanner(enabled=False),
     )
-    fenster = MainWindow(dispatcher=disp)
-    fenster.resize(BREITE, HOEHE)
+    fenster = MainWindow(dispatcher=disp, fixed_size=(BREITE, HOEHE))
     ergebnis: dict[str, Path] = {}
 
     def reset():
@@ -191,12 +197,14 @@ def erzeuge(ziel: Path | None = None) -> dict[str, Path]:
     ergebnis["empty_state"] = _grab(fenster, ordner / "empty_state.png")
 
     # 2. Scanning state.
+    fenster.scan_banner.show()
     fenster.progress.show()
     fenster.progress.setValue(42)
     fenster._set_scanning(True)
     app.processEvents()
     ergebnis["scanning"] = _grab(fenster, ordner / "scanning.png")
     fenster._set_scanning(False)
+    fenster.scan_banner.hide()
     fenster.progress.hide()
 
     # 3. Green result.
@@ -312,7 +320,7 @@ def erzeuge(ziel: Path | None = None) -> dict[str, Path]:
             )
         )
     fenster.summary.update_results(fenster._results)
-    _select(4)(fenster)
+    fenster._show_batch_overview()
     app.processEvents()
     ergebnis["batch_summary"] = _grab(fenster, ordner / "batch_summary.png")
 
@@ -349,11 +357,9 @@ def erzeuge(ziel: Path | None = None) -> dict[str, Path]:
     fenster._on_result(mail_result)
     _select()(fenster)
     app.processEvents()
-    mail_index = fenster.tabs.indexOf(fenster.mail_panel)
-    if mail_index >= 0:
-        fenster.tabs.setCurrentIndex(mail_index)
-        app.processEvents()
-        ergebnis["mail_panel"] = _grab(fenster, ordner / "mail_panel.png")
+    fenster.detail_view.select_tab(2)
+    app.processEvents()
+    ergebnis["mail_panel"] = _grab(fenster, ordner / "mail_panel.png")
     dialog = MailViewerDialog(pfad)
     dialog.resize(820, 680)
     dialog.show()

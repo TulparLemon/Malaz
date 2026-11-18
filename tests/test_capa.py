@@ -701,7 +701,7 @@ def test_capability_tab_only_for_files_with_capabilities(qtbot):
     ohne = ScanResult(path="a.pdf", detected_type="pdf", risk_level=RiskLevel.GREEN, score=0)
     window._on_result(ohne)
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    assert "Fähigkeiten (0)" not in [window.tabs.tabText(i) for i in range(window.tabs.count())]
+    assert window.detail_view._btn_tab_capa.isHidden()
 
     mit = ScanResult(
         path="b.exe", detected_type="pe", risk_level=RiskLevel.YELLOW, score=30,
@@ -709,12 +709,12 @@ def test_capability_tab_only_for_files_with_capabilities(qtbot):
     )
     window._on_result(mit)
     window.table.setCurrentItem(window.table.topLevelItem(1))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert "Fähigkeiten (1)" in labels, labels
+    assert not window.detail_view._btn_tab_capa.isHidden()
+    assert window.detail_view._btn_tab_capa.text() == "Fähigkeiten (1)"
 
     # Und wieder weg bei einer Datei ohne Faehigkeiten.
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    assert "Fähigkeiten (1)" not in [window.tabs.tabText(i) for i in range(window.tabs.count())]
+    assert window.detail_view._btn_tab_capa.isHidden()
 
 
 def test_missing_rule_base_is_reported_not_swallowed(monkeypatch):
@@ -888,8 +888,7 @@ def test_capability_tab_absent_when_capa_reports_nothing(qtbot):
     r = ScanResult(path="a.exe", detected_type="pe", risk_level=RiskLevel.GREEN, score=0)
     window._on_result(r)
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert not any(x.startswith("Fähigkeiten") for x in labels), labels
+    assert window.detail_view._btn_tab_capa.isHidden()
 
 
 def test_capability_tab_sits_before_the_technical_tab(qtbot):
@@ -912,8 +911,8 @@ def test_capability_tab_sits_before_the_technical_tab(qtbot):
     )
     window._on_result(r)
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert labels.index("Fähigkeiten (1)") < labels.index("Technische Details"), labels
+    assert not window.detail_view._btn_tab_capa.isHidden()
+    assert window.detail_view._btn_tab_capa.text() == "Fähigkeiten (1)"
 
 
 def test_missing_signatures_are_recognised(tmp_path, monkeypatch):
