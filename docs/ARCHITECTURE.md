@@ -77,7 +77,7 @@ To prevent out-of-memory crashes while still inspecting large installers, ISOs, 
 2. **Per-Rule Deduplication:** Repeated instances of the same `rule_id` count **once** at their highest effective weight.
 3. **Additive Raw Score:** Sum the deduplicated weights across all distinct `rule_id`s (`raw`).
 4. **AV Clean Discount:** Subtract `4` points per verified clean AV engine vote (`AV_CLEAN`, `CLAMAV_CLEAN`, `EXT_<TAG>_CLEAN`), capped at `8` points total. Skipped or errored engines (`AV_SKIPPED`, `CLAMAV_SKIPPED`) grant **zero** discount.
-5. **Green Floor (`SCORE_GREEN_MAX = 19`):** If `raw > 19`, the discounted score cannot drop below `20` (`YELLOW`) — clean AV votes never erase a substantive static warning or incomplete-scan indicator.
+5. **Green Floor (`SCORE_GREEN_MAX = 19`):** If `raw > 19`, the discounted score cannot drop below `20` (`YELLOW`); clean AV votes never erase a substantive static warning or incomplete-scan indicator.
 6. **Critical Anchor (`ANCHOR_CRITICAL_SCORE = 50`):** Any `CRITICAL` indicator (e.g., `CLAMAV_THREAT`, `PDF_KW_Launch`, `ARCH_ZIPSLIP`, AutoExec + shell macro, SHA-256 blocklist hit) forces `score >= 50` (`RED`).
 7. **Cap:** Clamp final score to `[0, 100]`.
 

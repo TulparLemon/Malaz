@@ -53,38 +53,41 @@ def secret_keys(gpg: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--sums", required=True, type=Path)
-    ap.add_argument("--key", help="Signaturschlüssel (Fingerprint oder UID)")
-    ap.add_argument("--require-signature", action="store_true", help="Exit 1 statt 0 wenn gpg/Key fehlt")
+    ap.add_argument("--key", help="Signing key fingerprint or UID")
+    ap.add_argument(
+        "--require-signature",
+        action="store_true",
+        help="Exit 1 instead of 0 when gpg or a secret key is missing",
+    )
     args = ap.parse_args(argv)
 
     sums: Path = args.sums
     if not sums.is_file():
-        print(f"FEHLER: {sums} existiert nicht.")
+        print(f"ERROR: {sums} does not exist.")
         return 2
 
     gpg = find_gpg()
     if gpg is None:
-        print("Kein gpg gefunden (PATH oder Git-Installation).")
+        print("gpg executable not found (checked PATH and Git installation).")
         return 1 if args.require_signature else 0
 
     keys = secret_keys(gpg)
     if not keys:
-        print("Kein geheimer GPG-Schlüssel im Keyring.")
-        print("Anlegen (einmalig). Die Passphrase steht in einer Datei, NICHT")
-        print("als --passphrase \"\": das legt einen SCHUTZLOSEN Schluessel an,")
-        print("und jede damit erzeugte Signatur kann jeder nachbauen.")
-        print("In einer SSH-Sitzung kann pinentry kein Fenster oeffnen - deshalb")
-        print("--pinentry-mode loopback, sonst haengt der Aufruf bis zum Timeout.")
-        print('  gpg --batch --pinentry-mode loopback --passphrase-file <datei> \\')
+        print("No secret GPG key found in keyring.")
+        print("Create one once. Store the passphrase in a file, NEVER pass")
+        print('--passphrase "": an unprotected key lets anyone with keyring')
+        print("access forge signatures.")
+        print("In an SSH session pinentry cannot open a GUI window; pass")
+        print("--pinentry-mode loopback so gpg does not hang until timeout:")
+        print("  gpg --batch --pinentry-mode loopback --passphrase-file <file> \\")
         print('      --quick-gen-key "Malaz Release Signing <release@malaz.local>" \\')
-        print('      ed25519 sign never')
-        print("Danach pruefen, dass der Schluessel WIRKLICH geschuetzt ist:")
-        print('  gpg --batch --pinentry-mode error --detach-sign -u <fpr> \\')
-        print('      --output NUL <irgendeine-datei>')
-        print("  -> scheitert mit \"can't get input\"; gelingt es, fehlt die Passphrase.")
-        print("Danach den öffentlichen Schlüssel veröffentlichen:")
-        print("  gpg --armor --export <Fingerprint> > docs/RELEASE-SIGNING-KEY.asc")
-        print("und in die README aufnehmen.")
+        print("      ed25519 sign never")
+        print("Then verify that signing without a passphrase fails:")
+        print("  gpg --batch --pinentry-mode error --detach-sign -u <fpr> \\")
+        print("      --output NUL <any-file>")
+        print("  -> must fail (\"can't get input\"); if it succeeds, the key has no passphrase.")
+        print("Then export the public key to the repository:")
+        print("  gpg --armor --export <fingerprint> > docs/RELEASE-SIGNING-KEY.asc")
         return 1 if args.require_signature else 0
 
     # NEVER fall back to "the first key in the ring": on a machine with more
@@ -96,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     elif len(keys) == 1:
         key = keys[0]
     else:
-        print(f"FEHLER: {len(keys)} geheime Schluessel im Keyring - --key ist Pflicht.")
+        print(f"ERROR: {len(keys)} secret keys in keyring; --key is required.")
         for k in keys:
             print(f"  {k}")
         return 2
@@ -107,9 +110,11 @@ def main(argv: list[str] | None = None) -> int:
     # session has no window for pinentry to open - without it gpg blocks until
     # it times out (measured: "signing failed: Timeout").
     passphrase = os.environ.get("MALAZ_GPG_PASSPHRASE")
-    cmd = [str(gpg), "--batch", "--yes", "--pinentry-mode", "loopback",
-           "--armor", "--detach-sign", "--local-user", key,
-           "--output", str(out)]
+    cmd = [
+        str(gpg), "--batch", "--yes", "--pinentry-mode", "loopback",
+        "--armor", "--detach-sign", "--local-user", key,
+        "--output", str(out),
+    ]
     if passphrase is not None:
         cmd += ["--passphrase-fd", "0"]
     cmd.append(str(sums))
@@ -130,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
         # sit next to the checksums and look like a signature. Remove it.
         out.unlink(missing_ok=True)
         print(proc.stderr.strip())
-        print(f"FEHLER: gpg meldet Returncode {proc.returncode}.")
+        print(f"ERROR: gpg exited with code {proc.returncode}.")
         return 1
 
     verify = subprocess.run(
@@ -139,12 +144,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     if verify.returncode != 0:
         out.unlink(missing_ok=True)
-        print(f"FEHLER: Signatur nicht verifizierbar.\n{verify.stderr.strip()}")
+        print(f"ERROR: Signature verification failed.\n{verify.stderr.strip()}")
         return 1
 
     if passphrase is None:
-        print("Hinweis: MALAZ_GPG_PASSPHRASE war nicht gesetzt.")
-    print(f"Signiert und verifiziert: {out.name} (Schlüssel {key})")
+        print("Note: MALAZ_GPG_PASSPHRASE was not set.")
+    print(f"Signed and verified: {out.name} (key {key})")
     return 0
 
 

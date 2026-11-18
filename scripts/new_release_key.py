@@ -1,9 +1,9 @@
 """Create the release signing key with YOUR passphrase.
 
 Run this yourself, in a terminal on the build machine. The passphrase is read
-with getpass (no echo), written to a temporary file only for the duration of
-the gpg call, and deleted afterwards. It never appears in argv - a command line
-is readable by every process on the machine - and never in this repository.
+with getpass (no echo) and piped to gpg over stdin (never written to disk). It
+never appears in argv - a command line is readable by every process on the
+machine - and never in this repository.
 
     python scripts/new_release_key.py
 
@@ -11,10 +11,8 @@ What it does:
   1. generates an ed25519 signing key with your passphrase
   2. proves the key is protected: a signature WITHOUT the passphrase must fail
   3. exports the public key to docs/RELEASE-SIGNING-KEY.asc
-  4. updates the fingerprint in docs/VERIFYING_RELEASES.md and scripts/backup_key.py
+  4. updates the fingerprint in docs, scripts, and tests
   5. offers to delete the previous key
-
-The old key signed nothing that was published, so replacing it costs nothing.
 """
 from __future__ import annotations
 
@@ -42,7 +40,7 @@ def find_gpg() -> Path:
         if path.is_file():
             return path
     raise SystemExit(
-        "gpg nicht gefunden. Erwartet unter:\n  " + "\n  ".join(GPG_CANDIDATES)
+        "gpg executable not found. Expected at:\n  " + "\n  ".join(GPG_CANDIDATES)
     )
 
 
@@ -69,13 +67,13 @@ def secret_keys(gpg: Path) -> list[tuple[str, str]]:
 
 def ask_passphrase() -> str:
     while True:
-        first = getpass.getpass("Neue Passphrase (keine Anzeige): ")
+        first = getpass.getpass("New passphrase (no echo): ")
         if len(first) < MIN_LENGTH:
-            print(f"Zu kurz - mindestens {MIN_LENGTH} Zeichen.")
+            print(f"Too short: at least {MIN_LENGTH} characters required.")
             continue
-        second = getpass.getpass("Wiederholen: ")
+        second = getpass.getpass("Repeat passphrase: ")
         if first != second:
-            print("Die Eingaben stimmen nicht ueberein.")
+            print("Passphrases do not match.")
             continue
         return first
 
@@ -101,14 +99,14 @@ def generate(gpg: Path, passphrase: str, before: set[str]) -> str:
         input=passphrase + "\n",
     )
     if proc.returncode != 0:
-        raise SystemExit(f"Schluesselerzeugung fehlgeschlagen:\n{proc.stderr}")
+        raise SystemExit(f"Key generation failed:\n{proc.stderr}")
 
     after = {fingerprint for fingerprint, _uid in secret_keys(gpg)}
     created = after - before
     if len(created) != 1:
         raise SystemExit(
-            f"Erwartet genau einen neuen Schluessel, gefunden: {len(created)} "
-            f"({', '.join(sorted(created)) or 'keiner'})"
+            f"Expected exactly one new key, found: {len(created)} "
+            f"({', '.join(sorted(created)) or 'none'})"
         )
     return created.pop()
 
@@ -148,7 +146,7 @@ def prove_protected(gpg: Path, fingerprint: str) -> bool:
 def export_public(gpg: Path, fingerprint: str) -> Path:
     proc = run(gpg, ["--armor", "--export", fingerprint])
     if proc.returncode != 0 or not proc.stdout:
-        raise SystemExit(f"Export fehlgeschlagen:\n{proc.stderr}")
+        raise SystemExit(f"Public key export failed:\n{proc.stderr}")
     target = REPO / "docs" / "RELEASE-SIGNING-KEY.asc"
     # Write bytes, not through a shell redirect: PowerShell would mangle the
     # armour (measured: "partial length invalid for packet type").
@@ -198,29 +196,29 @@ def main() -> int:
 
     existing = secret_keys(gpg)
     if existing:
-        print("\nVorhandene geheime Schluessel:")
+        print("\nExisting secret keys:")
         for fingerprint, uid in existing:
             print(f"  {fingerprint}  {uid}")
-        print("\nDer neue Schluessel kommt hinzu; der alte wird am Ende angeboten.")
+        print("\nThe new key will be added; you will be prompted before deleting old keys.")
 
-    print("\nDie Passphrase wird nicht angezeigt und nicht gespeichert.")
+    print("\nThe passphrase is neither echoed nor stored on disk.")
     passphrase = ask_passphrase()
 
     before = {fingerprint for fingerprint, _uid in existing}
-    print("\nErzeuge Schluessel ...")
+    print("\nGenerating key ...")
     fingerprint = generate(gpg, passphrase, before)
     print(f"Fingerprint: {fingerprint}")
 
     clear_agent_cache(gpg)
     if not prove_protected(gpg, fingerprint):
         raise SystemExit(
-            "FEHLER: Signieren ohne Passphrase gelingt - der Schluessel ist "
-            "ungeschuetzt. Nicht verwenden."
+            "ERROR: Signing succeeded without a passphrase; the key is "
+            "unprotected. Do not use it."
         )
-    print("Schutz geprueft: Signieren ohne Passphrase scheitert.")
+    print("Protection verified: signing without a passphrase fails.")
 
     key_file = export_public(gpg, fingerprint)
-    print(f"Oeffentlicher Schluessel: {key_file.relative_to(REPO)}")
+    print(f"Public key written: {key_file.relative_to(REPO)}")
 
     # The old signature belongs to the OLD key. Once the public key file is
     # replaced and the old key is deleted, nobody can verify it any more
@@ -229,38 +227,37 @@ def main() -> int:
     stale = sorted((REPO / "dist").glob("SHA256SUMS-*.txt.asc"))
     for path in stale:
         path.unlink(missing_ok=True)
-        print(f"Alte Signatur entfernt: dist/{path.name}")
+        print(f"Removed stale signature: dist/{path.name}")
 
     pretty = format_pretty(fingerprint)
     for path in update_references(OLD_FINGERPRINT, fingerprint, pretty):
-        print(f"Aktualisiert: {path.relative_to(REPO)}")
+        print(f"Updated: {path.relative_to(REPO)}")
 
-    print("\n--- Naechste Schritte ---")
-    print("1. Schluessel sichern (Passphrase der Sicherung waehlen):")
+    print("\n--- Next steps ---")
+    print("1. Back up the secret key (choose a backup encryption passphrase):")
     print("     python scripts/backup_key.py")
-    print("2. Die Passphrase in einen Passwortmanager legen.")
-    print("3. `git diff` pruefen, committen, Tag neu setzen, Source-Zip neu,")
-    print("   Pruefsummen neu - ERST DANN signieren, sonst deckt die Signatur")
-    print("   veraltete Hashes:")
+    print("2. Store the passphrase in a password manager.")
+    print("3. Review `git diff`, commit, re-tag, rebuild source archive and")
+    print("   checksums; sign ONLY AFTER checksums are final:")
     print("     python scripts/sign_sums.py --sums dist/SHA256SUMS-1.0.0.txt \\")
     print(f"         --key {fingerprint}")
 
     if existing:
-        print("\nAlten Schluessel loeschen?")
+        print("\nDelete previous secret key?")
         for old_fingerprint, uid in existing:
             if old_fingerprint == fingerprint:
                 continue
-            answer = input(f"  {old_fingerprint} ({uid}) [j/N] ").strip().lower()
-            if answer != "j":
+            answer = input(f"  {old_fingerprint} ({uid}) [y/N] ").strip().lower()
+            if answer not in ("y", "yes"):
                 continue
             proc = run(gpg, [
                 "--batch", "--yes", "--delete-secret-and-public-key",
                 old_fingerprint,
             ])
             if proc.returncode == 0:
-                print(f"  geloescht: {old_fingerprint}")
+                print(f"  deleted: {old_fingerprint}")
             else:
-                print(f"  nicht geloescht: {proc.stderr.strip()[:200]}")
+                print(f"  not deleted: {proc.stderr.strip()[:200]}")
     return 0
 
 

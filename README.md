@@ -2,7 +2,7 @@
 
 # Malaz
 
-Native, **offline-by-default** desktop file security triage for Windows 10/11. Malaz inspects suspicious documents, archives, executables, scripts, images, and emails locally — with zero cloud uploads, zero telemetry, and full source availability under **[GPL-3.0-or-later](LICENSE)** (third-party notices and SBOM in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+Native, **offline-by-default** desktop file security triage for Windows 10/11. Malaz inspects suspicious documents, archives, executables, scripts, images, and emails locally, with zero cloud uploads, zero telemetry, and full source availability under **[GPL-3.0-or-later](LICENSE)** (third-party notices and SBOM in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 
 <br clear="left" />
 
@@ -26,7 +26,7 @@ Most non-analysts facing a suspicious email attachment, USB file, or download ha
   - **Email (`.eml` / `.msg`):** Header authentication analysis, display-name & reply-to spoofing heuristics, defanged link extraction, safe plain-text mail viewer, and recursive attachment scanning.
   - **Executables (`PE` / `ELF` / `Mach-O`):** Header/section anomalies, RWX sections, overlays, Authenticode metadata, suspicious imports/strings, plus optional local **Detect It Easy** (`diec.exe`) and **capa** integration.
   - **Images & Media:** Magic-byte vs. extension mismatch (`GEN_FORMAT_MISMATCH`), appended payloads past PNG `IEND` / JPEG `EOI`, HEIC/AVIF box bounds, and EXIF inspection.
-  - **Archives & Containers:** Recursive bounded inspection of `ZIP`, `TAR`/`GZIP`/`BZIP2`/`XZ`, and (via local 7-Zip CLI) `7z`, `RAR`, `CAB`, and `ISO` — hardened against Zip-Slip, junctions, and decompression bombs.
+  - **Archives & Containers:** Recursive bounded inspection of `ZIP`, `TAR`/`GZIP`/`BZIP2`/`XZ`, and (via local 7-Zip CLI) `7z`, `RAR`, `CAB`, and `ISO`, hardened against Zip-Slip, junctions, and decompression bombs.
   - **Generic & Scripts:** Vectorized Shannon entropy, bundled YARA rules (`rules/yara/malaz_*.yar`), local SHA-256/URL/domain/CIDR blocklists, `.lnk` shortcut target/argument parsing, `.rtf`, and `.swf`.
 - **Multi-Engine Local Orchestration:** Runs on-demand **Windows Defender** (`MpCmdRun.exe`), **ClamAV** (`clamdscan` / `clamscan`), and **YARA** side by side with per-engine status chips (`clean` / `threat` / `unchecked`).
 - **Completeness Invariant (*"Unchecked is Never Clean"*):** Missing parsers, skipped stages, password-protected archives, size caps, or timeouts never silently pass as `GREEN`; incomplete inspections surface explicitly in the verdict badge, detail pane, CLI exit code, and exported reports.
@@ -37,13 +37,13 @@ Most non-analysts facing a suspicious email attachment, USB file, or download ha
 
 ## Quickstart
 
-### Option 1 — Portable Standalone Release (No Python Required)
+### Option 1: Portable Standalone Release (No Python Required)
 
 1. Download `Malaz-1.0.0.zip`, `SHA256SUMS-1.0.0.txt`, `SHA256SUMS-1.0.0.txt.asc`, and [docs/RELEASE-SIGNING-KEY.asc](docs/RELEASE-SIGNING-KEY.asc) from Releases.
 2. Verify the OpenPGP signature and SHA-256 checksum ([docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md)).
 3. Extract the archive and run `Malaz.exe` directly from the extracted folder (no installer, no administrator privileges required).
 
-### Option 2 — Run from Source (Windows 10/11, Python 3.11–3.12)
+### Option 2: Run from Source (Windows 10/11, Python 3.11–3.12)
 
 ```bat
 git clone https://github.com/TulparLemon/Malaz.git
@@ -98,7 +98,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 
 ## License & Rule Sources
 
-Malaz is free software licensed under **[GPL-3.0-or-later](LICENSE)** — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the complete runtime dependency inventory (SBOM) and LGPLv3 §3 / GPLv3 §6 notices.
+Malaz is free software licensed under **[GPL-3.0-or-later](LICENSE)**. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the complete runtime dependency inventory (SBOM) and LGPLv3 §3 / GPLv3 §6 notices.
 
 Third-party threat feeds and external YARA rule collections ([ReversingLabs YARA](https://github.com/reversinglabs/reversinglabs-yara-rules) under MIT, [Neo23x0 signature-base](https://github.com/Neo23x0/signature-base) under DRL 1.1 with per-rule licenses) are **not bundled** in this repository or in binary releases; users can fetch them locally on an explicit opt-in basis ([docs/USAGE.md](docs/USAGE.md)).
 

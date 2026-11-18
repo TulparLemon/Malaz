@@ -32,7 +32,7 @@ Once the `Release` workflow succeeds, download the draft assets on the signing m
 ```powershell
 gh release download v1.0.0 -D dist\draft-v1.0.0
 
-# Pre-sign check: verifies all 4 asset hashes & sizes; exits 3 (UNSIGNIERT) before signing
+# Pre-sign check: verifies all 4 asset hashes & sizes; exits 3 (UNSIGNED) before signing
 python scripts/verify_release_set.py dist\draft-v1.0.0
 
 # Create detached signature (never rewrite SHA256SUMS after this step!)

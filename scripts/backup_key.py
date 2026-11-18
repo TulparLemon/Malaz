@@ -23,10 +23,10 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         default=Path.home() / "malaz-release-key-SECRET.asc.gpg",
-        help="Zielpfad ausserhalb des Repositorys (niemals im Projektordner)",
+        help="Destination path outside the repository (never inside the project tree)",
     )
-    parser.add_argument("--gpg", default=GPG_EXE, help="Pfad zu gpg.exe")
-    parser.add_argument("--key", default=RELEASE_FINGERPRINT, help="Fingerprint des Schluessels")
+    parser.add_argument("--gpg", default=GPG_EXE, help="Path to gpg.exe")
+    parser.add_argument("--key", default=RELEASE_FINGERPRINT, help="Signing key fingerprint")
     args = parser.parse_args(argv)
 
     out = args.output.resolve()
@@ -36,11 +36,11 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         pass
     else:
-        raise SystemExit("Zielpfad liegt innerhalb des Repositorys - abgebrochen.")
+        raise SystemExit("Destination path is inside the repository; aborted.")
 
-    pw = getpass.getpass("Passphrase fuer die Sicherung: ")
+    pw = getpass.getpass("Backup encryption passphrase: ")
     if len(pw) < 12:
-        raise SystemExit("Zu kurz - mindestens 12 Zeichen.")
+        raise SystemExit("Too short: at least 12 characters required.")
 
     # The passphrase travels through stdin, never argv: a command line is visible
     # to every process on the machine (WMI Win32_Process, Process Explorer).
@@ -69,9 +69,9 @@ def main(argv: list[str] | None = None) -> int:
         check=False,
     )
     if proc.returncode != 0:
-        raise SystemExit(f"Export fehlgeschlagen: {proc.stderr[:300]}")
-    print(f"Sicherung: {out}  ({out.stat().st_size} Bytes)")
-    print("Diese Datei gehoert NICHT ins Repository und NICHT in ein Cloud-Sync.")
+        raise SystemExit(f"Export failed: {proc.stderr[:300]}")
+    print(f"Backup written: {out}  ({out.stat().st_size} bytes)")
+    print("Do NOT commit this file to the repository or place it in a cloud-synced folder.")
     return 0
 
 

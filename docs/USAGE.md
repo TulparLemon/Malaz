@@ -6,7 +6,7 @@ Launch the desktop interface via `Malaz.exe`, `start.bat`, or `python -m malaz`:
 
 1. **Drop or Select Files/Folders:** Drag suspicious files or directories onto the main window.
 2. **Inspect Verdicts & Engine Strip:** Each scanned item displays:
-   - Traffic-light risk badge (`GREEN` 0–19, `YELLOW` 20–49, `RED` 50–100) — marked *(unvollständig / incomplete)* whenever any content-bearing stage could not run,
+   - Traffic-light risk badge (`GREEN` 0–19, `YELLOW` 20–49, `RED` 50–100), marked *(unvollständig / incomplete)* whenever any content-bearing stage could not run,
    - Per-engine status chips (`Defender`, `ClamAV`, `YARA`: clean / threat / unchecked),
    - Score breakdown (`src/malaz/gui/score_breakdown.py`) and plain-language explanation + recommended next step.
 3. **Safe Email Preview:** For `.eml` and `.msg` files, open the dedicated plain-text mail panel (`src/malaz/gui/mail_panel.py`) to inspect sender/reply-to mismatches, authentication headers, defanged URLs (`hxxp://`), and recursively scanned attachments without rendering untrusted HTML or remote images.
@@ -34,7 +34,7 @@ python -m malaz --cli C:\Samples\invoice.pdf --report report.html
 :: Scan directories and files recursively (up to config.MAX_BATCH_FILES = 5000)
 python -m malaz --cli C:\DropFolder C:\Samples\archive.zip --report batch.html
 
-:: Purely static scan (disables Windows Defender & ClamAV — preserves forensic samples)
+:: Purely static scan (disables Windows Defender & ClamAV; preserves forensic samples)
 python -m malaz --cli C:\Samples\suspect.docm --static-only --report static.html
 
 :: Show local engine, Defender, and privilege status (offline)
@@ -92,8 +92,8 @@ Malaz supports completely offline hash, URL, domain, and CIDR matching:
 
 - **Tracked format example:** `rules/hashes/blocklist.sha256` (curated format documentation / EICAR hash).
 - **User-imported feeds (stored outside Git under `%LocalAppData%\Malaz\hashes\`):**
-  - File SHA-256 blocklist (`blocklist.sha256`) — hits trigger a `CRITICAL` anchor (`50`, `RED`).
-  - Defanged/hashed URL blocklist (`urls.sha256`) — stores **only SHA-256 hashes** of malicious URLs (never live URLs on disk, avoiding AV false alarms on feed files); hits trigger `MAIL_LINK_REPUTATION` (`HIGH` / `30`) with zero network traffic.
+  - File SHA-256 blocklist (`blocklist.sha256`): hits trigger a `CRITICAL` anchor (`50`, `RED`).
+  - Defanged/hashed URL blocklist (`urls.sha256`): stores **only SHA-256 hashes** of malicious URLs (never live URLs on disk, avoiding AV false alarms on feed files); hits trigger `MAIL_LINK_REPUTATION` (`HIGH` / `30`) with zero network traffic.
   - Domain (`domains.txt`) and IP/CIDR (`netze.txt`) lists.
 
 ```bat
