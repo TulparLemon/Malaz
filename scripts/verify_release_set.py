@@ -14,7 +14,7 @@ if _SCRIPTS_DIR not in sys.path:
 import sign_sums  # noqa: E402
 import write_checksums  # noqa: E402
 
-EXPECTED_SIGNING_FPR = "11F51D1BEE30EAA3C88AE01B36F1852E0ADE4A08"
+EXPECTED_SIGNING_FPR = "AD927E805BE3B440BD676872F350D77C8D498335"
 _SUMS_NAME_RE = re.compile(r"^SHA256SUMS-(\d+\.\d+\.\d+)\.txt$")
 
 

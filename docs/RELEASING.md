@@ -36,7 +36,7 @@ gh release download v1.0.0 -D dist\draft-v1.0.0
 python scripts/verify_release_set.py dist\draft-v1.0.0
 
 # Create detached signature (never rewrite SHA256SUMS after this step!)
-python scripts/sign_sums.py --sums dist\draft-v1.0.0\SHA256SUMS-1.0.0.txt --key 11F51D1BEE30EAA3C88AE01B36F1852E0ADE4A08 --require-signature
+python scripts/sign_sums.py --sums dist\draft-v1.0.0\SHA256SUMS-1.0.0.txt --key AD927E805BE3B440BD676872F350D77C8D498335 --require-signature
 
 # Post-sign check: must exit 0 (hashes + VALIDSIG fingerprint verified)
 python scripts/verify_release_set.py dist\draft-v1.0.0

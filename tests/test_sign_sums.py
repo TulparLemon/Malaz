@@ -17,7 +17,7 @@ def test_failed_verify_deletes_unverifiable_asc_and_returns_1(tmp_path: Path, mo
     monkeypatch.setattr(
         sign_sums,
         "secret_keys",
-        lambda _gpg: ["11F51D1BEE30EAA3C88AE01B36F1852E0ADE4A08"],
+        lambda _gpg: ["AD927E805BE3B440BD676872F350D77C8D498335"],
     )
 
     def fake_run(cmd, **_kwargs):

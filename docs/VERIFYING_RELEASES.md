@@ -7,7 +7,7 @@ Every official Malaz release provides **OpenPGP-signed SHA-256 checksum manifest
 ## 1. Release Signing Key
 
 ```text
-Fingerprint: 11F5 1D1B EE30 EAA3 C88A  E01B 36F1 852E 0ADE 4A08
+Fingerprint: AD92 7E80 5BE3 B440 BD67  6872 F350 D77C 8D49 8335
 UID:         Malaz Release Signing <release@malaz.local>
 ```
 
@@ -43,7 +43,7 @@ gpg --verify SHA256SUMS-1.0.0.txt.asc SHA256SUMS-1.0.0.txt
 Expected output must show `Good signature from "Malaz Release Signing <release@malaz.local>"` **and** match the exact primary key fingerprint:
 
 ```text
-11F5 1D1B EE30 EAA3 C88A  E01B 36F1 852E 0ADE 4A08
+AD92 7E80 5BE3 B440 BD67  6872 F350 D77C 8D49 8335
 ```
 
 ### Step 2 - Verify the Archive SHA-256 Checksum
