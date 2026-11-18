@@ -373,7 +373,7 @@ class MainWindow(QMainWindow):
         self.chk_clam_auto = ToggleSwitch(parent=self)
         self.chk_clam_auto.setAccessibleName("ClamAV Auto-Update")
         self.chk_clam_auto.setChecked(
-            s.value("clam_auto_update", config.CLAMAV_AUTO_UPDATE_ENABLED_DEFAULT, bool)
+            s.value("clamav_auto_update", config.CLAMAV_AUTO_UPDATE_ENABLED_DEFAULT, bool)
         )
         self.chk_clam_auto.toggled.connect(self._on_clam_auto_toggled)
 
@@ -562,6 +562,21 @@ class MainWindow(QMainWindow):
         sw_lay = QVBoxLayout(scan_wrap)
         sw_lay.setContentsMargins(8, 8, 8, 0)
         sw_lay.addWidget(self.scan_banner)
+
+        # Visible batch-limit warning banner (shown when MAX_BATCH_FILES truncates input)
+        self._truncation_banner = QFrame(sidebar)
+        self._truncation_banner.setObjectName("card")
+        self._truncation_banner.setProperty("accent", "warn")
+        tb_lay = QVBoxLayout(self._truncation_banner)
+        tb_lay.setContentsMargins(10, 8, 10, 8)
+        tb_lay.setSpacing(2)
+        self._truncation_lbl = QLabel("", self._truncation_banner)
+        self._truncation_lbl.setObjectName("captionLabel")
+        self._truncation_lbl.setWordWrap(True)
+        self._truncation_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        tb_lay.addWidget(self._truncation_lbl)
+        self._truncation_banner.hide()
+        sw_lay.addWidget(self._truncation_banner)
         sb_lay.addWidget(scan_wrap)
 
         # Ordner-Übersicht Bar (hidden when no results yet)
@@ -911,7 +926,13 @@ class MainWindow(QMainWindow):
 
         if truncated:
             self._batch_truncated = True
-            self.statusBar().showMessage(f"Batch-Limit erreicht (max. {limit} Dateien gleichzeitig).")
+            warn_txt = (
+                f"Batch-Limit erreicht (max. {limit} Dateien) — "
+                "weitere Dateien wurden nicht aufgenommen und nicht geprüft."
+            )
+            self._truncation_lbl.setText(warn_txt)
+            self._truncation_banner.show()
+            self.statusBar().showMessage(warn_txt)
         elif added:
             self.statusBar().showMessage(f"{added} Datei(en) zur Prüfung bereit.")
 
@@ -977,7 +998,16 @@ class MainWindow(QMainWindow):
         real = [r for r in self._results if isinstance(r, ScanResult)]
         bad = sum(1 for r in real if visual_state(r.risk_level, result_is_incomplete(r)) == "bad")
         warn = sum(1 for r in real if visual_state(r.risk_level, result_is_incomplete(r)) == "warn")
-        unk = sum(1 for r in real if visual_state(r.risk_level, result_is_incomplete(r)) == "unk")
+        cancelled = sum(
+            1
+            for i in range(self.table.topLevelItemCount())
+            if self.table.topLevelItem(i) is not None
+            and self.table.topLevelItem(i).data(0, STATE_ROLE) == "cancelled"
+        )
+        unk = (
+            sum(1 for r in real if visual_state(r.risk_level, result_is_incomplete(r)) == "unk")
+            + cancelled
+        )
         self._chip_bad.set_count_text(str(bad))
         self._chip_warn.set_count_text(str(warn))
         self._chip_unk.set_count_text(str(unk))
@@ -997,10 +1027,13 @@ class MainWindow(QMainWindow):
         from ..analysis.clamav import ClamAVScanner
         from ..analysis.windows_av import WindowsDefenderScanner
 
-        return Dispatcher(
+        static_disp = Dispatcher(
+            yara=self.dispatcher.yara,
             av_scanner=WindowsDefenderScanner(enabled=False),
             clam_scanner=ClamAVScanner(enabled=False),
         )
+        static_disp.external_scanners = list(getattr(self.dispatcher, "external_scanners", ()))
+        return static_disp
 
     def _on_scan(self) -> None:
         if self._worker is not None:
@@ -1059,7 +1092,11 @@ class MainWindow(QMainWindow):
     def _on_result(self, result: ScanResult) -> None:
         self._results.append(result)
         item = self.table.upsert_result(result)
-        self.summary.update_results(self._results)
+        self.summary.update_results(
+            self._results,
+            source_paths=self.table.all_top_level_paths(),
+            truncated=self._batch_truncated,
+        )
         self._update_filter_counts()
         self._apply_filter()
         self.btn_report.setEnabled(not self._scan_active and bool(self._results))
@@ -1068,15 +1105,23 @@ class MainWindow(QMainWindow):
         elif len(self._results) == 1 and self._pages.currentIndex() in (_PAGE_EMPTY, _PAGE_PENDING):
             self.table.setCurrentItem(item)
 
-    def _on_finished(self, _results: list[ScanResult] | None = None) -> None:
+    def _on_finished(
+        self, _results: list[ScanResult] | None = None, cancelled: bool = False
+    ) -> None:
         self._worker = None
         self._scan_active = False
+        if cancelled:
+            self._scan_cancelled = True
         if self._scan_cancelled:
             self.table.mark_unscanned_as_cancelled()
         self.scan_banner.hide()
         self._set_scanning(False)
         self._refresh_sidebar_actions()
-        self.summary.update_results(self._results)
+        self.summary.update_results(
+            self._results,
+            source_paths=self.table.all_top_level_paths(),
+            truncated=self._batch_truncated,
+        )
 
         if self._scan_cancelled:
             self.statusBar().showMessage(f"Scan abgebrochen ({len(self._results)} Datei(en) geprüft).")
@@ -1123,6 +1168,7 @@ class MainWindow(QMainWindow):
     def _reset_result_view(self) -> None:
         self._results = []
         self._batch_truncated = False
+        self._truncation_banner.hide()
         self.table.clear()
         self.summary.update_results([])
         self._clear_result_panes()
@@ -1248,7 +1294,11 @@ class MainWindow(QMainWindow):
     def _show_batch_overview(self) -> None:
         if not self._results:
             return
-        self.summary.update_results(self._results)
+        self.summary.update_results(
+            self._results,
+            source_paths=self.table.all_top_level_paths(),
+            truncated=self._batch_truncated,
+        )
         self._set_page(_PAGE_BATCH)
 
     def _toggle_options_view(self) -> None:
@@ -1340,7 +1390,9 @@ class MainWindow(QMainWindow):
         )
 
     def _on_clam_auto_toggled(self, checked: bool) -> None:
-        app_settings().setValue("clam_auto_update", bool(checked))
+        app_settings().setValue("clamav_auto_update", bool(checked))
+        if checked and not self._injected_dispatcher:
+            self._maybe_auto_update_clamav()
 
     def _on_feeds_auto_toggled(self, checked: bool) -> None:
         app_settings().setValue("feeds_auto_update", bool(checked))
@@ -1428,14 +1480,12 @@ class MainWindow(QMainWindow):
         self._refresh_engine_status()
 
     def _maybe_auto_update_clamav(self) -> None:
-        if not self.chk_clam_auto.isChecked():
-            return
-        from ..core.feed_manifest import directory_age
+        from ..analysis.clamav_update import update_due
 
-        db = getattr(self.dispatcher.clam_scanner, "database", None)
-        age = directory_age(db) if db is not None else None
-        if age is not None and age < config.CLAMAV_AUTO_UPDATE_MIN_AGE_DAYS:
+        faellig, grund = update_due(enabled=self.chk_clam_auto.isChecked())
+        if not faellig:
             return
+        self.statusBar().showMessage(f"ClamAV: {grund}")
         sig = _EngineSignals(self)
         sig.ready.connect(lambda line, _b: self._on_auto_update_done(line))
         self.thread_pool.start(_AutoUpdateJob(sig))
@@ -1473,7 +1523,23 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
-        as_pdf = path.lower().endswith(".pdf") or "PDF" in (selected or "")
+        sel = selected or ""
+        target_ext = ""
+        if "PDF" in sel:
+            target_ext = ".pdf"
+        elif "CSV" in sel:
+            target_ext = ".csv"
+        elif "JSON" in sel:
+            target_ext = ".json"
+        elif "HTML" in sel:
+            target_ext = ".html"
+        if target_ext and not path.lower().endswith(target_ext):
+            p_out = Path(path)
+            if p_out.suffix.lower() in {".html", ".htm", ".pdf", ".csv", ".json"}:
+                path = str(p_out.with_suffix(target_ext))
+            else:
+                path = path + target_ext
+        as_pdf = path.lower().endswith(".pdf")
         self._export_running = True
         self.btn_report.setEnabled(False)
         self.statusBar().showMessage("Bericht wird erstellt…")
@@ -1555,9 +1621,9 @@ class MainWindow(QMainWindow):
 
             self._worker.cancel()
             request_hard_shutdown()
-            try:
-                self.thread_pool.waitForDone(5000)
-            finally:
+            self.thread_pool.clear()
+            done = self.thread_pool.waitForDone(5000)
+            if done:
                 clear_hard_shutdown()
             self._worker = None
         super().closeEvent(event)

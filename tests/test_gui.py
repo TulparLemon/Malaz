@@ -69,13 +69,14 @@ def test_add_paths_haelt_das_batch_limit_fuer_die_ganze_queue(window, monkeypatc
     die Warteschlange wuchs ueber das Limit.
     """
     from malaz import config
-    from malaz.gui import main_window as mw
 
     monkeypatch.setattr(config, "MAX_BATCH_FILES", 2)
     paths = [_make_file(".txt") for _ in range(3)]
     try:
         # Weg 1: wiederholtes Hinzufuegen (wie ein zweiter Drop).
         window.add_paths([paths[0]])
+        from malaz.gui import main_window as mw
+
         # Weg 2: der Datei-Dialog reicht alle drei weiter.
         monkeypatch.setattr(
             mw.QFileDialog, "getOpenFileNames", lambda *a, **k: (paths, "")
@@ -1714,11 +1715,26 @@ def test_opt_ins_ohne_gespeicherten_wert_bleiben_aus(monkeypatch, tmp_path):
 
 
 def test_detail_tabs_keyboard_and_accessible_names(window):
-    """Tabs sind per Auswahl und Tastenkuerzel erreichbar."""
-    window.detail_view.select_tab(1)
+    """Tabs sind per Auswahl und Ctrl+1..4-Tastenkuerzel erreichbar."""
+    from PySide6.QtGui import QAction
+
+    actions = {
+        act.shortcut().toString(): act
+        for act in window.findChildren(QAction)
+        if act.shortcut().toString()
+    }
+    assert "Ctrl+1" in actions and "Ctrl+2" in actions
+    assert "Ctrl+3" in actions and "Ctrl+4" in actions
+
+    actions["Ctrl+2"].trigger()
     assert window.detail_view._stack.currentIndex() == 1
-    window.detail_view.select_tab(0)
+    actions["Ctrl+1"].trigger()
     assert window.detail_view._stack.currentIndex() == 0
+    actions["Ctrl+3"].trigger()
+    assert window.detail_view._stack.currentIndex() == 0
+    actions["Ctrl+4"].trigger()
+    assert window.detail_view._stack.currentIndex() == 0
+
     assert window.search_box.accessibleName()
     assert window.btn_options.accessibleName()
 
@@ -2134,3 +2150,370 @@ def test_theme_toggle_switches_between_dark_and_light(qapp, qtbot, monkeypatch):
     assert current_theme_mode() == "light"
     win._toggle_dark_light()
     assert current_theme_mode() == "dark"
+
+
+# -- Klare Flaeche v2: Completeness, Security & Lifecycle Contracts --------- #
+
+
+def test_score_ring_dash_only_on_unk(qapp):
+    """ScoreRingWidget zeigt '—' NUR bei visual_state=='unk', nie bei RED/YELLOW."""
+    from malaz.gui.score_ring import ScoreRingWidget
+
+    ring = ScoreRingWidget()
+    try:
+        ring.set_score(0, "unk")
+        assert ring._state == "unk" and ring._score == 0
+        ring.set_score(85, "bad")
+        assert ring._state == "bad" and ring._score == 85
+        ring.set_score(45, "warn")
+        assert ring._state == "warn" and ring._score == 45
+    finally:
+        ring.deleteLater()
+
+
+def test_detail_view_completeness_and_error_visibility(qapp):
+    """B1: Detailansicht zeigt unvollstaendige Stufen auch bei gewichteten Befunden,
+    nutzt kanonisches _INCOMPLETE_RULES und rendert result.error in beiden Tabs."""
+    from PySide6.QtWidgets import QLabel
+
+    from malaz.gui.detail_view import FileDetailView, _severity_badge
+    from malaz.models import _INCOMPLETE_RULES, Indicator, RiskLevel, ScanResult, Severity
+
+    # Every canonical _INCOMPLETE_RULES entry must NEVER render green ("ok")
+    for rid in sorted(_INCOMPLETE_RULES):
+        tone, badge = _severity_badge(
+            Indicator(rule_id=rid, title=f"Luecke {rid}", severity=Severity.INFO, weight=0)
+        )
+        assert tone == "warn" and badge == "Ungeprüft", (rid, tone, badge)
+
+    res = ScanResult(
+        path="C:/proben/kaputt.exe",
+        detected_type="pe",
+        size=1024,
+        sha256="a" * 64,
+        risk_level=RiskLevel.YELLOW,
+        score=35,
+        error="Lesefehler: Zugriff verweigert",
+        indicators=[
+            Indicator(rule_id="PE_HIGH_ENTROPY", title="Hohe Entropie", severity=Severity.MEDIUM, weight=35),
+            Indicator(rule_id="CORE_TIME_BUDGET", title="YARA Zeitlimit", severity=Severity.INFO, weight=0),
+        ],
+    )
+    view = FileDetailView()
+    try:
+        view.show_result(res)
+        ov_texts = [lbl.text() for lbl in view._page_overview.findChildren(QLabel)]
+        assert any("Unvollständige Prüfung" in txt for txt in ov_texts), ov_texts
+        assert any("Zugriff verweigert" in txt for txt in ov_texts), ov_texts
+
+        det_texts = [lbl.text() for lbl in view._page_details.findChildren(QLabel)]
+        assert any("Zugriff verweigert" in txt for txt in det_texts), det_texts
+        assert any("Signatur" in txt for txt in det_texts), det_texts
+        assert any("CORE_TIME_BUDGET" in txt for txt in det_texts), det_texts
+    finally:
+        view.deleteLater()
+
+
+def test_copy_with_feedback_safe_on_delete_and_double_click(qapp):
+    """M4: _copy_with_feedback darf weder bei Doppelklick Text ueberschreiben noch
+    bei geloeschtem Button einen RuntimeError werfen."""
+    from PySide6.QtWidgets import QPushButton
+
+    from malaz.gui.detail_view import _copy_with_feedback
+
+    btn = QPushButton("Kopieren")
+    _copy_with_feedback(btn, "abc123")
+    assert btn.text() == "Kopiert"
+    _copy_with_feedback(btn, "abc123")  # double click
+    assert btn.property("_orig_copy_text") == "Kopieren"
+
+    # Trigger timer directly and confirm original text restores cleanly
+    btn._copy_timer.timeout.emit()
+    assert btn.text() == "Kopieren"
+
+    # Delete button while timer is running -> child timer is destroyed with button
+    _copy_with_feedback(btn, "xyz")
+    btn.deleteLater()
+    qapp.processEvents()
+
+
+def test_mail_engine_strip_never_all_green_on_av_gap_or_header_issues(qapp):
+    """B2: Mail-Karten duerfen bei AV-Skip/Fehler, MAIL_AUTH_CLAIM_UNBACKED,
+    MAIL_REPLY_TO_MISMATCH oder unvollstaendiger Mail nicht alle 3 gruen sein."""
+    from malaz.gui.engine_strip import _cards_for_archive, _cards_for_mail
+    from malaz.models import EngineVerdict, Indicator, RiskLevel, ScanResult, Severity
+
+    # 1. Direct AV error/skip on .eml with sender=="ok", no attachments, no links
+    res_gap = ScanResult(
+        path="mail.eml",
+        detected_type="eml",
+        mail_security={"sender": "ok"},
+        engine_verdicts=[
+            EngineVerdict(engine="defender", state="skipped", label="Ausgelassen", detail="Nur-Statik")
+        ],
+        indicators=[
+            Indicator(rule_id="AV_SKIPPED", title="AV uebersprungen", severity=Severity.INFO, weight=0)
+        ],
+    )
+    cards_gap = _cards_for_mail(res_gap)
+    assert all(c[3] != "ok" for c in cards_gap), cards_gap
+
+    # 2. MAIL_AUTH_CLAIM_UNBACKED
+    res_unbacked = ScanResult(
+        path="mail2.eml",
+        detected_type="eml",
+        mail_security={"sender": "ok"},
+        indicators=[
+            Indicator(
+                rule_id="MAIL_AUTH_CLAIM_UNBACKED",
+                title="Unbelegte Auth",
+                severity=Severity.LOW,
+                weight=10,
+            )
+        ],
+    )
+    assert _cards_for_mail(res_unbacked)[0][3] == "warn"
+    assert _cards_for_mail(res_unbacked)[0][4] is True
+
+    # 3. MAIL_REPLY_TO_MISMATCH
+    res_rt = ScanResult(
+        path="mail3.eml",
+        detected_type="eml",
+        mail_security={"sender": "ok"},
+        indicators=[
+            Indicator(
+                rule_id="MAIL_REPLY_TO_MISMATCH",
+                title="Reply-To abweichend",
+                severity=Severity.MEDIUM,
+                weight=20,
+            )
+        ],
+    )
+    assert _cards_for_mail(res_rt)[0][3] == "warn"
+
+    # 4. N1: Archive card shows bad_kids[0].display_name and surfaces both bad_n and warn_n
+    clean_kid = ScanResult(path="harmlos.txt", detected_type="text", risk_level=RiskLevel.GREEN, score=0)
+    warn_kid = ScanResult(path="komisch.doc", detected_type="ole", risk_level=RiskLevel.YELLOW, score=35)
+    bad_kid = ScanResult(path="trojaner.exe", detected_type="pe", risk_level=RiskLevel.RED, score=90)
+    arch = ScanResult(
+        path="paket.zip",
+        detected_type="zip",
+        risk_level=RiskLevel.RED,
+        score=90,
+        children=[clean_kid, warn_kid, bad_kid],
+    )
+    c1 = _cards_for_archive(arch)[0]
+    assert "trojaner.exe" in c1[2], c1
+    assert "1 auffällig" in c1[1], c1
+
+
+def test_cancel_state_truncation_banner_settings_key_and_export_suffix(window, tmp_path, monkeypatch):
+    """B3, B4, M2, M3, N3: Cancel-Zaehlung, sichtbares Truncation-Banner, QSettings-Key,
+    _effective_dispatcher-Wiederverwendung, Export-Endung und closeEvent Hard-Shutdown."""
+    from PySide6.QtWidgets import QFileDialog
+
+    from malaz import config
+    from malaz.gui.file_tree import STATE_ROLE
+    from malaz.gui.settings import app_settings
+    from malaz.models import RiskLevel, ScanResult
+
+    # B4: QSettings key must be "clamav_auto_update"
+    window.chk_clam_auto.setChecked(True)
+    assert app_settings().value("clamav_auto_update", False, bool) is True
+
+    # M2: _effective_dispatcher preserves yara & external_scanners
+    sentinel_ext = [object()]
+    window.dispatcher.external_scanners = sentinel_ext  # type: ignore[assignment]
+    window.chk_static_only.setChecked(True)
+    eff = window._effective_dispatcher()
+    assert eff.yara is window.dispatcher.yara
+    assert eff.external_scanners == sentinel_ext
+    assert eff.av_scanner.enabled is False and eff.clam_scanner.enabled is False
+    window.chk_static_only.setChecked(False)
+
+    # B3: Visible truncation banner when MAX_BATCH_FILES reached
+    monkeypatch.setattr(config, "MAX_BATCH_FILES", 2)
+    files = []
+    for i in range(3):
+        f = tmp_path / f"f{i}.txt"
+        f.write_text("hi", encoding="utf-8")
+        files.append(str(f))
+    window.add_paths(files)
+    assert window._batch_truncated is True
+    assert window._truncation_banner.isVisibleTo(window) is True
+
+    # N3: Cancelled items never green and counted in unk chip
+    window.table.mark_pending_as_scanning()
+    window._on_finished(cancelled=True)
+    assert window.table.topLevelItem(0).data(0, STATE_ROLE) == "cancelled"
+    assert window._chip_unk._lbl.text() == "2"
+
+    # M3 part 1: _on_export_report enforces filter suffix
+    window._results = [
+        ScanResult(path=str(files[0]), detected_type="text", risk_level=RiskLevel.GREEN, score=0)
+    ]
+    captured_jobs: list[object] = []
+    monkeypatch.setattr(window.thread_pool, "start", lambda job: captured_jobs.append(job))
+
+    for chosen_path, chosen_filter, expected_suffix, expected_pdf in [
+        (str(tmp_path / "bericht"), "CSV-Tabelle (*.csv)", ".csv", False),
+        (str(tmp_path / "malaz_bericht.html"), "PDF-Bericht (*.pdf)", ".pdf", True),
+        (str(tmp_path / "out"), "JSON-Export (*.json)", ".json", False),
+    ]:
+        window._export_running = False
+        monkeypatch.setattr(
+            QFileDialog, "getSaveFileName", lambda *_a, p=chosen_path, f=chosen_filter: (p, f)
+        )
+        window._on_export_report()
+        job = captured_jobs[-1]
+        assert job.path.lower().endswith(expected_suffix), (job.path, expected_suffix)
+        assert job.as_pdf is expected_pdf
+
+
+def test_close_event_keeps_hard_shutdown_when_pool_times_out(qapp, monkeypatch):
+    """M3 part 2: closeEvent ruft thread_pool.clear() und behaelt hard_shutdown aktiv,
+    wenn waitForDone(5000) False liefert."""
+    from malaz import procio
+    from malaz.analysis.clamav import ClamAVScanner
+    from malaz.analysis.windows_av import WindowsDefenderScanner
+    from malaz.core.dispatcher import Dispatcher
+    from malaz.gui.main_window import MainWindow
+
+    disp = Dispatcher(
+        av_scanner=WindowsDefenderScanner(enabled=False),
+        clam_scanner=ClamAVScanner(enabled=False),
+    )
+    w = MainWindow(dispatcher=disp)
+    cleared = []
+
+    class _DummyWorker:
+        def cancel(self):
+            pass
+
+    w._worker = _DummyWorker()  # type: ignore[assignment]
+    monkeypatch.setattr(w.thread_pool, "clear", lambda: cleared.append(True))
+    monkeypatch.setattr(w.thread_pool, "waitForDone", lambda _ms: False)
+    try:
+        w.close()
+        assert cleared == [True]
+        assert procio.hard_shutdown_requested() is True
+    finally:
+        procio.clear_hard_shutdown()
+
+
+def test_batch_summary_blocks_unc_before_filesystem_and_uses_source_paths(qapp, tmp_path, monkeypatch):
+    """B4 part 3: BatchSummary darf bei UNC-Pfaden niemals Path.is_dir() rufen und
+    nutzt source_paths trotz OpSec-Basename-Kuerzung."""
+    from pathlib import Path as _Path
+
+    from malaz.gui.batch_summary import BatchSummary
+    from malaz.models import RiskLevel, ScanResult
+
+    summary = BatchSummary()
+    try:
+        probed: list[str] = []
+        orig_is_dir = _Path.is_dir
+
+        def spy_is_dir(self):
+            probed.append(str(self))
+            return orig_is_dir(self)
+
+        monkeypatch.setattr(_Path, "is_dir", spy_is_dir)
+        unc_path = "\\\\evil-smb\\share\\doc.pdf"
+        unc_res = ScanResult(path=unc_path, detected_type="pdf", risk_level=RiskLevel.GREEN)
+        summary.update_results([unc_res], source_paths=[unc_path])
+        assert probed == [], f"UNC-Pfad hat Dateisystem beruehrt: {probed}"
+        assert summary.common_directory is None
+
+        # Local source_paths resolve common_directory even when result.path is basename only
+        local_file = tmp_path / "probe.pdf"
+        local_file.write_bytes(b"%PDF-1.7")
+        basenamed = ScanResult(path="probe.pdf", detected_type="pdf", risk_level=RiskLevel.GREEN)
+        summary.update_results([basenamed], source_paths=[str(local_file)], truncated=True)
+        assert summary.common_directory == str(tmp_path)
+        assert summary._trunc_banner.isVisibleTo(summary) is True
+    finally:
+        summary.deleteLater()
+
+
+def test_footer_summary_extract_iocs_and_options_view_contracts(qapp):
+    """M5, M6, N4: build_footer_summary (5 Zustaende), _extract_iocs (Defang, Cap 100,
+    kein ReDoS) und OptionsView-Badge + HTML-Escaping im Tooltip."""
+    import time
+
+    from malaz.gui.detail_view import _extract_iocs, build_footer_summary
+    from malaz.gui.options_view import OptionsView
+    from malaz.gui.score_ring import ToggleSwitch
+    from malaz.models import CAT_IOC, Indicator, RiskLevel, ScanResult, Severity
+
+    # build_footer_summary across 5 states
+    ok_pe = ScanResult(path="a.exe", detected_type="pe", risk_level=RiskLevel.GREEN, score=0)
+    assert "Typ: EXE" in build_footer_summary(ok_pe) and "Prüfung: Vollständig" in build_footer_summary(ok_pe)
+    bad_pdf = ScanResult(path="b.pdf", detected_type="pdf", risk_level=RiskLevel.RED, score=80)
+    assert "Prüfung: Vollständig" in build_footer_summary(bad_pdf)
+    warn_inc = ScanResult(
+        path="c.pdf",
+        detected_type="pdf",
+        risk_level=RiskLevel.YELLOW,
+        score=30,
+        indicators=[Indicator(rule_id="AV_SKIPPED", title="skip", severity=Severity.INFO, weight=0)],
+    )
+    assert "Prüfung: Teilweise" in build_footer_summary(warn_inc)
+    unk_res = ScanResult(
+        path="d.bin",
+        detected_type="unknown",
+        risk_level=RiskLevel.GREEN,
+        score=0,
+        indicators=[Indicator(rule_id="AV_SKIPPED", title="skip", severity=Severity.INFO, weight=0)],
+    )
+    assert "Prüfung: Unvollständig" in build_footer_summary(unk_res)
+    enc_zip = ScanResult(
+        path="e.zip",
+        detected_type="zip",
+        risk_level=RiskLevel.GREEN,
+        score=0,
+        indicators=[Indicator(rule_id="ARCH_ENCRYPTED", title="enc", severity=Severity.INFO, weight=0)],
+    )
+    assert "Prüfung: Gesperrt" in build_footer_summary(enc_zip)
+
+    # _extract_iocs: defang + 100 cap + ReDoS immunity
+    many = [
+        Indicator(
+            rule_id=f"URL_{i}",
+            category=CAT_IOC,
+            title="Link",
+            detail=f"https://bad{i}.example.test/p",
+            severity=Severity.MEDIUM,
+            weight=10,
+        )
+        for i in range(120)
+    ]
+    many.append(
+        Indicator(
+            rule_id="MAIL_REPLY_TO_MISMATCH",
+            category=CAT_IOC,
+            title="Reply",
+            detail="a" * 8000 + "@" + "." * 8000,
+            severity=Severity.MEDIUM,
+            weight=10,
+        )
+    )
+    t0 = time.perf_counter()
+    rows, overflow = _extract_iocs(ScanResult(path="x.eml", detected_type="eml", indicators=many))
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 0.2, f"ReDoS-Verdacht: {elapsed:.3f}s"
+    assert len(rows) == 100 and overflow == 20
+    assert rows[0][3].startswith("hxxps://")
+
+    # OptionsView header badge + tooltip HTML escaping
+    keys = ("clam_auto", "feeds_auto", "dns_auth", "capa", "static_only", "auto_open")
+    sw = {k: ToggleSwitch() for k in keys}
+    ov = OptionsView(sw)
+    try:
+        assert "komplett offline" in ov._net_status_lbl.text().lower()
+        sw["dns_auth"].setChecked(True)
+        assert "opt-in aktiv" in ov._net_status_lbl.text().lower()
+        ov.refresh(feed_tooltip="<img src=x onerror=alert(1)>")
+        assert "&lt;img" in ov._db_label.toolTip()
+    finally:
+        ov.deleteLater()

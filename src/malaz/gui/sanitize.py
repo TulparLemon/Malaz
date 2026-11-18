@@ -14,9 +14,13 @@ import re
 import sys
 from contextlib import suppress
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..core.mail_view import MAX_DISPLAY_CHARS
 from ..security.escaping import mask_invisible
+
+if TYPE_CHECKING:
+    from ..models import ScanResult
 
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
@@ -60,7 +64,7 @@ def defang_ioc(value: str | None) -> str:
 def is_unc_or_device_path(raw: str | Path) -> bool:
     r"""True for UNC shares (\server\share) or Windows device paths (\\?\, \\.\)."""
     s = str(raw or "").strip()
-    return s.startswith(("\\", "//"))
+    return s.startswith(("\\\\", "//", "\\/", "/\\"))
 
 
 def reveal_in_explorer(raw_path: str | Path | None) -> bool:
@@ -127,6 +131,16 @@ def indicator_weight(ind) -> int:
     return int(ind.effective_weight(BASE_WEIGHTS))
 
 
-def result_is_incomplete(result) -> bool:
-    """True when any stage failed/skipped OR the scan carries an ``error`` marker."""
-    return bool(result.is_incomplete or getattr(result, "error", None))
+def result_is_incomplete(result: ScanResult) -> bool:
+    """True when any scan stage was incomplete, errored, or locked by encryption."""
+    return bool(result.is_incomplete or result.error or (is_encrypted(result) and not result.children))
+
+
+ENCRYPTED_RULES: frozenset[str] = frozenset(
+    {"ARCH_ENCRYPTED", "SEVENZIP_ENCRYPTED", "ZIP_ENCRYPTED", "PDF_ENCRYPTED"}
+)
+
+
+def is_encrypted(result: ScanResult) -> bool:
+    """True when any indicator across the result tree marks encrypted content."""
+    return any(i.rule_id in ENCRYPTED_RULES for i in result.all_indicators())

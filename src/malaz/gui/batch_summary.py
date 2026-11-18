@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .. import config
 from ..design_tokens import format_size_de, format_tag_code, visual_state
 from ..models import ScanResult
 from .file_tree import is_spoofed_result
@@ -27,6 +28,7 @@ from .sanitize import (
     clip_text,
     escape_tooltip,
     indicator_weight,
+    is_unc_or_device_path,
     masked_widget_text,
     result_is_incomplete,
 )
@@ -229,6 +231,20 @@ class BatchSummary(QWidget):
             card.clicked.connect(self.filter_requested.emit)
             kpis.addWidget(card, 1)
         root.addLayout(kpis)
+
+        self._trunc_banner = QFrame(self)
+        self._trunc_banner.setObjectName("card")
+        self._trunc_banner.setProperty("accent", "warn")
+        tb_lay = QHBoxLayout(self._trunc_banner)
+        tb_lay.setContentsMargins(14, 10, 14, 10)
+        self._trunc_lbl = QLabel("", self._trunc_banner)
+        self._trunc_lbl.setObjectName("panelHeading")
+        self._trunc_lbl.setWordWrap(True)
+        self._trunc_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        tb_lay.addWidget(self._trunc_lbl, 1)
+        self._trunc_banner.hide()
+        root.addWidget(self._trunc_banner)
+
         root.addWidget(self.headline)
         root.addWidget(self.detail)
 
@@ -251,7 +267,13 @@ class BatchSummary(QWidget):
     def common_directory(self) -> str | None:
         return self._common_dir
 
-    def update_results(self, results: list[ScanResult]) -> None:
+    def update_results(
+        self,
+        results: list[ScanResult],
+        *,
+        source_paths: list[str] | None = None,
+        truncated: bool = False,
+    ) -> None:
         bad = [r for r in results if visual_state(r.risk_level, result_is_incomplete(r)) == "bad"]
         warn = [r for r in results if visual_state(r.risk_level, result_is_incomplete(r)) == "warn"]
         unk = [r for r in results if visual_state(r.risk_level, result_is_incomplete(r)) == "unk"]
@@ -287,13 +309,33 @@ class BatchSummary(QWidget):
         total_bytes = sum(max(0, r.size) for r in results)
         self._size_lbl.setText(f"{len(results)} Dateien · {format_size_de(total_bytes)}")
 
-        parents = {str(Path(r.path).parent) for r in results if r.path and str(Path(r.path).parent) != "."}
+        if truncated:
+            self._trunc_lbl.setText(
+                f"Batch-Limit erreicht (max. {config.MAX_BATCH_FILES} Dateien) — "
+                "weitere Dateien wurden nicht aufgenommen und nicht geprüft."
+            )
+            self._trunc_banner.show()
+        else:
+            self._trunc_banner.hide()
+
+        raw_paths = [p for p in (source_paths or []) if p] or [r.path for r in results if r.path]
+        parents: set[str] = set()
+        for raw in raw_paths:
+            if is_unc_or_device_path(raw):
+                continue
+            parent_str = str(Path(raw).parent)
+            if parent_str and parent_str != ".":
+                parents.add(parent_str)
+
         if len(parents) == 1:
             only = next(iter(parents))
-            try:
-                self._common_dir = only if Path(only).is_dir() else None
-            except (OSError, ValueError):
+            if is_unc_or_device_path(only):
                 self._common_dir = None
+            else:
+                try:
+                    self._common_dir = only if Path(only).is_dir() else None
+                except (OSError, ValueError):
+                    self._common_dir = None
             self._origin_lbl.setText(clip_text(masked_widget_text(only), 90))
         else:
             self._common_dir = None

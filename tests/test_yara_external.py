@@ -599,8 +599,22 @@ def test_gui_yara_button_only_when_rules_failed(qapp):
         )
     )
     try:
-        assert window.options_view.btn_yara_now.text() == "YARA"
-        assert window.options_view.btn_yara_now.isEnabled() is True
+        opened: list[str] = []
+        original_on_yara = window._on_update_yara
+        window.options_view.update_yara_requested.disconnect(original_on_yara)
+        window.options_view.update_yara_requested.connect(lambda: opened.append("yara"))
+        window.options_view.btn_yara_now.click()
+        assert opened == ["yara"], "YARA-Button muss update_yara_requested ausloesen"
+
+        # Degraded YARA engine must render as non-clean in OptionsView.
+        window._on_engine_status(
+            "YARA: Fehler",
+            [("YARA", "missing", "Regeldatei defekt")],
+        )
+        assert any(
+            lbl.text() == "Regeldatei defekt"
+            for lbl in window.options_view.findChildren(type(window.options_view._db_label))
+        )
     finally:
         window.close()
 

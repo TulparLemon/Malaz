@@ -40,6 +40,7 @@ from ..design_tokens import (
     visual_state,
 )
 from ..models import (
+    _INCOMPLETE_RULES,
     CAT_ARCHIVE,
     CAT_AV,
     CAT_ENTROPY,
@@ -59,10 +60,12 @@ from .engine_strip import EngineStrip
 from .file_tree import is_spoofed_result
 from .mail_panel import MailPanel
 from .sanitize import (
+    ENCRYPTED_RULES,
     clip_text,
     defang_ioc,
     escape_tooltip,
     indicator_weight,
+    is_encrypted,
     masked_widget_text,
     result_is_incomplete,
 )
@@ -70,19 +73,27 @@ from .score_ring import StatusDotWidget
 from .verdict_card import VerdictCard
 
 _MAX_IOC_ROWS = 100
-_ENCRYPTED_RULES = frozenset({"ARCH_ENCRYPTED", "SEVENZIP_ENCRYPTED", "ZIP_ENCRYPTED", "PDF_ENCRYPTED"})
 _URL_RE = re.compile(r"https?://[^\s<>'\"\)\]]+", re.IGNORECASE)
 _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 
 
 def _copy_with_feedback(btn: QPushButton, raw_text: str, feedback: str = "Kopiert") -> None:
     cb = QGuiApplication.clipboard()
     if cb is not None:
         cb.setText(raw_text)
-    orig = btn.text()
+    orig = btn.property("_orig_copy_text")
+    if not isinstance(orig, str):
+        orig = btn.text()
+        btn.setProperty("_orig_copy_text", orig)
     btn.setText(feedback)
-    QTimer.singleShot(1100, lambda: btn.setText(orig))
+    timer = getattr(btn, "_copy_timer", None)
+    if timer is None:
+        timer = QTimer(btn)
+        timer.setSingleShot(True)
+        timer.timeout.connect(lambda b=btn, text=orig: b.setText(text))
+        btn._copy_timer = timer  # type: ignore[attr-defined]
+    timer.start(1100)
 
 
 def _clear_layout(lay: QVBoxLayout | QHBoxLayout) -> None:
@@ -100,10 +111,10 @@ def _clear_layout(lay: QVBoxLayout | QHBoxLayout) -> None:
 def _severity_badge(ind: Indicator) -> tuple[str, str]:
     if indicator_weight(ind) >= 40 or ind.severity >= Severity.CRITICAL:
         return ("bad", "Kritisch")
+    if ind.rule_id in ENCRYPTED_RULES or ind.rule_id in _INCOMPLETE_RULES:
+        return ("warn", "Ungeprüft")
     if indicator_weight(ind) >= 15 or ind.severity >= Severity.MEDIUM:
         return ("warn", "Warnung")
-    if ind.rule_id in _ENCRYPTED_RULES or ind.rule_id.endswith(("_SKIPPED", "_ERROR")):
-        return ("warn", "Ungeprüft")
     return ("ok", "Hinweis")
 
 
@@ -149,7 +160,7 @@ def _extract_iocs(result: ScanResult) -> tuple[list[tuple[str, str, str, str, st
             _add("warn" if susp else "info", "URL", "Mail-Link", href)
 
     for ind in result.indicators:
-        hay = f"{ind.title} {ind.detail or ''}"
+        hay = f"{ind.title} {ind.detail or ''}"[:4096]
         if ind.rule_id == "MAIL_REPLY_TO_MISMATCH":
             for m in _EMAIL_RE.findall(hay):
                 _add("bad", "E-Mail", "Reply-To", m)
@@ -169,7 +180,7 @@ def build_footer_summary(result: ScanResult) -> str:
     """Crisp footer grounding line per Design 004 v2.1 wording table."""
     state = visual_state(result.risk_level, result_is_incomplete(result))
     dt_short = format_short_type(result.detected_type, result.display_name)
-    encrypted = any(i.rule_id in _ENCRYPTED_RULES for i in result.all_indicators())
+    encrypted = is_encrypted(result)
 
     if state == "ok":
         check_word = "Vollständig"
@@ -509,20 +520,19 @@ class FileDetailView(QWidget):
             for i in result.indicators
             if indicator_weight(i) > 0
             or i.severity >= Severity.MEDIUM
-            or i.rule_id in _ENCRYPTED_RULES
-            or i.rule_id.endswith(("_SKIPPED", "_ERROR", "_LIMIT", "_TRUNCATED", "_UNREAD"))
+            or i.rule_id in ENCRYPTED_RULES
+            or i.rule_id in _INCOMPLETE_RULES
         ]
         relevant.sort(key=lambda x: (-indicator_weight(x), -int(x.severity), x.rule_id))
         return relevant
 
     def _populate_overview(self, result: ScanResult) -> None:
         _clear_layout(self._overview_lay)
-        state = visual_state(result.risk_level, result_is_incomplete(result))
-        encrypted = any(i.rule_id in _ENCRYPTED_RULES for i in result.all_indicators())
+        encrypted = is_encrypted(result)
 
         grouped: dict[str, Indicator] = {}
         for ind in sorted(result.indicators, key=lambda x: (-indicator_weight(x), -int(x.severity))):
-            if indicator_weight(ind) <= 0 and ind.rule_id not in _ENCRYPTED_RULES:
+            if indicator_weight(ind) <= 0 and ind.rule_id not in ENCRYPTED_RULES:
                 continue
             cat = _signal_category_label(ind)
             if cat not in grouped:
@@ -531,44 +541,58 @@ class FileDetailView(QWidget):
                 break
 
         rows_spec: list[tuple[str, bool, str, str, str, str]] = []
+        if result.error:
+            rows_spec.append(
+                (
+                    "bad",
+                    False,
+                    "Prüffehler",
+                    masked_widget_text(result.error),
+                    "bad",
+                    "Fehler",
+                )
+            )
         if grouped:
             for label, ind in grouped.items():
                 tone, b_txt = _severity_badge(ind)
-                is_ring = ind.rule_id in _ENCRYPTED_RULES
+                is_ring = ind.rule_id in ENCRYPTED_RULES or ind.rule_id in _INCOMPLETE_RULES
                 rows_spec.append((tone, is_ring, label, masked_widget_text(ind.title), tone, b_txt))
-        elif state == "unk":
-            if encrypted:
-                rows_spec = [
-                    (
-                        "warn",
-                        True,
-                        "Verschlüsselt",
-                        "Passwortschutz verhindert jede Inhaltsprüfung",
-                        "warn",
-                        "Ungeprüft",
-                    ),
-                    (
-                        "warn",
-                        False,
-                        "Vorgehen",
-                        "Nur bei bekanntem Absender entpacken und Ordner neu prüfen",
-                        "warn",
-                        "Hinweis",
-                    ),
-                ]
+
+        if result_is_incomplete(result):
+            if encrypted and not grouped and not result.error:
+                rows_spec.extend(
+                    [
+                        (
+                            "warn",
+                            True,
+                            "Verschlüsselt",
+                            "Passwortschutz verhindert jede Inhaltsprüfung",
+                            "warn",
+                            "Ungeprüft",
+                        ),
+                        (
+                            "warn",
+                            False,
+                            "Vorgehen",
+                            "Nur bei bekanntem Absender entpacken und Ordner neu prüfen",
+                            "warn",
+                            "Hinweis",
+                        ),
+                    ]
+                )
             else:
                 missing = ", ".join(masked_widget_text(i.title) for i in result.incomplete_stages[:3])
-                rows_spec = [
+                rows_spec.append(
                     (
                         "warn",
                         True,
-                        "Fehlende Prüfung",
+                        "Unvollständige Prüfung",
                         missing or "Mindestens eine Prüfstufe lief nicht",
                         "warn",
                         "Ungeprüft",
-                    ),
-                ]
-        elif not result.children:
+                    )
+                )
+        elif not rows_spec and not result.children:
             rows_spec = [
                 ("ok", False, "Virenprüfung", "Lokale Signaturen & Muster ohne Befund", "ok", "Sauber"),
                 (
@@ -685,6 +709,22 @@ class FileDetailView(QWidget):
             ("SHA-256", result.sha256 or "Nicht berechnet", "", None, result.sha256 or None, True),
             ("Dauer", f"{result.duration_ms} ms", "", None, None, False),
         ]
+        if (result.detected_type or "").lower() == "pe":
+            signed = any("SIGNED" in i.rule_id and "UN" not in i.rule_id for i in result.indicators)
+            id_rows.append(
+                (
+                    "Signatur",
+                    "Digitale Signatur vorhanden" if signed else "Keine digitale Signatur",
+                    "" if signed else "warn",
+                    ("ok", "Vorhanden") if signed else ("warn", "Keine"),
+                    None,
+                    False,
+                )
+            )
+        if result.error:
+            id_rows.append(
+                ("Fehler", masked_widget_text(result.error), "bad", ("bad", "Fehler"), None, False)
+            )
         if result_is_incomplete(result):
             stages = ", ".join(masked_widget_text(i.rule_id) for i in result.incomplete_stages[:6])
             id_rows.append(

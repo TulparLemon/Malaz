@@ -233,34 +233,48 @@ def test_gui_update_button_starts_hidden(qapp, monkeypatch, _quiet_window):
 
 
 def test_gui_button_shown_when_update_due(qapp, monkeypatch, _quiet_window):
-    # Stale signatures must surface the manual path (the auto-update opt-in
-    # is a separate, deliberate setting — it must not hide a broken DB).
-    # isVisibleTo(parent) is the widget's own visibility, independent of
-    # whether the window was ever shown (isVisible() is always False then).
-    from malaz.gui.main_window import MainWindow
+    # Stale signatures + opted-in auto-update must dispatch _AutoUpdateJob via
+    # update_due(), while opt-in OFF starts zero jobs (offline-by-default).
+    from malaz.gui.main_window import MainWindow, _AutoUpdateJob
 
-    def always_due(*_a, **_k):
+    started: list[object] = []
+
+    def fake_due(*, enabled=None, **_k):
+        if not enabled:
+            return False, "Auto-Update ist ausgeschaltet."
         return True, "Signaturen sind 9 Tag(e) alt — wird aktualisiert."
 
-    monkeypatch.setattr("malaz.analysis.clamav_update.update_due", always_due)
+    monkeypatch.setattr("malaz.analysis.clamav_update.update_due", fake_due)
     window = MainWindow(dispatcher=_quiet_window)
     try:
-        assert window.options_view.btn_clam_now.isEnabled() is True
+        monkeypatch.setattr(window.thread_pool, "start", lambda job: started.append(job))
+        window.chk_clam_auto.setChecked(False)
+        window._maybe_auto_update_clamav()
+        assert started == [], "opt-in OFF darf keinen Auto-Update-Job starten"
+
+        window.chk_clam_auto.setChecked(True)
+        window._maybe_auto_update_clamav()
+        assert any(isinstance(j, _AutoUpdateJob) for j in started), (
+            "faelliges ClamAV-Auto-Update muss _AutoUpdateJob starten"
+        )
+        assert window.options_view.btn_clam_now.isVisibleTo(window.options_view)
     finally:
         window.close()
 
 
 def test_gui_button_hidden_when_clamav_absent(qapp, monkeypatch, _quiet_window):
-    # Without an installed ClamAV there is nothing to update — no button.
+    # Without freshclam/ClamAV, _maybe_auto_update_clamav() must never start a
+    # background job even when the opt-in toggle is enabled.
     from malaz.gui.main_window import MainWindow
 
+    started: list[object] = []
+    monkeypatch.setattr("malaz.analysis.clamav_update.find_freshclam", lambda: None)
     window = MainWindow(dispatcher=_quiet_window)
     try:
-        monkeypatch.setattr(
-            type(window.dispatcher.clam_scanner), "available",
-            property(lambda _self: False),
-        )
-        assert window.dispatcher.clam_scanner.available is False
+        monkeypatch.setattr(window.thread_pool, "start", lambda job: started.append(job))
+        window.chk_clam_auto.setChecked(True)
+        window._maybe_auto_update_clamav()
+        assert started == [], "ohne freshclam darf kein Auto-Update-Job starten"
     finally:
         window.close()
 

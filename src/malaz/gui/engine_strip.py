@@ -18,15 +18,15 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLay
 from ..design_tokens import ARCHIVE_TYPES, MAIL_TYPES, visual_state
 from ..models import EngineVerdict, ScanResult
 from .sanitize import (
+    ENCRYPTED_RULES,
     clip_text,
     escape_tooltip,
     indicator_weight,
+    is_encrypted,
     masked_widget_text,
     result_is_incomplete,
 )
 from .score_ring import StatusDotWidget
-
-_ENCRYPTED_RULES = frozenset({"ARCH_ENCRYPTED", "SEVENZIP_ENCRYPTED", "ZIP_ENCRYPTED", "PDF_ENCRYPTED"})
 
 
 def compact_engine_text(result: ScanResult) -> str:
@@ -196,7 +196,7 @@ def _av_card_tuple(
 
 
 def _cards_for_leaf(result: ScanResult) -> list[tuple[str, str, str, str, bool, str]]:
-    encrypted = any(i.rule_id in _ENCRYPTED_RULES for i in result.all_indicators())
+    encrypted = is_encrypted(result)
     defender = _av_card_tuple("Windows Defender", _verdict_by_name(result, "defender"), encrypted=encrypted)
     clamav = _av_card_tuple("ClamAV", _verdict_by_name(result, "clamav"), encrypted=encrypted)
 
@@ -257,13 +257,15 @@ def _cards_for_leaf(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
 
 
 def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, bool, str]]:
-    encrypted = any(i.rule_id in _ENCRYPTED_RULES for i in result.all_indicators())
+    encrypted = is_encrypted(result)
     kids = result.children
     if encrypted and not kids:
         return _cards_for_leaf(result)
 
-    bad_n = sum(1 for c in kids if visual_state(c.risk_level, result_is_incomplete(c)) == "bad")
-    warn_n = sum(1 for c in kids if visual_state(c.risk_level, result_is_incomplete(c)) in ("warn", "unk"))
+    bad_kids = [c for c in kids if visual_state(c.risk_level, result_is_incomplete(c)) == "bad"]
+    warn_kids = [c for c in kids if visual_state(c.risk_level, result_is_incomplete(c)) in ("warn", "unk")]
+    bad_n = len(bad_kids)
+    warn_n = len(warn_kids)
     ok_n = len(kids) - bad_n - warn_n
 
     if not kids:
@@ -276,10 +278,15 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
             "Keine Dateien im Archiv",
         )
     elif bad_n:
+        val_txt = (
+            f"{bad_n} gefährlich · {warn_n} auffällig"
+            if warn_n
+            else f"{bad_n} gefährlich · {ok_n} sauber"
+        )
         c1 = (
             f"Inhalt ({len(kids)} Dateien)",
-            f"{bad_n} gefährlich · {ok_n} sauber",
-            clip_text(masked_widget_text(kids[0].display_name), 34),
+            val_txt,
+            clip_text(masked_widget_text(bad_kids[0].display_name), 34),
             "bad",
             False,
             "Schädliche Datei im Archiv",
@@ -307,7 +314,7 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
         i
         for i in result.indicators
         if i.rule_id.startswith(("ARCH_", "ZIP_", "TAR_", "SEVENZIP_"))
-        and (indicator_weight(i) > 0 or i.rule_id in _ENCRYPTED_RULES)
+        and (indicator_weight(i) > 0 or i.rule_id in ENCRYPTED_RULES)
     ]
     if arch_warns:
         c2 = (
@@ -363,11 +370,16 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
 
 
 def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, str]]:
-    # Surface any direct AV threat/failure on the .eml/.msg itself!
+    # Surface any direct AV threat or failure/skip on the .eml/.msg itself!
     av_threat = next((v for v in result.engine_verdicts if v.state == "threat"), None)
+    av_gap = [v for v in result.engine_verdicts if v.state in ("error", "skipped")]
     ms = result.mail_security or {}
     sender_st = ms.get("sender", "unknown")
     auth_fail = any(ms.get(k) == "fail" for k in ("spf", "dkim", "dmarc"))
+    rids = {i.rule_id for i in result.indicators}
+    reply_mismatch = "MAIL_REPLY_TO_MISMATCH" in rids
+    auth_unbacked = "MAIL_AUTH_CLAIM_UNBACKED" in rids
+    incomplete = result_is_incomplete(result)
 
     if av_threat is not None:
         c1 = (
@@ -381,6 +393,34 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     elif sender_st == "mismatch" or auth_fail:
         sub = "SPF/DMARC fehlgeschlagen" if auth_fail else "Absender weicht ab"
         c1 = ("Absender", "Gefälscht", sub, "bad", False, sub)
+    elif reply_mismatch:
+        c1 = (
+            "Absender",
+            "Antwort weicht ab",
+            "Reply-To != Absender",
+            "warn",
+            False,
+            "Antwortadresse (Reply-To) weicht vom Absender ab",
+        )
+    elif auth_unbacked:
+        c1 = (
+            "Absender",
+            "Nicht belegt",
+            "Header ohne DNS-Nachweis",
+            "warn",
+            True,
+            "Authentication-Results im Header sind unbestätigt",
+        )
+    elif av_gap:
+        gap_names = ", ".join(v.engine for v in av_gap[:2])
+        c1 = (
+            f"Virenschutz ({clip_text(gap_names, 20)})",
+            "Unvollständig",
+            "Prüfstufe ausgelassen/Fehler",
+            "warn",
+            True,
+            f"Virenschutz auf E-Mail nicht vollständig gelaufen ({gap_names})",
+        )
     elif sender_st == "ok":
         c1 = ("Absender", "Stimmig", "Keine Abweichung", "ok", False, "Absender konsistent")
     else:
@@ -409,6 +449,15 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
         )
     elif kids:
         c2 = ("Anhänge", f"{len(kids)} sauber", "Alle geprüft", "ok", False, "Anhänge unauffällig")
+    elif incomplete:
+        c2 = (
+            "Anhänge",
+            "Unvollständig",
+            "Prüfung lückenhaft",
+            "warn",
+            True,
+            "E-Mail-Prüfung war nicht vollständig — Anhänge nicht abschließend geprüft",
+        )
     else:
         c2 = ("Anhänge", "Keine Anhänge", "Nur Nachricht", "ok", False, "Keine Anhänge")
 
@@ -438,6 +487,15 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
             "ok",
             False,
             f"{len(links)} Links gefunden",
+        )
+    elif incomplete:
+        c3 = (
+            "Links im Text",
+            "Unvollständig",
+            "Prüfung lückenhaft",
+            "warn",
+            True,
+            "E-Mail-Prüfung war nicht vollständig — Links nicht abschließend geprüft",
         )
     else:
         c3 = ("Links im Text", "Keine Links", "Sauber", "ok", False, "Keine Links im Text")

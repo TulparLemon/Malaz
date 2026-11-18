@@ -16,6 +16,7 @@ from .sanitize import (
     clip_text,
     escape_tooltip,
     indicator_weight,
+    is_encrypted,
     masked_widget_text,
     result_is_incomplete,
 )
@@ -25,11 +26,7 @@ from .theme import RISK_MARKS
 # Preserved for backward-compatibility tests asserting mark consistency.
 RISK_MARK = {level: RISK_MARKS[level.name.lower()] for level in RiskLevel}
 
-_ENCRYPTED_RULES = frozenset({"ARCH_ENCRYPTED", "SEVENZIP_ENCRYPTED", "ZIP_ENCRYPTED", "PDF_ENCRYPTED"})
 
-
-def _is_encrypted(result: ScanResult) -> bool:
-    return any(i.rule_id in _ENCRYPTED_RULES for i in result.all_indicators())
 
 
 def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
@@ -37,7 +34,7 @@ def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
     dt = (result.detected_type or "").lower()
     is_mail = dt in MAIL_TYPES or bool(result.mail_security)
     is_archive = dt in ARCHIVE_TYPES or (bool(result.children) and not is_mail)
-    encrypted = _is_encrypted(result)
+    encrypted = is_encrypted(result)
 
     if state == "unk":
         if encrypted:

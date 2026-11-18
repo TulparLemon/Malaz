@@ -43,11 +43,11 @@ RISK_MARKS: dict[str, str] = {
     "red": "✖",
 }
 
-FONT_TITLE = 20
-FONT_SUBTITLE = 12
-FONT_BODY = 13
-FONT_MONO = 12
-FONT_MARK = 16
+FONT_TITLE = "20px"
+FONT_SUBTITLE = "15px"
+FONT_BODY = "13px"
+FONT_MONO = "12px"
+FONT_MARK = "16px"
 
 SPACE_S = 8
 SPACE_M = 12

@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import config
-from .sanitize import clip_text, masked_widget_text
+from .sanitize import clip_text, escape_tooltip, masked_widget_text
 from .theme import apply_theme, saved_theme_preference
 
 
@@ -337,7 +337,7 @@ class OptionsView(QWidget):
             text = f"{feed_badge_text} · {text}"
         self._db_label.setText(text)
         if feed_tooltip:
-            self._db_label.setToolTip(feed_tooltip)
+            self._db_label.setToolTip(escape_tooltip(feed_tooltip, limit=1200))
         self._btn_theme.setText(self._theme_button_label())
         self._update_net_badge()
 

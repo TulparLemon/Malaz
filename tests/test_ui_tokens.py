@@ -151,3 +151,19 @@ def test_format_helpers():
     assert type_filter_bucket("ole", "doc.docx") == "DOC"
     assert type_filter_bucket("7z", "x.7z") == "ZIP"
     assert format_size_de(1536) == "1,5 KB"
+
+
+def test_is_unc_or_device_path_exact_prefixes():
+    from malaz.gui.sanitize import is_unc_or_device_path
+
+    for blocked in (
+        r"\\server\share\file.pdf",
+        "//server/share/file.pdf",
+        "\\/server\\share",
+        "/\\server/share",
+        r"\\?\C:\file.pdf",
+        r"\\.\pipe\malaz",
+    ):
+        assert is_unc_or_device_path(blocked) is True, blocked
+    for allowed in (r"C:\Users\alice\doc.pdf", r"\foo\bar.pdf", "relative/doc.pdf"):
+        assert is_unc_or_device_path(allowed) is False, allowed
