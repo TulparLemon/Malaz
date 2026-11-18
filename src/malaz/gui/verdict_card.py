@@ -52,8 +52,8 @@ def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
             else "Mindestens eine Prüfstufe lief nicht"
         )
         return (
-            "Ungeprüft — Unvollständige Prüfung",
-            clip_text(f"{detail} · Nicht als sicher einstufen.", 140),
+            "Ungeprüft — Prüfung unvollständig",
+            clip_text(f"Nicht vollständig geprüft ({detail}) · Nicht als sicher einstufen.", 140),
         )
 
     if state == "bad":

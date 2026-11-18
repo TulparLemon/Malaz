@@ -140,6 +140,15 @@ _PAGE_OPTIONS = 3
 _PAGE_PENDING = 4
 
 
+def _urls_to_paths(urls: list[QUrl]) -> tuple[list[str], bool]:
+    """Expand dropped local file/folder QUrls into concrete file paths."""
+    raw = [u.toLocalFile() for u in urls if u.isLocalFile() and u.toLocalFile()]
+    if not raw:
+        return ([], False)
+    files, truncated = expand_scan_paths(raw)
+    return ([str(f) for f in files], truncated)
+
+
 class _ClickableFrame(QFrame):
     """QFrame with native layout sizing, click signal, and keyboard activation."""
 
@@ -870,9 +879,9 @@ class MainWindow(QMainWindow):
         if self._scan_active or not event.mimeData().hasUrls():
             event.ignore()
             return
-        paths = [u.toLocalFile() for u in event.mimeData().urls() if u.isLocalFile() and u.toLocalFile()]
+        paths, truncated = _urls_to_paths(event.mimeData().urls())
         if paths:
-            self._on_files_dropped(paths)
+            self.add_paths(paths, truncated=truncated)
             event.acceptProposedAction()
         else:
             event.ignore()
