@@ -78,6 +78,13 @@ _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 
 
+def _reset_copy_button(btn: QPushButton) -> None:
+    timer = getattr(btn, "_copy_timer", None)
+    if timer is not None:
+        timer.stop()
+    btn.setProperty("_orig_copy_text", None)
+
+
 def _copy_with_feedback(btn: QPushButton, raw_text: str, feedback: str = "Kopiert") -> None:
     cb = QGuiApplication.clipboard()
     if cb is not None:
@@ -91,7 +98,14 @@ def _copy_with_feedback(btn: QPushButton, raw_text: str, feedback: str = "Kopier
     if timer is None:
         timer = QTimer(btn)
         timer.setSingleShot(True)
-        timer.timeout.connect(lambda b=btn, text=orig: b.setText(text))
+
+        def _restore(b: QPushButton = btn) -> None:
+            saved = b.property("_orig_copy_text")
+            if isinstance(saved, str):
+                b.setText(saved)
+            b.setProperty("_orig_copy_text", None)
+
+        timer.timeout.connect(_restore)
         btn._copy_timer = timer  # type: ignore[attr-defined]
     timer.start(1100)
 
@@ -487,6 +501,7 @@ class FileDetailView(QWidget):
         self._btn_tab_mail.setVisible(has_mail)
         if has_mail:
             self.mail_panel.show_result(result)
+            self._btn_mail_viewer.setVisible(not bool(ancestor_chain))
         else:
             self.mail_panel.clear()
 
@@ -503,6 +518,7 @@ class FileDetailView(QWidget):
         if self._stack.currentIndex() == 3 and not has_capa:
             self.select_tab(0)
 
+        _reset_copy_button(self._hash_pill)
         if result.sha256:
             short_sha = f"{result.sha256[:8]}…{result.sha256[-6:]}"
             self._hash_pill.setText(f"SHA-256  {short_sha}")
@@ -904,6 +920,7 @@ class FileDetailView(QWidget):
         self.capa_panel.clear()
         self._btn_tab_mail.hide()
         self._btn_tab_capa.hide()
+        _reset_copy_button(self._hash_pill)
         self._hash_pill.hide()
         _clear_layout(self._overview_lay)
         _clear_layout(self._details_lay)

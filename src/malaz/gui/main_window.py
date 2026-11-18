@@ -827,10 +827,11 @@ class MainWindow(QMainWindow):
         act_scan.triggered.connect(self._on_scan)
         menu.addAction(act_scan)
 
-        act_report = QAction("Bericht speichern…", self)
-        act_report.setShortcut(QKeySequence("Ctrl+E"))
-        act_report.triggered.connect(self._on_export_report)
-        menu.addAction(act_report)
+        self._act_report = QAction("Bericht speichern…", self)
+        self._act_report.setShortcut(QKeySequence("Ctrl+E"))
+        self._act_report.triggered.connect(self._on_export_report)
+        self._act_report.setEnabled(False)
+        menu.addAction(self._act_report)
 
         menu.addSeparator()
         act_quit = QAction("Beenden", self)
@@ -1099,15 +1100,13 @@ class MainWindow(QMainWindow):
         )
         self._update_filter_counts()
         self._apply_filter()
-        self.btn_report.setEnabled(not self._scan_active and bool(self._results))
+        self._sync_report_enabled()
         if self.table.currentItem() is item:
             self._on_selection_changed(item)
         elif len(self._results) == 1 and self._pages.currentIndex() in (_PAGE_EMPTY, _PAGE_PENDING):
             self.table.setCurrentItem(item)
 
-    def _on_finished(
-        self, _results: list[ScanResult] | None = None, cancelled: bool = False
-    ) -> None:
+    def _on_finished(self, cancelled: bool = False) -> None:
         self._worker = None
         self._scan_active = False
         if cancelled:
@@ -1138,6 +1137,18 @@ class MainWindow(QMainWindow):
             self.btn_cancel.setEnabled(False)
             self.statusBar().showMessage("Abbruch angefordert…")
 
+    def _sync_report_enabled(self) -> None:
+        enabled = (
+            not self._scan_active
+            and self._worker is None
+            and not self._export_running
+            and bool(self._results)
+        )
+        self.btn_report.setEnabled(enabled)
+        self.summary._btn_export.setEnabled(enabled)
+        if hasattr(self, "_act_report"):
+            self._act_report.setEnabled(enabled)
+
     def _set_scanning(self, scanning: bool) -> None:
         self._scan_active = bool(scanning)
         self.table.set_locked(scanning)
@@ -1152,7 +1163,7 @@ class MainWindow(QMainWindow):
             self.chk_static_only,
         ):
             sw.setEnabled(not scanning)
-        self.btn_report.setEnabled(not scanning and not self._export_running and bool(self._results))
+        self._sync_report_enabled()
         self.btn_cancel.setEnabled(scanning and self._worker is not None)
         self._refresh_sidebar_actions()
         if scanning:
@@ -1513,7 +1524,7 @@ class MainWindow(QMainWindow):
     # -- Reports & Mail Viewer --------------------------------------------- #
 
     def _on_export_report(self) -> None:
-        if not self._results or self._export_running:
+        if not self._results or self._export_running or self._scan_active or self._worker is not None:
             return
         path, selected = QFileDialog.getSaveFileName(
             self,
@@ -1541,7 +1552,7 @@ class MainWindow(QMainWindow):
                 path = path + target_ext
         as_pdf = path.lower().endswith(".pdf")
         self._export_running = True
-        self.btn_report.setEnabled(False)
+        self._sync_report_enabled()
         self.statusBar().showMessage("Bericht wird erstellt…")
 
         sig = _ExportSignals(self)
@@ -1551,14 +1562,14 @@ class MainWindow(QMainWindow):
 
     def _on_report_saved(self, path: str) -> None:
         self._export_running = False
-        self.btn_report.setEnabled(not self._scan_active and bool(self._results))
+        self._sync_report_enabled()
         self.statusBar().showMessage(f"Bericht gespeichert: {masked_widget_text(path)}")
         if self.chk_auto_open.isChecked() and os.environ.get("QT_QPA_PLATFORM") != "offscreen":
             QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
     def _on_report_failed(self, error: str) -> None:
         self._export_running = False
-        self.btn_report.setEnabled(not self._scan_active and bool(self._results))
+        self._sync_report_enabled()
         self.statusBar().showMessage(f"Bericht fehlgeschlagen: {masked_widget_text(error)}")
         QMessageBox.critical(self, "Bericht fehlgeschlagen", error)
 
@@ -1566,14 +1577,19 @@ class MainWindow(QMainWindow):
         from .mail_viewer_dialog import MailViewerDialog
 
         cur = self.table.currentItem()
-        if cur is None:
+        if cur is None or cur.parent() is not None:
             return
         raw = str(cur.data(0, ROOT_PATH_ROLE) or "")
-        res = self._result_of(cur)
-        if res is not None and res.path and Path(res.path).is_file():
-            raw = res.path
-        if raw and Path(raw).is_file():
-            MailViewerDialog(raw, self).exec()
+        if not raw or is_unc_or_device_path(raw):
+            return
+        try:
+            resolved = Path(raw).resolve(strict=True)
+        except (OSError, ValueError):
+            return
+        resolved_str = str(resolved)
+        if is_unc_or_device_path(resolved_str) or not resolved.is_file():
+            return
+        MailViewerDialog(resolved_str, self).exec()
 
     def _on_about(self) -> None:
         caps = "\n".join(

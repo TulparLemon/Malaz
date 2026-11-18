@@ -28,7 +28,13 @@ from PySide6.QtWidgets import (
 
 from ..design_tokens import format_tag_code, type_filter_bucket, visual_state
 from ..models import ScanResult
-from .sanitize import clip_text, escape_tooltip, masked_widget_text, result_is_incomplete
+from .sanitize import (
+    clip_text,
+    escape_tooltip,
+    is_unc_or_device_path,
+    masked_widget_text,
+    result_is_incomplete,
+)
 from .theme import current_palette
 
 RESULT_ROLE = int(Qt.ItemDataRole.UserRole) + 1
@@ -218,10 +224,13 @@ class FileTreeWidget(QTreeWidget):
         def _norm(val: object) -> str:
             if not val:
                 return ""
+            raw = str(val)
+            if is_unc_or_device_path(raw):
+                return os.path.normcase(os.path.normpath(raw))
             try:
-                return os.path.normcase(str(Path(str(val)).resolve()))
+                return os.path.normcase(str(Path(raw).resolve()))
             except (OSError, ValueError):
-                return os.path.normcase(os.path.normpath(str(val)))
+                return os.path.normcase(os.path.normpath(raw))
 
         target_norm = _norm(result.path)
         res_name = os.path.normcase(Path(result.path).name or result.display_name)

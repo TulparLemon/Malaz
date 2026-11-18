@@ -500,6 +500,16 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     else:
         c3 = ("Links im Text", "Keine Links", "Sauber", "ok", False, "Keine Links im Text")
 
+    if incomplete and all(card[3] == "ok" for card in (c1, c2, c3)):
+        c1 = (
+            "Prüfung",
+            "Unvollständig",
+            "Mindestens eine Stufe fehlte",
+            "warn",
+            True,
+            "E-Mail wurde nicht vollständig geprüft",
+        )
+
     return [c1, c2, c3]
 
 

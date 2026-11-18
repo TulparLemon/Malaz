@@ -2517,3 +2517,150 @@ def test_footer_summary_extract_iocs_and_options_view_contracts(qapp):
         assert "&lt;img" in ov._db_label.toolTip()
     finally:
         ov.deleteLater()
+
+
+def test_on_view_mail_blocks_unc_and_nested_archive_children(window, tmp_path, monkeypatch):
+    """B1 (r2): _on_view_mail darf bei UNC-Pfaden niemals Path.is_file/resolve rufen und
+    darf bei verschachtelten .eml-Kindern in Archiven nicht das aeusseren .zip oeffnen."""
+    from pathlib import Path as _Path
+
+    from malaz.gui import mail_viewer_dialog
+    from malaz.models import RiskLevel, ScanResult
+
+    opened: list[str] = []
+
+    class _SpyDialog:
+        def __init__(self, path, parent=None):
+            opened.append(str(path))
+
+        def exec(self):
+            return 0
+
+    monkeypatch.setattr(mail_viewer_dialog, "MailViewerDialog", _SpyDialog)
+
+    # 1. Nested .eml inside a real local .zip -> viewer button hidden & _on_view_mail refuses
+    outer_zip = tmp_path / "archiv.zip"
+    outer_zip.write_bytes(b"PK\x05\x06" + b"\x00" * 18)
+    nested_eml = ScanResult(
+        path="\\\\evil-smb\\share\\inner.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.GREEN,
+        mail_security={"sender": "unknown"},
+    )
+    arch = ScanResult(
+        path=str(outer_zip),
+        detected_type="zip",
+        risk_level=RiskLevel.GREEN,
+        children=[nested_eml],
+    )
+    window._on_result(arch)
+    top = window.table.topLevelItem(0)
+    child = top.child(0)
+    window.table.setCurrentItem(child)
+    assert window.detail_view._btn_mail_viewer.isVisibleTo(window.detail_view) is False
+
+    fs_probed: list[str] = []
+    orig_is_file = _Path.is_file
+
+    def spy_is_file(self):
+        fs_probed.append(str(self))
+        return orig_is_file(self)
+
+    monkeypatch.setattr(_Path, "is_file", spy_is_file)
+    window._on_view_mail()
+    assert opened == [], f"Kind-.eml darf nicht das aeusseren .zip oeffnen: {opened}"
+    assert fs_probed == [], f"UNC-Kindpfad darf Dateisystem nicht beruehren: {fs_probed}"
+
+    # 2. Top-level UNC mail path -> zero filesystem probes, dialog never opened
+    unc_mail = ScanResult(
+        path="\\\\evil-smb\\share\\mail.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.GREEN,
+        mail_security={"sender": "unknown"},
+    )
+    unc_item = window.table.upsert_result(unc_mail)
+    window.table.setCurrentItem(unc_item)
+    window._on_view_mail()
+    assert opened == []
+    assert fs_probed == []
+
+
+def test_positional_on_finished_true_marks_cancelled_without_on_cancel(window, tmp_path):
+    """M1 (r2): ScanWorker.signals.finished sendet cancelled:bool als erstes Positionsargument."""
+    from malaz.gui.file_tree import STATE_ROLE
+
+    f = tmp_path / "pending.txt"
+    f.write_text("hi", encoding="utf-8")
+    window.add_paths([str(f)])
+    window.table.mark_pending_as_scanning()
+    # Direct positional True WITHOUT calling _on_cancel() first!
+    window._on_finished(True)
+    assert window.table.topLevelItem(0).data(0, STATE_ROLE) == "cancelled"
+    assert "abgebrochen" in window.statusBar().currentMessage().lower()
+
+
+def test_export_blocked_during_active_scan(window, tmp_path, monkeypatch):
+    """M2 (r2): Waehrend aktivem Scan muessen alle Report-Ausloeser gesperrt sein."""
+    from PySide6.QtWidgets import QFileDialog
+
+    from malaz.models import RiskLevel, ScanResult
+
+    window._results = [ScanResult(path="a.txt", detected_type="text", risk_level=RiskLevel.GREEN)]
+    window._set_scanning(True)
+    assert window.btn_report.isEnabled() is False
+    assert window.summary._btn_export.isEnabled() is False
+    assert window._act_report.isEnabled() is False
+
+    dialog_called: list[bool] = []
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName", lambda *_a, **_k: (dialog_called.append(True) or ("", ""))
+    )
+    window._on_export_report()
+    assert dialog_called == []
+    window._set_scanning(False)
+    assert window.btn_report.isEnabled() is True
+    assert window.summary._btn_export.isEnabled() is True
+    assert window._act_report.isEnabled() is True
+
+
+def test_hash_pill_resets_across_file_switch_and_incomplete_mail_never_all_green(qapp):
+    """N2 & N3 (r2): _hash_pill behaelt keinen alten Hash nach Dateiwechsel;
+    unvollstaendige Mail mit Anhaengen & Links zeigt nie 3 gruene Karten."""
+    from types import SimpleNamespace
+
+    from malaz.gui.detail_view import FileDetailView
+    from malaz.gui.engine_strip import _cards_for_mail
+    from malaz.models import Indicator, RiskLevel, ScanResult, Severity
+
+    view = FileDetailView()
+    try:
+        res_a = ScanResult(path="a.bin", detected_type="text", sha256="a" * 64, risk_level=RiskLevel.GREEN)
+        res_b = ScanResult(path="b.bin", detected_type="text", sha256="b" * 64, risk_level=RiskLevel.GREEN)
+        view.show_result(res_a)
+        view._copy_current_sha()
+        assert view._hash_pill.text() == "SHA-256 kopiert"
+        view.show_result(res_b)
+        assert "bbbbbbbb" in view._hash_pill.text()
+        assert view._hash_pill._copy_timer.isActive() is False
+        # Even if timer fires manually, it must NOT revert to file A's hash
+        view._hash_pill._copy_timer.timeout.emit()
+        assert "bbbbbbbb" in view._hash_pill.text()
+    finally:
+        view.deleteLater()
+
+    clean_kid = ScanResult(path="ok.txt", detected_type="text", risk_level=RiskLevel.GREEN)
+    inc_mail = ScanResult(
+        path="m.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.GREEN,
+        mail_security={"sender": "ok"},
+        children=[clean_kid],
+        mail_links=[
+            SimpleNamespace(href="https://example.org", suspicious=False, mismatch=False, is_ip=False)
+        ],
+        indicators=[
+            Indicator(rule_id="CORE_TIME_BUDGET", title="Zeitbudget", severity=Severity.INFO, weight=0)
+        ],
+    )
+    cards = _cards_for_mail(inc_mail)
+    assert not all(c[3] == "ok" for c in cards), cards
