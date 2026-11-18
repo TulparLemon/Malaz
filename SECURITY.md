@@ -21,7 +21,7 @@ Because Malaz parses untrusted, potentially hostile files, we treat parser bugs,
 Official release checksum manifests (`SHA256SUMS-*.txt.asc`) are signed with the following OpenPGP key (public key tracked at [docs/RELEASE-SIGNING-KEY.asc](docs/RELEASE-SIGNING-KEY.asc); verification steps in [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md)):
 
 ```text
-Fingerprint: 11F5 1D1B EE30 EAA3 C88A  E01B 36F1 852E 0ADE 4A08
+Fingerprint: AD92 7E80 5BE3 B440 BD67  6872 F350 D77C 8D49 8335
 UID:         Malaz Release Signing <release@malaz.local>
 ```
 

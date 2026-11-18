@@ -32,7 +32,7 @@ GPG_CANDIDATES = (
 )
 REPO = Path(__file__).resolve().parents[1]
 UID = "Malaz Release Signing <release@malaz.local>"
-OLD_FINGERPRINT = "11F51D1BEE30EAA3C88AE01B36F1852E0ADE4A08"
+OLD_FINGERPRINT = "AD927E805BE3B440BD676872F350D77C8D498335"
 MIN_LENGTH = 12
 
 
@@ -156,23 +156,31 @@ def export_public(gpg: Path, fingerprint: str) -> Path:
     return target
 
 
+def format_pretty(fingerprint: str) -> str:
+    """Format 40-hex OpenPGP v4 fingerprint in GnuPG 5+5 group layout."""
+    groups = [fingerprint[i:i + 4] for i in range(0, len(fingerprint), 4)]
+    return " ".join(groups[:5]) + "  " + " ".join(groups[5:])
+
+
 def update_references(old: str, new: str, pretty_new: str) -> list[Path]:
-    """Replace the pinned fingerprint in the docs and the backup script."""
+    """Replace the pinned fingerprint across all docs, scripts, and tests."""
     changed: list[Path] = []
-    # new_release_key.py itself carries OLD_FINGERPRINT. Without it the next
-    # rotation would update the docs but leave this constant on the previous
-    # key, so the "--key ..." line in docs/VERIFYING_RELEASES.md would point at the old one.
+    pretty_old = format_pretty(old)
     for rel in (
+        "SECURITY.md",
+        "docs/RELEASING.md",
         "docs/VERIFYING_RELEASES.md",
         "scripts/backup_key.py",
         "scripts/new_release_key.py",
+        "scripts/verify_release_set.py",
+        "tests/test_sign_sums.py",
     ):
         path = REPO / rel
         if not path.is_file():
             continue
         text = path.read_text(encoding="utf-8")
         original = text
-        text = text.replace(old, new)
+        text = text.replace(old, new).replace(pretty_old, pretty_new)
         text = re.sub(
             r"Fingerprint: [0-9A-F ]+",
             f"Fingerprint: {pretty_new}",
@@ -223,9 +231,7 @@ def main() -> int:
         path.unlink(missing_ok=True)
         print(f"Alte Signatur entfernt: dist/{path.name}")
 
-    pretty = " ".join(
-        fingerprint[i:i + 4] for i in range(0, len(fingerprint), 4)
-    )
+    pretty = format_pretty(fingerprint)
     for path in update_references(OLD_FINGERPRINT, fingerprint, pretty):
         print(f"Aktualisiert: {path.relative_to(REPO)}")
 

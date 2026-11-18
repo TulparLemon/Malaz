@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 
 GPG_EXE = r"C:\Program Files\GnuPG\bin\gpg.exe"
-RELEASE_FINGERPRINT = "11F51D1BEE30EAA3C88AE01B36F1852E0ADE4A08"
+RELEASE_FINGERPRINT = "AD927E805BE3B440BD676872F350D77C8D498335"
 
 
 def main(argv: list[str] | None = None) -> int:

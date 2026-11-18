@@ -74,3 +74,35 @@ def test_signed_valid_set_checks_exact_fingerprint_and_extras(tmp_path: Path, mo
         ["Malaz-1.0.0.zip", "Malaz-1.0.0-source.zip", "Malaz-1.0.0-licenses.zip"],
     )
     assert verify_release_set.main([str(tmp_path)]) == 1
+
+
+def test_release_signing_key_fingerprint_synced_across_repo():
+    """Verify docs/RELEASE-SIGNING-KEY.asc RFC 4880 v4 fingerprint matches all pinned docs/scripts."""
+    import base64
+    import hashlib
+
+    from scripts import backup_key, new_release_key
+
+    repo_root = Path(__file__).resolve().parents[1]
+    armor_lines = (repo_root / "docs" / "RELEASE-SIGNING-KEY.asc").read_text(encoding="utf-8").splitlines()
+    b64_body = "".join(
+        line.strip()
+        for line in armor_lines
+        if line.strip() and not line.startswith("-----") and not line.startswith("=")
+    )
+    raw = base64.b64decode(b64_body)
+    # RFC 4880 §4.2: Tag 6 Public-Key Packet (old-format 0x98 or new-format 0xC6, 1-byte length)
+    assert raw[0] in (0x98, 0xC6), f"Unexpected OpenPGP packet header: {raw[0]:#x}"
+    pkt_len = raw[1]
+    pkt_body = raw[2 : 2 + pkt_len]
+    assert len(pkt_body) == pkt_len and pkt_body[0] == 4, "Expected v4 OpenPGP public key packet"
+    computed_fpr = hashlib.sha1(b"\x99" + pkt_len.to_bytes(2, "big") + pkt_body).hexdigest().upper()
+
+    expected = verify_release_set.EXPECTED_SIGNING_FPR
+    pretty = new_release_key.format_pretty(expected)
+    assert computed_fpr == expected
+    assert expected == backup_key.RELEASE_FINGERPRINT
+    assert expected == new_release_key.OLD_FINGERPRINT
+    assert pretty in (repo_root / "SECURITY.md").read_text(encoding="utf-8")
+    assert (repo_root / "docs" / "VERIFYING_RELEASES.md").read_text(encoding="utf-8").count(pretty) == 2
+    assert expected in (repo_root / "docs" / "RELEASING.md").read_text(encoding="utf-8")
