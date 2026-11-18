@@ -20,12 +20,15 @@ _SUMS_NAME_RE = re.compile(r"^SHA256SUMS-(\d+\.\d+\.\d+)\.txt$")
 
 def verify_directory(directory: Path) -> int:
     if not directory.is_dir():
-        print(f"FEHLER: Ordner existiert nicht: {directory}")
+        print(f"ERROR: Directory does not exist: {directory}")
         return 2
 
     sums_files = [p for p in directory.iterdir() if p.is_file() and _SUMS_NAME_RE.match(p.name)]
     if len(sums_files) != 1:
-        print(f"FEHLER: Erwartet genau eine SHA256SUMS-<ver>.txt in {directory}, gefunden: {len(sums_files)}")
+        print(
+            f"ERROR: Expected exactly one SHA256SUMS-<ver>.txt in {directory}, "
+            f"found: {len(sums_files)}"
+        )
         return 2
 
     sums_path = sums_files[0]
@@ -36,14 +39,14 @@ def verify_directory(directory: Path) -> int:
     try:
         entries = write_checksums.parse_sums(sums_path)
     except ValueError as exc:
-        print(f"FEHLER: {exc}")
+        print(f"ERROR: {exc}")
         return 1
 
     expected_assets = set(write_checksums.release_assets(version))
     if set(entries) != expected_assets:
         print(
-            f"FEHLER: Asset-Menge in {sums_path.name} stimmt nicht. "
-            f"Erwartet: {sorted(expected_assets)}, gefunden: {sorted(entries)}"
+            f"ERROR: Asset set in {sums_path.name} does not match. "
+            f"Expected: {sorted(expected_assets)}, found: {sorted(entries)}"
         )
         return 1
 
@@ -54,34 +57,34 @@ def verify_directory(directory: Path) -> int:
     }
     for item in sorted(directory.iterdir()):
         if not item.is_file():
-            print(f"FEHLER: Unerwarteter Unterordner oder Sonderpfad: {item.name}")
+            print(f"ERROR: Unexpected subdirectory or special entry: {item.name}")
             return 1
         if item.name not in entries and item.name not in allowed_extra:
-            print(f"FEHLER: Fremddatei im Release-Ordner: {item.name}")
+            print(f"ERROR: Unexpected file in release directory: {item.name}")
             return 1
 
     for name, (expected_hash, expected_size) in entries.items():
         asset = directory / name
         if not asset.is_file():
-            print(f"FEHLER: Gelistetes Asset fehlt: {name}")
+            print(f"ERROR: Listed asset is missing: {name}")
             return 1
         actual_hash, actual_size = write_checksums.sha256(asset)
         if actual_size != expected_size or actual_hash != expected_hash:
             print(
-                f"FEHLER: Hash/Groesse weicht ab fuer {name}: "
-                f"erwartet {expected_hash} ({expected_size} B), "
-                f"ist {actual_hash} ({actual_size} B)"
+                f"ERROR: Hash or size mismatch for {name}: "
+                f"expected {expected_hash} ({expected_size} B), "
+                f"got {actual_hash} ({actual_size} B)"
             )
             return 1
 
     asc_path = directory / f"{sums_path.name}.asc"
     if not asc_path.is_file():
-        print("UNSIGNIERT: Alle 4 Assets und Hashes stimmen, aber .asc fehlt noch.")
+        print("UNSIGNED: All 4 assets and hashes match, but .asc is not present yet.")
         return 3
 
     gpg = sign_sums.find_gpg()
     if gpg is None:
-        print("SIGNATUR NICHT GEPRUEFT (gpg fehlt)")
+        print("SIGNATURE NOT VERIFIED (gpg not found)")
         return 3
 
     proc = subprocess.run(
@@ -98,20 +101,21 @@ def verify_directory(directory: Path) -> int:
     )
     if proc.returncode != 0 or not validsig:
         print(
-            f"FEHLER: Ungueltige GPG-Signatur oder falscher Schluessel-Fingerprint "
-            f"(erwartet {EXPECTED_SIGNING_FPR}).\n{proc.stderr.strip()}"
+            f"ERROR: Invalid GPG signature or unexpected key fingerprint "
+            f"(expected {EXPECTED_SIGNING_FPR}).\n{proc.stderr.strip()}"
         )
         return 1
 
     print(
-        f"OK: Release-Set {version} vollstaendig, Hashes und Signatur ({EXPECTED_SIGNING_FPR}) verifiziert."
+        f"OK: Release set {version} complete; "
+        f"hashes and signature ({EXPECTED_SIGNING_FPR}) verified."
     )
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("directory", type=Path, help="Ordner mit Release-Assets")
+    ap.add_argument("directory", type=Path, help="Directory containing release assets")
     args = ap.parse_args(argv)
     return verify_directory(args.directory)
 

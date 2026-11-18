@@ -3,7 +3,7 @@
 ## 1. System Requirements
 
 - **Operating System:** Windows 10 or Windows 11 (64-bit)
-- **Privileges:** Standard user account — **administrator privileges are never required**.
+- **Privileges:** Standard user account (**administrator privileges are never required**).
 - **Source Mode Only:** Python 3.11 – 3.14 (CI tests run on Python 3.12).
 - **Nuitka Native Build Only:** No pre-installed C compiler required; `scripts\build_nuitka.bat` passes `--assume-yes-for-downloads` so Nuitka automatically fetches MinGW-w64 on first build if neither MSVC nor MinGW is installed.
 

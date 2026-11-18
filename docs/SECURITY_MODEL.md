@@ -40,7 +40,7 @@ When a stage cannot inspect file bytes, Malaz never silently emits `GREEN`:
 ## 3. Archive, Decompression & Parser Hardening
 
 ### Path Traversal & Unsafe Archive Member Names (`src/malaz/security/safe_extract.py`)
-- **Zip-Slip vs. Benign OS Name Incompatibilities:** `unsafe_name_reason()` distinguishes true path escapes (`..\..\evil.dll`, drive letters, trailing Windows dots/spaces like `.. `) — scored as **`ARCH_ZIPSLIP` (`CRITICAL` / `50`, `RED` anchor)** — from non-traversal Windows device/ADS names (`CON.txt`, `file:stream`) scored as **`ARCH_UNSAFE_NAME` (`LOW` / `5`)**.
+- **Zip-Slip vs. Benign OS Name Incompatibilities:** `unsafe_name_reason()` distinguishes true path escapes (`..\..\evil.dll`, drive letters, trailing Windows dots/spaces like `.. `), scored as **`ARCH_ZIPSLIP` (`CRITICAL` / `50`, `RED` anchor)**, from non-traversal Windows device/ADS names (`CON.txt`, `file:stream`) scored as **`ARCH_UNSAFE_NAME` (`LOW` / `5`)**.
 - **In-Memory Content Inspection of Unsafe Names:** `ZIP` and `TAR` iterators still scan the payload bytes of unsafe-named entries in memory rather than skipping them, closing name-based detection bypasses.
 - **Symlink & NTFS Junction Containment:** Symlinks/reparse points are never followed during extraction or YARA directory cleanup.
 - **Bounded Streaming ZIP Reads (`read_zip_member_bounded`):** Both archive inspection and opt-in YARA feed updaters read streams via a cloned `ZipInfo` descriptor (`max_bytes + 1`) with manual CRC-32 verification and cumulative `64 MiB` budget accounting before skipping oversized entries, defeating forged `file_size == 0` ZIP headers.
