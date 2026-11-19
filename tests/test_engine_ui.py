@@ -49,11 +49,16 @@ def test_strip_and_score_tab_are_populated(qapp):
     chips = window.engines.findChildren(EngineChip)
     text = " | ".join(chip.text() for chip in chips)
     assert "Defender" in text and "Bedrohung" in text
-    assert "ClamAV" in text and "sauber" in text
+    assert "ClamAV" in text and "sauber" in text.lower()
     assert "YARA" in text and "1 Treffer" in text
-    assert "AV_THREAT" in window.score_breakdown.toPlainText()
-    row = window._row_values(result)
-    assert "D" in row[-1] and "C" in row[-1] and "Y" in row[-1]
+    from PySide6.QtWidgets import QLabel
+
+    detail_texts = " ".join(lbl.text() for lbl in window.detail_view.findChildren(QLabel))
+    assert "AV_THREAT" in detail_texts
+    from malaz.gui.engine_strip import compact_engine_text
+
+    compact = compact_engine_text(result)
+    assert "D:" in compact and "C:" in compact and "Y:" in compact
     window.close()
 
 
@@ -165,9 +170,9 @@ def test_batch_summary_zaehlt_fehler_als_unvollstaendig(qapp):
 
     headline = summary.headline.text()
     assert "3 Dateien" in headline, headline
-    assert "1 grün" in headline, headline
-    assert "1 gelb" in headline, headline
-    assert "1 rot" in headline, headline
+    assert "1 unauffällig" in headline, headline
+    assert "1 verdächtig" in headline, headline
+    assert "1 gefährlich" in headline, headline
     assert "1 unvollständig" in headline, headline
 
 

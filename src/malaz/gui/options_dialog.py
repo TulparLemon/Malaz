@@ -45,16 +45,13 @@ from PySide6.QtWidgets import (
 )
 
 from .. import config
+from .display import clamp_dialog_to_screen
 
 
 def _gruppe(titel: str, hinweis: str) -> tuple[QFrame, QVBoxLayout]:
     """Ein gerahmter Abschnitt mit Ueberschrift und einem Satz Begruendung."""
     rahmen = QFrame()
-    rahmen.setObjectName("verdictCard")
-    rahmen.setStyleSheet(
-        "#verdictCard { background: #1c1e25; border: 1px solid #2c2e38;"
-        " border-radius: 8px; }"
-    )
+    rahmen.setObjectName("card")
     layout = QVBoxLayout(rahmen)
     layout.setContentsMargins(16, 12, 16, 12)
     layout.setSpacing(8)
@@ -80,7 +77,7 @@ class OptionsDialog(QDialog):
     def __init__(self, parent: QWidget | None = None, *, switches: dict | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Optionen")
-        self.resize(680, 620)
+        clamp_dialog_to_screen(self, preferred_w=680, preferred_h=620)
         self._switches = switches or {}
 
         outer = QVBoxLayout(self)
@@ -144,8 +141,7 @@ class OptionsDialog(QDialog):
             "werden NICHT geprüft."
         )
         text.setWordWrap(True)
-        text.setObjectName("panelValue")
-        text.setStyleSheet("color: #8b93a7;")
+        text.setObjectName("mutedLabel")
         return text
 
     # -- Ausgabe ----------------------------------------------------------- #
@@ -178,8 +174,7 @@ class OptionsDialog(QDialog):
             "Schritt; ohne sie sagt der Bericht, dass sie nicht gelaufen ist."
         )
         hinweis.setWordWrap(True)
-        hinweis.setObjectName("panelValue")
-        hinweis.setStyleSheet("color: #8b93a7;")
+        hinweis.setObjectName("mutedLabel")
         layout.addWidget(hinweis)
         self._layout.addWidget(rahmen)
 

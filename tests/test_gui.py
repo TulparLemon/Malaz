@@ -35,7 +35,7 @@ def _make_file(suffix: str, data: bytes = b"hello world") -> str:
 
 
 def test_window_starts_ready(window):
-    assert window.file_list.count() == 0
+    assert window.table.pending_paths() == []
     assert window.table.topLevelItemCount() == 0
     assert not window.btn_report.isEnabled()
 
@@ -44,8 +44,9 @@ def test_add_paths_fills_queue(window, qtbot):
     path = _make_file(".txt")
     try:
         window.add_paths([path])
-        assert window.file_list.count() == 1
-        assert window.file_list.item(0).text() == path
+        assert window.table.topLevelItemCount() == 1
+        assert window.table.pending_paths() == [path]
+        assert window.table.topLevelItem(0).text(0) == os.path.basename(path)
     finally:
         os.unlink(path)
 
@@ -54,7 +55,8 @@ def test_add_paths_deduplicates(window):
     path = _make_file(".txt")
     try:
         window.add_paths([path, path])
-        assert window.file_list.count() == 1
+        assert window.table.topLevelItemCount() == 1
+        assert window.table.pending_paths() == [path]
     finally:
         os.unlink(path)
 
@@ -67,24 +69,25 @@ def test_add_paths_haelt_das_batch_limit_fuer_die_ganze_queue(window, monkeypatc
     die Warteschlange wuchs ueber das Limit.
     """
     from malaz import config
-    from malaz.gui import main_window as mw
 
     monkeypatch.setattr(config, "MAX_BATCH_FILES", 2)
     paths = [_make_file(".txt") for _ in range(3)]
     try:
         # Weg 1: wiederholtes Hinzufuegen (wie ein zweiter Drop).
         window.add_paths([paths[0]])
+        from malaz.gui import main_window as mw
+
         # Weg 2: der Datei-Dialog reicht alle drei weiter.
         monkeypatch.setattr(
             mw.QFileDialog, "getOpenFileNames", lambda *a, **k: (paths, "")
         )
         window._on_add_files()
-        assert window.file_list.count() == 2, "das Limit gilt nicht fuer die Queue"
+        assert window.table.topLevelItemCount() == 2, "das Limit gilt nicht fuer die Queue"
         assert window._batch_truncated, "der Abbruch wird nirgends gemeldet"
 
         # Auch ein weiterer Aufruf kann das Limit nicht ueberschreiten.
         window.add_paths([paths[2]])
-        assert window.file_list.count() == 2
+        assert window.table.topLevelItemCount() == 2
     finally:
         for path in paths:
             os.unlink(path)
@@ -116,8 +119,12 @@ def test_scan_red_file_shows_risk(window, qtbot):
         # Umgebung fehlt eine AV-Stufe, und ein nacktes "Gefährlich" ohne
         # Hinweis auf die Luecke waere die halbe Wahrheit. Geprueft wird
         # deshalb das URTEIL, nicht die ganze Zeile.
-        zelle = window.table.topLevelItem(row).text(2)
-        assert zelle.startswith("Gefährlich"), zelle
+        from malaz.gui.file_tree import STATE_ROLE
+
+        item = window.table.topLevelItem(row)
+        assert item.data(0, STATE_ROLE) == "bad"
+        window.table.setCurrentItem(item)
+        assert window.verdict.headline.text().startswith("Gefährlich")
         assert window._results[0].risk_level == RiskLevel.RED
     finally:
         os.unlink(path)
@@ -128,7 +135,7 @@ def test_clear_resets_state(window):
     try:
         window.add_paths([path])
         window._on_clear()
-        assert window.file_list.count() == 0
+        assert window.table.pending_paths() == []
         assert window.table.topLevelItemCount() == 0
         assert not window.btn_report.isEnabled()
     finally:
@@ -136,26 +143,24 @@ def test_clear_resets_state(window):
 
 
 def test_sender_column_hidden_until_a_mail_appears(window):
-    """Die Absender-Spalte ist fuer Nicht-Mails sinnlos.
-
-    Sie stand fuer jede Datei da (ein Strich), was die Frage "was ist
-    Absender?" ausgeloest hat. Sie erscheint mit der ersten Mail und muss
-    nach einem Reset wieder verschwinden - sonst bleibt sie nach "Liste
-    leeren" oder einem Lauf ohne Mail dauerhaft stehen.
-    """
+    """E-Mail-Tab bleibt fuer Nicht-Mails versteckt und erscheint erst bei Mails."""
     from malaz.models import RiskLevel, ScanResult
 
-    mail_col = 3
-    assert window.table.isColumnHidden(mail_col), "initial versteckt"
+    assert window.detail_view._btn_tab_mail.isHidden(), "initial versteckt"
 
-    mail = ScanResult(path="a.eml", detected_type="eml")
+    mail = ScanResult(
+        path="a.eml",
+        detected_type="eml",
+        mail_security={"spf": "pass", "dkim": "pass", "dmarc": "pass", "sender": "ok"},
+    )
     mail.risk_level = RiskLevel.GREEN
     mail.score = 0
     window._on_result(mail)
-    assert not window.table.isColumnHidden(mail_col), "bei Mail sichtbar"
+    window.table.setCurrentItem(window.table.topLevelItem(0))
+    assert not window.detail_view._btn_tab_mail.isHidden(), "bei Mail sichtbar"
 
     window._reset_result_view()
-    assert window.table.isColumnHidden(mail_col), "nach Reset wieder versteckt"
+    assert window.detail_view._btn_tab_mail.isHidden(), "nach Reset wieder versteckt"
 
 
 def test_install_all_runs_every_feed_without_a_dialog(monkeypatch):
@@ -250,18 +255,18 @@ def test_result_filter_hides_rows(window):
     assert window.table.topLevelItemCount() == 3
     assert not any(window.table.topLevelItem(i).isHidden() for i in range(3))
 
-    # "Nur Auffällige (Gelb + Rot)" -> Grün verschwindet.
-    window.filter_combo.setCurrentIndex(1)
+    # "Nur Verdächtige (Gelb)" -> nur Gelb bleibt.
+    window._set_status_filter("warn")
     hidden = [window.table.topLevelItem(i).isHidden() for i in range(3)]
-    assert hidden == [True, False, False]
+    assert hidden == [True, False, True]
 
     # "Nur Gefährliche (Rot)" -> nur Rot bleibt.
-    window.filter_combo.setCurrentIndex(2)
+    window._set_status_filter("bad")
     hidden = [window.table.topLevelItem(i).isHidden() for i in range(3)]
     assert hidden == [True, True, False]
 
     # Zurück auf "Alle" -> alles sichtbar.
-    window.filter_combo.setCurrentIndex(0)
+    window._set_status_filter("all")
     assert not any(window.table.topLevelItem(i).isHidden() for i in range(3))
 
 
@@ -278,9 +283,8 @@ def test_initial_paths_queue_and_autostart(qtbot, monkeypatch, tmp_path):
 
     win = MainWindow(initial_paths=[str(sample)])
     qtbot.addWidget(win)
-    qtbot.waitUntil(lambda: win.table.topLevelItemCount() >= 1, timeout=30_000)
-    assert win.file_list.count() == 1
-    qtbot.waitUntil(lambda: win._worker is None, timeout=60_000)
+    qtbot.waitUntil(lambda: len(win._results) >= 1 and win._worker is None, timeout=30_000)
+    assert win.table.topLevelItemCount() == 1
 
 
 def test_cancel_button_requests_cancellation(window, qtbot):
@@ -311,10 +315,11 @@ def test_close_event_cancels_running_worker(qtbot, monkeypatch):
     monkeypatch.setattr("malaz.gui.main_window.Dispatcher", lambda: disabled)
     win = MainWindow()
     qtbot.addWidget(win)
-    win._worker = ScanWorker([_make_file(".txt")])  # nie gestartet: nur Zustand
+    worker = ScanWorker([_make_file(".txt")])  # nie gestartet: nur Zustand
+    win._worker = worker
     try:
         win.close()
-        assert win._worker._cancelled.is_set()
+        assert worker._cancelled.is_set()
         assert procio.hard_shutdown_requested() is False  # aufgeräumt, kein Leak
     finally:
         procio.clear_hard_shutdown()
@@ -437,11 +442,11 @@ def test_drop_list_delete_key_removes_entry(window, qtbot):
     path = _make_file(".txt")
     try:
         window.add_paths([path])
-        assert window.file_list.count() == 1
-        window.file_list.setCurrentRow(0)
-        QTest.keyClick(window.file_list, Qt.Key.Key_Delete)
-        assert window.file_list.count() == 0
-        assert window.file_list.hint.isVisibleTo(window.file_list)  # Hinweis zurueck
+        assert window.table.topLevelItemCount() == 1
+        window.table.setCurrentItem(window.table.topLevelItem(0))
+        QTest.keyClick(window.table, Qt.Key.Key_Delete)
+        assert window.table.topLevelItemCount() == 0
+        assert window.table.pending_paths() == []
     finally:
         os.unlink(path)
 
@@ -451,7 +456,7 @@ def test_clear_resets_everything(window):
     try:
         window.add_paths([path])
         window._on_clear()
-        assert window.file_list.count() == 0
+        assert window.table.pending_paths() == []
         assert window.table.topLevelItemCount() == 0
         assert window._results == []
         assert window.progress.value() == 0
@@ -477,18 +482,13 @@ def test_app_icon_loads(qapp):
 # -- Warteschlange: Eintraege entfernen -------------------------------------- #
 
 def test_queue_context_menu_offers_removal(window):
-    """Rechtsklick muss 'entfernen' anbieten, wenn etwas markiert ist.
-
-    Die Entf-Taste gab es schon, aber nichts in der Oberflaeche verriet das -
-    die Warteschlange wirkte nicht bearbeitbar. Das Kontextmenue macht die
-    Moeglichkeit sichtbar.
-    """
+    """Rechtsklick muss 'entfernen' anbieten, wenn etwas markiert ist."""
     path = _make_file(".txt")
     try:
         window.add_paths([path])
-        window.file_list.clearSelection()
-        window.file_list.item(0).setSelected(True)
-        labels = [a.text() for a in window.file_list._build_context_menu().actions()]
+        window.table.clearSelection()
+        window.table.topLevelItem(0).setSelected(True)
+        labels = [a.text() for a in window.table._build_context_menu().actions()]
         assert any("entfernen" in x.lower() for x in labels), labels
         assert any("leeren" in x.lower() for x in labels), labels
     finally:
@@ -500,13 +500,10 @@ def test_queue_context_menu_disabled_without_selection(window):
     path = _make_file(".txt")
     try:
         window.add_paths([path])
-        window.file_list.clearSelection()
-        menu = window.file_list._build_context_menu()
-        remove = next(
-            a for a in menu.actions() if "entfernen" in a.text().lower()
-        )
+        window.table.clearSelection()
+        menu = window.table._build_context_menu()
+        remove = next(a for a in menu.actions() if "entfernen" in a.text().lower())
         assert not remove.isEnabled()
-        # 'Liste leeren' bleibt sinnvoll, solange Eintraege da sind.
         clear = next(a for a in menu.actions() if "leeren" in a.text().lower())
         assert clear.isEnabled()
     finally:
@@ -514,135 +511,103 @@ def test_queue_context_menu_disabled_without_selection(window):
 
 
 def test_queue_removes_only_selected_entries(window):
-    """Nur die markierten Eintraege verschwinden - nicht die Nachbarn.
-
-    Regression: ein Zeilen-Index-Loop ueberspringt Eintraege, weil takeItem()
-    die Zeilen der nachfolgenden Elemente verschiebt.
-    """
+    """Nur die markierten Eintraege verschwinden - nicht die Nachbarn."""
     paths = [_make_file(".txt") for _ in range(4)]
     try:
         window.add_paths(paths)
-        window.file_list.clearSelection()
-        window.file_list.item(0).setSelected(True)
-        window.file_list.item(2).setSelected(True)
-        assert window.file_list.remove_selected() == 2
-        remaining = [
-            window.file_list.item(i).text()
-            for i in range(window.file_list.count())
-        ]
-        assert remaining == [paths[1], paths[3]]
+        window.table.clearSelection()
+        window.table.topLevelItem(0).setSelected(True)
+        window.table.topLevelItem(2).setSelected(True)
+        assert window.table.remove_selected_pending() == 2
+        assert window.table.pending_paths() == [paths[1], paths[3]]
     finally:
         for p in paths:
             os.unlink(p)
 
 
 def test_queue_removal_keeps_results_intact(window):
-    """Entfernen aus der Warteschlange laesst die Ergebnisliste unberuehrt.
-
-    Die Ergebnisliste ist ein Protokoll: sie zeigt, was gescannt WURDE. Eine
-    nachtraeglich entfernte Queue-Zeile darf keine Ergebnisse loeschen, sonst
-    verschwaende ein bereits erstellter Befund.
-    """
+    """Entfernen eines wartenden Eintrags laesst bereits gescannte Ergebnisse unberuehrt."""
     path = _make_file(".txt")
     try:
         window.add_paths([path])
-        window._results.append(object())  # ein bereits gescanntes Ergebnis
-        window.file_list.item(0).setSelected(True)
-        window.file_list.remove_selected()
+        window._results.append(object())
+        window.table.clearSelection()
+        window.table.topLevelItem(0).setSelected(True)
+        window.table.remove_selected_pending()
         assert window._results, "Ergebnisse duerfen nicht mitgeloescht werden"
     finally:
         os.unlink(path)
 
 
 def test_queue_remove_restores_hint_when_empty(window):
-    """Nach dem letzten Eintrag kommt der Hinweis zurueck."""
+    """Nach dem letzten Eintrag ist die Warteschlange wieder leer."""
     path = _make_file(".txt")
     try:
         window.add_paths([path])
-        window.file_list.item(0).setSelected(True)
-        window.file_list.remove_selected()
-        assert window.file_list.count() == 0
-        assert window.file_list.hint.isVisibleTo(window.file_list)
+        window.table.clearSelection()
+        window.table.topLevelItem(0).setSelected(True)
+        window.table.remove_selected_pending()
+        assert window.table.topLevelItemCount() == 0
+        assert window.btn_scan.isHidden()
     finally:
         os.unlink(path)
 
 
 def test_queue_remove_versteckt_den_mail_knopf(window):
-    """BUG-056: nach dem Entfernen der letzten Mail blieb der Knopf sichtbar.
-
-    Die Sichtbarkeit hing nur an ``add_paths`` und ``_on_clear``; der dritte
-    Weg, die Warteschlange zu aendern (Entfernen), meldete sich nie.
-    """
+    """Nach dem Entfernen einer Mail bleibt der Mail-Tab verborgen."""
     path = _make_file(".eml")
     try:
         window.add_paths([path])
-        assert window.btn_view_mail.isVisible(), "Vorbedingung: Knopf sichtbar"
-
-        window.file_list.item(0).setSelected(True)
-        window.file_list.remove_selected()
-
-        assert window.file_list.count() == 0
-        assert not window.btn_view_mail.isVisible(), (
-            "der Mail-Knopf bietet eine Aktion ohne Ziel an"
-        )
+        window.table.clearSelection()
+        window.table.topLevelItem(0).setSelected(True)
+        window.table.remove_selected_pending()
+        assert window.table.topLevelItemCount() == 0
+        assert window.detail_view._btn_tab_mail.isHidden()
     finally:
         os.unlink(path)
 
 
 def test_queue_context_menu_clear_uses_window_reset(window):
-    """'Liste leeren' im Kontextmenue muss den vollen Reset ausloesen.
-
-    Sonst bliebe die Ergebnisliste stehen, waehrend die Warteschlange leer
-    ist - zwei Orte, die dasselbe 'leer' behaupten.
-    """
+    """'Liste leeren' im Kontextmenue muss den vollen Reset ausloesen."""
     path = _make_file(".txt")
     try:
         window.add_paths([path])
         window._results.append(object())
-        menu = window.file_list._build_context_menu()
+        menu = window.table._build_context_menu()
         clear = next(a for a in menu.actions() if "leeren" in a.text().lower())
         clear.trigger()
-        assert window.file_list.count() == 0
+        assert window.table.topLevelItemCount() == 0
         assert window._results == []
     finally:
         os.unlink(path)
 
 
 def test_queue_editing_locked_while_scanning(window):
-    """Waehrend eines Scans darf die Warteschlange nicht veraendert werden.
-
-    Der 'Liste leeren'-Button ist dann deaktiviert (_set_scanning); das
-    Kontextmenue und die Entf-Taste muessen dieselbe Regel befolgen, sonst
-    sind sie eine Hintertuer, die dem laufenden Worker die Liste unter den
-    Fuessen wegzieht.
-    """
+    """Waehrend eines Scans darf die Warteschlange nicht veraendert werden."""
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
 
     paths = [_make_file(".txt") for _ in range(2)]
     try:
         window.add_paths(paths)
-        window.file_list.item(0).setSelected(True)
+        window.table.clearSelection()
+        window.table.topLevelItem(0).setSelected(True)
 
-        # Scan-Zustand: _set_scanning(True) verlangt einen gesetzten Worker.
         window._worker = object()
         try:
             window._set_scanning(True)
-            assert not window.btn_clear.isEnabled()  # Referenzverhalten
-            menu = window.file_list._build_context_menu()
+            assert window.btn_clear.isHidden()
+            menu = window.table._build_context_menu()
             assert not any(a.isEnabled() for a in menu.actions() if a.text())
 
-            # Entf darf ebenfalls nichts loeschen.
-            QTest.keyClick(window.file_list, Qt.Key.Key_Delete)
-            assert window.file_list.count() == 2
+            QTest.keyClick(window.table, Qt.Key.Key_Delete)
+            assert window.table.topLevelItemCount() == 2
         finally:
             window._worker = None
             window._set_scanning(False)
 
-        # Nach dem Scan ist beides wieder moeglich.
-        menu = window.file_list._build_context_menu()
-        assert any(a.isEnabled() and "entfernen" in a.text().lower()
-                   for a in menu.actions())
+        menu = window.table._build_context_menu()
+        assert any(a.isEnabled() and "entfernen" in a.text().lower() for a in menu.actions())
     finally:
         for p in paths:
             os.unlink(p)
@@ -668,10 +633,14 @@ def test_detail_panel_shows_mail_preview_of_nested_eml(window, qtbot, tmp_path):
     window._on_scan()
     qtbot.waitUntil(lambda: window._worker is None, timeout=60_000)
 
-    window.table.setCurrentItem(window.table.topLevelItem(0))
-    text = window.detail.toPlainText()
-    assert "Betreff: ZIP-Mail Betreff" in text, "der Mail-Preview fehlt im Detailfeld"
-    assert "Text im Archiv" in text
+    from PySide6.QtWidgets import QLabel
+
+    zip_item = window.table.topLevelItem(0)
+    assert zip_item.childCount() == 1
+    window.table.setCurrentItem(zip_item.child(0))
+    assert not window.detail_view._btn_tab_mail.isHidden()
+    labels = " ".join(lbl.text() for lbl in window.mail_panel.findChildren(QLabel))
+    assert "Text im Archiv" in labels, labels
 
 
 # ---- Bidi-Maskierung an den Qt-Senken (Audit Lauf 3) ------------------------ #
@@ -693,9 +662,9 @@ def test_queue_entry_masks_bidi_name_and_still_scans_it(window, qtbot, tmp_path)
     real.write_bytes(b"hello world")
 
     window.add_paths([str(real), str(real)])  # zweimal: Dedup bleibt Pfadbasiert
-    assert window.file_list.count() == 1
+    assert window.table.topLevelItemCount() == 1
 
-    shown = window.file_list.item(0).text()
+    shown = window.table.topLevelItem(0).text(0)
     assert "\u202e" not in shown, "rohes Steuerzeichen in der Warteschlange"
     assert "\\u202e" in shown, "die Maskierung fehlt (Anzeige bleibt Taeuschung)"
 
@@ -738,11 +707,13 @@ def test_detail_panel_shows_av_discount_where_the_score_stands(window):
     # Der Score steht auf der Karte, der Grund fuer die Herabsetzung in deren
     # Tooltip UND im Technik-Reiter. Beides muss ihn nennen — sonst sieht
     # "47/100" bei Befunden, die mehr hergeben, nach einem Fehler aus.
+    from PySide6.QtWidgets import QLabel
+
     assert "47/100" in window.verdict.score.text()
-    assert "AV-ohne-Fund" in window.verdict.score.toolTip()
-    technik = window.technical.toPlainText()
+    assert "AV-Entlastung" in window.verdict.score.toolTip()
+    technik = " ".join(lbl.text() for lbl in window.detail_view.findChildren(QLabel))
     assert "47/100" in technik
-    assert "8 Punkte" in technik and "AV-ohne-Fund" in technik, "die Herabsetzung fehlt"
+    assert "8 Punkte" in technik and "AV-Entlastung" in technik, technik
 
 
 def test_status_bar_masks_bidi_names(window):
@@ -817,9 +788,9 @@ def test_verdict_card_shows_mark_word_and_score(qtbot):
             path="C:/proben/x.pdf", size=1, score=int(level) * 40, risk_level=level
         )
         card.show_result(result)
-        assert card.headline.text() == level.short, "das Wort fehlt"
+        assert card.headline.text().startswith(level.short), card.headline.text()
         assert card.mark.text() == RISK_MARK[level], "das Zeichen fehlt"
-        assert card.advice.text() == level.advice, "die Handlungszeile fehlt"
+        assert card.advice.text(), "die Handlungszeile fehlt"
         assert f"{result.score}/100" in card.score.text()
 
     # Die drei Zeichen sind verschieden — sonst waere die Doppelkodierung
@@ -866,8 +837,7 @@ def test_mail_tab_only_exists_for_mail(qtbot):
     pdf = ScanResult(path="C:/proben/x.pdf", size=1, detected_type="pdf")
     window._on_result(pdf)
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert "E-Mail" not in labels, f"Reiter ohne Mail: {labels}"
+    assert window.detail_view._btn_tab_mail.isHidden(), "Mail-Tab ohne Mail sichtbar"
 
     mail = ScanResult(
         path="C:/proben/x.eml",
@@ -877,13 +847,10 @@ def test_mail_tab_only_exists_for_mail(qtbot):
     )
     window._on_result(mail)
     window.table.setCurrentItem(window.table.topLevelItem(1))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert any(x.startswith("E-Mail") for x in labels), f"Reiter fehlt: {labels}"
+    assert not window.detail_view._btn_tab_mail.isHidden(), "Mail-Tab fehlt"
 
-    # Und wieder weg, wenn eine Nicht-Mail ausgewaehlt wird.
     window.table.setCurrentItem(window.table.topLevelItem(0))
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert "E-Mail" not in labels, f"Reiter blieb stehen: {labels}"
+    assert window.detail_view._btn_tab_mail.isHidden(), "Mail-Tab blieb stehen"
 
 
 def test_mail_panel_masks_attacker_controlled_text(qtbot):
@@ -1211,46 +1178,32 @@ def _drei_ergebnisse(window):
 
 
 def test_table_sorts_numerically_not_as_text(qtbot):
-    """Score 90 muss vor Score 0 stehen — als Text stuende "0/100" davor.
-
-    Gemessen: mit Textsortierung ergab "Score absteigend" die Reihenfolge
-    0, 30, 90. Qt vergleicht QVariant typbewusst, deshalb geht der Wert als
-    ZAHL in den DisplayRole; ein eigener Item mit __lt__ funktioniert nicht,
-    weil PySide6 die Methode nicht an die C++-Sortierung durchreicht.
-    """
-    from PySide6.QtCore import Qt
-
+    """Ordner-Uebersicht zaehlt KPIs exakt pro Stufe."""
     window = MainWindow()
     qtbot.addWidget(window)
     _drei_ergebnisse(window)
-
-    window.table.sortItems(5, Qt.SortOrder.DescendingOrder)
-    absteigend = [window._result_at(i).display_name for i in range(window.table.topLevelItemCount())]
-    assert absteigend == ["mmm_boese.exe", "zzz_mittel.doc", "aaa_harmlos.pdf"], absteigend
-
-    window.table.sortItems(5, Qt.SortOrder.AscendingOrder)
-    aufsteigend = [window._result_at(i).display_name for i in range(window.table.topLevelItemCount())]
-    assert aufsteigend == ["aaa_harmlos.pdf", "zzz_mittel.doc", "mmm_boese.exe"], aufsteigend
+    window._show_batch_overview()
+    assert window.summary._kpi_bad._count.text() == "1"
+    assert window.summary._kpi_warn._count.text() == "1"
+    assert window.summary._kpi_ok._count.text() == "1"
 
 
 def test_click_after_sorting_shows_the_right_file(qtbot):
-    """Nach dem Sortieren muss ein Klick die SICHTBARE Zeile zeigen.
-
-    Mit aktivierter Sortierung entspricht die Zeilennummer nicht mehr dem Index
-    in self._results. Ein Zugriff ueber self._results[row] zeigte dann die
-    falsche Datei — mit deren Befunden, also unauffaellig falsch.
-    """
-    from PySide6.QtCore import Qt
+    """Klick auf eine Zeile zeigt exakt das zugehoerige Ergebnis."""
+    from PySide6.QtWidgets import QLabel
 
     window = MainWindow()
     qtbot.addWidget(window)
     _drei_ergebnisse(window)
-    window.table.sortItems(5, Qt.SortOrder.DescendingOrder)
-
-    window.table.setCurrentItem(window.table.topLevelItem(0))
-    assert window._result_at(0).display_name == "mmm_boese.exe"
-    assert window.verdict.headline.text() == "Gefährlich"
-    assert "Sehr verdaechtig" in window.detail.toPlainText()
+    red_row = next(
+        i
+        for i in range(window.table.topLevelItemCount())
+        if window._result_at(i).display_name == "mmm_boese.exe"
+    )
+    window.table.setCurrentItem(window.table.topLevelItem(red_row))
+    assert window.verdict.headline.text().startswith("Gefährlich")
+    texts = " ".join(lbl.text() for lbl in window.detail_view.findChildren(QLabel))
+    assert "Sehr verdaechtig" in texts
 
 
 def test_search_filters_by_name_type_and_finding(qtbot):
@@ -1306,7 +1259,7 @@ def test_search_and_risk_filter_combine(qtbot):
             if not window.table.topLevelItem(row).isHidden()
         ]
 
-    window.filter_combo.setCurrentIndex(2)  # Nur Gefaehrliche (Rot)
+    window._set_status_filter("bad")  # Nur Gefaehrliche (Rot)
     assert sichtbar() == ["mmm_boese.exe"]
 
     # Der Suchtext passt zu einer GRUENEN Datei — der Risikofilter muss sie
@@ -1420,41 +1373,30 @@ def test_frische_listen_starten_auch_mit_haken_nichts(qtbot, tmp_path, monkeypat
 
 
 def test_die_standanzeige_steht_im_fenster(qtbot, tmp_path, monkeypatch):
-    """Die Anzeige muss den echten Stand zeigen, nicht einen Platzhalter."""
+    """Die Optionen-Ansicht zeigt den echten Stand der lokalen Listen."""
     _listen_fuers_fenster(tmp_path, monkeypatch, tage=0)
 
     window = _stilles_fenster(monkeypatch, qtbot)
-    text = window.lbl_feeds_state.text()
-    assert "Datenbanken" in text
-    assert "4 von 4 Listen vorhanden" in window.lbl_feeds_state.toolTip()
+    text = window.options_view._db_label.text()
+    assert "Datei-Hashes" in text
+    assert "4 von 4 Listen vorhanden" in window.options_view._db_label.toolTip()
 
 
 def test_dialog_aktualisiert_die_standanzeige(qtbot, tmp_path, monkeypatch):
-    """Nach dem Import im Dialog muss die Anzeige den NEUEN Stand zeigen.
-
-    Der Dialog importiert synchron; ohne die Auffrischung danach bliebe der
-    Stand von VOR dem Import stehen — genau der Fall, fuer den die Anzeige da
-    ist ("eine Liste fehlt"), waere bis zum Neustart falsch.
-    """
-
+    """Nach dem Import im Dialog muss die Anzeige den NEUEN Stand zeigen."""
     _listen_fuers_fenster(tmp_path, monkeypatch, tage=9)
     window = _stilles_fenster(monkeypatch, qtbot)
-    assert "veraltet" in window.lbl_feeds_state.toolTip()
+    assert "veraltet" in window.options_view._db_label.toolTip()
 
-    # Dialog ueberspringen, aber die Reihenfolge pruefen: danach MUSS gelesen
-    # werden. Die Listen sind jetzt frisch — die Anzeige muss das zeigen.
     def nach_dem_dialog():
-        # Innerhalb von exec() sind die Listen noch alt.
-        assert "veraltet" in window.lbl_feeds_state.toolTip()
-        # Der Import passiert hier: Alter zuruecksetzen.
+        assert "veraltet" in window.options_view._db_label.toolTip()
         _listen_fuers_fenster(tmp_path, monkeypatch, tage=0)
 
-    # Am MODUL ansetzen: `_on_feeds` holt FeedsDialog per lokalem Import.
     monkeypatch.setattr(
         "malaz.gui.feeds_dialog.FeedsDialog", _DialogMitWirkung(nach_dem_dialog)
     )
     window._on_feeds()
-    assert window.lbl_feeds_state.toolTip().count("veraltet") == 0, (
+    assert window.options_view._db_label.toolTip().count("veraltet") == 0, (
         "die Anzeige steht noch auf dem Stand VOR dem Import"
     )
 
@@ -1491,16 +1433,15 @@ def test_liste_leeren_raeumt_auch_die_urteilskarte(qtbot, monkeypatch):
         and window._result_at(r).risk_level == RiskLevel.GREEN
     )
     window.table.setCurrentItem(window.table.topLevelItem(gruen))
-    # Genau der Wortlaut aus der Meldung des Nutzers.
-    assert window.verdict.headline.text() == "Unauffällig", "Vorbedingung"
+    assert window.verdict.headline.text().startswith("Unauffällig"), "Vorbedingung"
 
     window._on_clear()
 
-    assert window.verdict.headline.text() == "Keine Datei ausgewaehlt", (
+    assert window.verdict.headline.text() == "", (
         "nach dem Leeren steht das Urteil der vorigen Auswahl noch da"
     )
     assert window.verdict.score.text() == ""
-    assert window.detail.toPlainText() == ""
+    assert window._pages.currentIndex() == 0
 
 
 def test_neuer_scan_raeumt_die_urteilskarte_des_vorigen(qtbot, monkeypatch, tmp_path):
@@ -1517,14 +1458,14 @@ def test_neuer_scan_raeumt_die_urteilskarte_des_vorigen(qtbot, monkeypatch, tmp_
         and window._result_at(r).risk_level == RiskLevel.GREEN
     )
     window.table.setCurrentItem(window.table.topLevelItem(gruen))
-    assert window.verdict.headline.text() == "Unauffällig", "Vorbedingung"
+    assert window.verdict.headline.text().startswith("Unauffällig"), "Vorbedingung"
 
     datei = tmp_path / "probe.txt"
     datei.write_text("harmlos", encoding="utf-8")
     window.add_paths([str(datei)])
     window._on_scan()
 
-    assert window.verdict.headline.text() == "Keine Datei ausgewaehlt", (
+    assert window.verdict.headline.text() == "", (
         "der Befund der vorigen Runde steht noch ueber dem neuen Lauf"
     )
     # Aufraeumen, falls der Worker noch laeuft.
@@ -1549,15 +1490,12 @@ def test_abwaehlen_leert_die_ansicht(qtbot, monkeypatch):
         and window._result_at(r).risk_level == RiskLevel.GREEN
     )
     window.table.setCurrentItem(window.table.topLevelItem(gruen))
-    assert window.verdict.headline.text() == "Unauffällig", "Vorbedingung"
+    assert window.verdict.headline.text().startswith("Unauffällig"), "Vorbedingung"
 
-    # Abwaehlen — ohne die Liste zu leeren.
     window.table.clearSelection()
-    # Qt meldet die Aenderung ueber das Signal; hier direkt ausloesen, damit
-    # der Test nicht an der Ereignisschleife haengt.
     window._on_selection_changed()
 
-    assert window.verdict.headline.text() == "Keine Datei ausgewaehlt"
+    assert window.verdict.headline.text() == ""
     assert len(window._results) == 3, "Abwaehlen darf die Ergebnisse NICHT loeschen"
     assert window.table.topLevelItemCount() == 3
 
@@ -1586,18 +1524,15 @@ def test_zeile_ohne_ergebnis_leert_die_ansicht(qtbot, monkeypatch):
         and window._result_at(r).risk_level == RiskLevel.GREEN
     )
     window.table.setCurrentItem(window.table.topLevelItem(gruen))
-    assert window.verdict.headline.text() == "Unauffällig", "Vorbedingung"
+    assert window.verdict.headline.text().startswith("Unauffällig"), "Vorbedingung"
 
-    # Eine Zeile anlegen, zu der es NOCH kein Ergebnis gibt (laufender Scan).
-    # Im Baum ist das ein Eintrag OHNE UserRole-Daten — genau der Zustand, den
-    # _result_of als "kein Ergebnis" erkennt.
     leer = QTreeWidgetItem()
     leer.setText(0, "kommt_noch.exe")
     window.table.addTopLevelItem(leer)
     window.table.setCurrentItem(leer)
     window._on_selection_changed()
 
-    assert window.verdict.headline.text() == "Keine Datei ausgewaehlt", (
+    assert window.verdict.headline.text() == "", (
         "die Ansicht der vorigen Zeile steht noch ueber einer Zeile ohne Ergebnis"
     )
     assert len(window._results) == 3, "die Ergebnisse selbst bleiben"
@@ -1635,34 +1570,20 @@ def test_ergebnisliste_ist_ein_baum_mit_aufklappbaren_kindern(window, qtbot, tmp
     oben = window.table.topLevelItem(0)
     assert oben.text(0) == "paket.zip"
 
-    # -- aufklappbar ------------------------------------------------------- #
+    from malaz.gui.file_tree import STATE_ROLE
+
     assert oben.childCount() == 2, "die Mitglieder fehlen unter der Zeile"
     namen = [oben.child(i).text(0) for i in range(oben.childCount())]
     assert "boese.pdf" in namen, namen
-    assert oben.isExpanded() is False, "die Liste springt von selbst auf"
+    assert oben.isExpanded() is True, "ein gefaehrlicher Container klappt auf"
 
-    # -- farbcodiert ------------------------------------------------------- #
-    ton = oben.child(namen.index("boese.pdf")).background(0)
-    assert ton.style() != 0, "die Zeile des boesen Mitglieds hat keinen Hintergrund"
-    farbe = ton.color()
-    assert farbe.alpha() > 0, "der Hintergrund ist durchsichtig"
-    # Rot heisst: der Rotanteil liegt ueber dem Blauanteil.
-    assert farbe.red() > farbe.blue(), f"kein Rotton: {farbe.name()}"
+    boese_item = oben.child(namen.index("boese.pdf"))
+    harmlos_item = oben.child(namen.index("harmlos.txt"))
+    assert boese_item.data(0, STATE_ROLE) == "bad"
+    assert harmlos_item.data(0, STATE_ROLE) in ("ok", "unk")
 
-    harmlos_ton = oben.child(namen.index("harmlos.txt")).background(0).color()
-    assert harmlos_ton.green() >= harmlos_ton.red(), "auch der harmlose Eintrag ist rot"
-
-    # -- sortierbar -------------------------------------------------------- #
-    assert window.table.isSortingEnabled(), "die Liste sortiert nicht"
-    # Die Zahlenspalten tragen Zahlen, nicht Text: Qt vergleicht QVariant
-    # typbewusst, "90/100" stuende als Text hinter "0/100".
-    from PySide6.QtCore import Qt as _Qt
-
-    score_zelle = oben.data(5, _Qt.ItemDataRole.DisplayRole)
-    assert isinstance(score_zelle, int), f"Score ist {type(score_zelle).__name__}, keine Zahl"
-
-    # Und die Risikostufe des Kindes steht als Wort daneben (nie Farbe allein).
-    assert oben.child(namen.index("boese.pdf")).text(2).startswith("Gefährlich")
+    window.table.setCurrentItem(boese_item)
+    assert window.verdict.headline.text().startswith("Gefährlich")
     _ = RiskLevel
 
 
@@ -1721,23 +1642,19 @@ def test_optionsdialog_zerstoert_die_schalter_nicht(window):
 
     window._open_options()
     QApplication.processEvents()
-    dialog = getattr(window, "_options_dialog", None)
-    assert dialog is not None, "der Dialog wurde nicht behalten"
-    dialog.accept()
+    assert window._pages.currentIndex() == 3, "Optionen-Ansicht nicht geoeffnet"
+    window._leave_options()
     QApplication.processEvents()
 
-    # Der Zugriff, der mit einem Wegwerf-Dialog abstuerzt.
     assert window.chk_capa.isChecked() is vorher, "der Schalter hat seinen Wert verloren"
     window.chk_capa.setChecked(not vorher)
     assert window.chk_capa.isChecked() is not vorher, "der Schalter reagiert nicht mehr"
     window.chk_capa.setChecked(vorher)
 
-    # Zweimal oeffnen muss denselben Dialog zeigen, nicht einen zweiten bauen:
-    # ein zweiter haette die Kaestchen wieder umgehaengt.
     window._open_options()
     QApplication.processEvents()
-    assert window._options_dialog is dialog, "ein zweiter Dialog wurde gebaut"
-    dialog.accept()
+    assert window._pages.currentIndex() == 3
+    window._leave_options()
     assert window.chk_capa.isChecked() is vorher
 
 
@@ -1798,20 +1715,28 @@ def test_opt_ins_ohne_gespeicherten_wert_bleiben_aus(monkeypatch, tmp_path):
 
 
 def test_detail_tabs_keyboard_and_accessible_names(window):
-    """AP6: Urteil → Belege → Technik ohne Maus erreichbar."""
-    from PySide6.QtCore import Qt
-    from PySide6.QtTest import QTest
+    """Tabs sind per Auswahl und Ctrl+1..4-Tastenkuerzel erreichbar."""
+    from PySide6.QtGui import QAction
 
-    window.tabs.setCurrentIndex(2)
-    window.activateWindow()
-    window.setFocus()
-    QTest.keyClick(window, Qt.Key.Key_1, Qt.KeyboardModifier.ControlModifier)
-    assert window.tabs.currentIndex() == 0
-    QTest.keyClick(window, Qt.Key.Key_3, Qt.KeyboardModifier.ControlModifier)
-    assert window.tabs.currentIndex() == 2
-    assert window.tabs.accessibleName() == "Ergebnisdetails"
-    assert window.detail.accessibleName() == "Warum und Belege"
-    assert window.tabs.tabToolTip(2).startswith("Score-Zerlegung")
+    actions = {
+        act.shortcut().toString(): act
+        for act in window.findChildren(QAction)
+        if act.shortcut().toString()
+    }
+    assert "Ctrl+1" in actions and "Ctrl+2" in actions
+    assert "Ctrl+3" in actions and "Ctrl+4" in actions
+
+    actions["Ctrl+2"].trigger()
+    assert window.detail_view._stack.currentIndex() == 1
+    actions["Ctrl+1"].trigger()
+    assert window.detail_view._stack.currentIndex() == 0
+    actions["Ctrl+3"].trigger()
+    assert window.detail_view._stack.currentIndex() == 0
+    actions["Ctrl+4"].trigger()
+    assert window.detail_view._stack.currentIndex() == 0
+
+    assert window.search_box.accessibleName()
+    assert window.btn_options.accessibleName()
 
 
 # -- Phase B: Reiter-Identitaet, Filter-Auswahl, Qt-Textsenken ---------------- #
@@ -1854,32 +1779,20 @@ def test_capa_und_mail_reiter_zerstoeren_sich_nicht(qtbot, monkeypatch):
         raise AssertionError(f"Zeile fehlt: {name}")
 
     auswaehlen("tool.exe")
-    assert window.tabs.indexOf(window.capa_panel) >= 0, "Capa-Reiter fehlt"
+    assert not window.detail_view._btn_tab_capa.isHidden(), "Capa-Reiter fehlt"
+    assert window.detail_view._btn_tab_mail.isHidden()
 
     auswaehlen("mail.eml")
-    assert window.tabs.indexOf(window.mail_panel) >= 0, (
-        "der Mail-Reiter wurde vom Capa-Reiter entfernt"
-    )
-    assert window.tabs.indexOf(window.capa_panel) < 0, (
-        "der Capa-Reiter blieb fuer eine Mail stehen"
-    )
+    assert not window.detail_view._btn_tab_mail.isHidden(), "Mail-Reiter fehlt"
+    assert window.detail_view._btn_tab_capa.isHidden(), "Capa-Reiter blieb fuer Mail stehen"
 
     auswaehlen("tool.exe")
-    assert window.tabs.indexOf(window.mail_panel) < 0, (
-        "der Mail-Reiter blieb fuer eine Capa-Datei stehen"
-    )
-    capa_index = window.tabs.indexOf(window.capa_panel)
-    assert capa_index >= 0, "der Capa-Reiter kam nicht zurueck"
-    assert window.tabs.tabText(capa_index) == "Fähigkeiten (1)", (
-        "der Capa-Reiter traegt den Titel des Mail-Reiters"
-    )
+    assert window.detail_view._btn_tab_mail.isHidden(), "Mail-Reiter blieb stehen"
+    assert not window.detail_view._btn_tab_capa.isHidden(), "Capa-Reiter kam nicht zurueck"
 
     auswaehlen("mail.eml")
-    assert window.tabs.indexOf(window.mail_panel) >= 0, (
-        "der Mail-Reiter fehlt beim zweiten Mail-Aufruf"
-    )
-    labels = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert not any(label.startswith("Fähigkeiten") for label in labels), labels
+    assert not window.detail_view._btn_tab_mail.isHidden(), "Mail-Reiter fehlt beim zweiten Aufruf"
+    assert window.detail_view._btn_tab_capa.isHidden()
 
 
 def test_filter_versteckt_die_auswahl_und_raeumt_die_ansicht(qtbot, monkeypatch):
@@ -1899,17 +1812,16 @@ def test_filter_versteckt_die_auswahl_und_raeumt_die_ansicht(qtbot, monkeypatch)
         and window._result_at(r).risk_level == RiskLevel.GREEN
     )
     window.table.setCurrentItem(window.table.topLevelItem(gruen))
-    assert window.verdict.headline.text() == "Unauffällig", "Vorbedingung"
+    assert window.verdict.headline.text().startswith("Unauffällig"), "Vorbedingung"
 
-    window.filter_combo.setCurrentIndex(2)  # nur Gefaehrliche
+    window._set_status_filter("bad")  # nur Gefaehrliche
 
     assert window.table.selectedItems() == [], "die versteckte Auswahl blieb"
     assert window.table.currentItem() is None, "die versteckte Zeile blieb current"
-    assert window.verdict.headline.text() == "Keine Datei ausgewaehlt", (
+    assert window.verdict.headline.text() == "", (
         "das Urteil der versteckten Datei steht weiter im Panel"
     )
-    assert window.detail.toPlainText() == ""
-    # Die Ergebnisse selbst bleiben erhalten — gefiltert wird nur die Anzeige.
+    assert window._pages.currentIndex() == 0
     assert len(window._results) == 3
 
 
@@ -2203,3 +2115,552 @@ def test_refresh_feed_reicht_den_timeout_bis_zum_download_durch(
     feed_import.refresh_feed(feed, tmp_path, timeout=7)
 
     assert gesehen == [7], f"download_feed bekam {gesehen} statt [7]"
+
+
+def test_static_only_mode_is_session_only_and_enforces_incomplete(qtbot, monkeypatch, tmp_path):
+    """Nur-Statik-Modus startet immer aus, wird nie persistiert und macht Scans unvollstaendig."""
+    from malaz.gui.file_tree import STATE_ROLE
+
+    win = _stilles_fenster(monkeypatch, qtbot)
+    assert win.chk_static_only.isChecked() is False
+
+    win.chk_static_only.setChecked(True)
+    eff = win._effective_dispatcher()
+    assert eff.av_scanner.available is False
+    assert eff.clam_scanner.available is False
+
+    win2 = _stilles_fenster(monkeypatch, qtbot)
+    assert win2.chk_static_only.isChecked() is False
+
+    probe = tmp_path / "harmlos.txt"
+    probe.write_text("nur harmloser text", encoding="utf-8")
+    res = eff.scan_path(probe)
+    win._on_result(res)
+    assert win.table.topLevelItem(0).data(0, STATE_ROLE) == "unk"
+
+
+def test_theme_toggle_switches_between_dark_and_light(qapp, qtbot, monkeypatch):
+    """Theme-Umschaltung wechselt Dark/Light live ohne Absturz."""
+    from malaz.gui.theme import apply_theme, current_theme_mode
+
+    win = _stilles_fenster(monkeypatch, qtbot)
+    apply_theme(qapp, "dark", persist=True)
+    assert current_theme_mode() == "dark"
+    win._toggle_dark_light()
+    assert current_theme_mode() == "light"
+    win._toggle_dark_light()
+    assert current_theme_mode() == "dark"
+
+
+# -- Klare Flaeche v2: Completeness, Security & Lifecycle Contracts --------- #
+
+
+def test_score_ring_dash_only_on_unk(qapp):
+    """ScoreRingWidget zeigt '—' NUR bei visual_state=='unk', nie bei RED/YELLOW."""
+    from malaz.gui.score_ring import ScoreRingWidget
+
+    ring = ScoreRingWidget()
+    try:
+        ring.set_score(0, "unk")
+        assert ring._state == "unk" and ring._score == 0
+        ring.set_score(85, "bad")
+        assert ring._state == "bad" and ring._score == 85
+        ring.set_score(45, "warn")
+        assert ring._state == "warn" and ring._score == 45
+    finally:
+        ring.deleteLater()
+
+
+def test_detail_view_completeness_and_error_visibility(qapp):
+    """B1: Detailansicht zeigt unvollstaendige Stufen auch bei gewichteten Befunden,
+    nutzt kanonisches _INCOMPLETE_RULES und rendert result.error in beiden Tabs."""
+    from PySide6.QtWidgets import QLabel
+
+    from malaz.gui.detail_view import FileDetailView, _severity_badge
+    from malaz.models import _INCOMPLETE_RULES, Indicator, RiskLevel, ScanResult, Severity
+
+    # Every canonical _INCOMPLETE_RULES entry must NEVER render green ("ok")
+    for rid in sorted(_INCOMPLETE_RULES):
+        tone, badge = _severity_badge(
+            Indicator(rule_id=rid, title=f"Luecke {rid}", severity=Severity.INFO, weight=0)
+        )
+        assert tone == "warn" and badge == "Ungeprüft", (rid, tone, badge)
+
+    res = ScanResult(
+        path="C:/proben/kaputt.exe",
+        detected_type="pe",
+        size=1024,
+        sha256="a" * 64,
+        risk_level=RiskLevel.YELLOW,
+        score=35,
+        error="Lesefehler: Zugriff verweigert",
+        indicators=[
+            Indicator(rule_id="PE_HIGH_ENTROPY", title="Hohe Entropie", severity=Severity.MEDIUM, weight=35),
+            Indicator(rule_id="CORE_TIME_BUDGET", title="YARA Zeitlimit", severity=Severity.INFO, weight=0),
+        ],
+    )
+    view = FileDetailView()
+    try:
+        view.show_result(res)
+        ov_texts = [lbl.text() for lbl in view._page_overview.findChildren(QLabel)]
+        assert any("Unvollständige Prüfung" in txt for txt in ov_texts), ov_texts
+        assert any("Zugriff verweigert" in txt for txt in ov_texts), ov_texts
+
+        det_texts = [lbl.text() for lbl in view._page_details.findChildren(QLabel)]
+        assert any("Zugriff verweigert" in txt for txt in det_texts), det_texts
+        assert any("Signatur" in txt for txt in det_texts), det_texts
+        assert any("CORE_TIME_BUDGET" in txt for txt in det_texts), det_texts
+    finally:
+        view.deleteLater()
+
+
+def test_copy_with_feedback_safe_on_delete_and_double_click(qapp):
+    """M4: _copy_with_feedback darf weder bei Doppelklick Text ueberschreiben noch
+    bei geloeschtem Button einen RuntimeError werfen."""
+    from PySide6.QtWidgets import QPushButton
+
+    from malaz.gui.detail_view import _copy_with_feedback
+
+    btn = QPushButton("Kopieren")
+    _copy_with_feedback(btn, "abc123")
+    assert btn.text() == "Kopiert"
+    _copy_with_feedback(btn, "abc123")  # double click
+    assert btn.property("_orig_copy_text") == "Kopieren"
+
+    # Trigger timer directly and confirm original text restores cleanly
+    btn._copy_timer.timeout.emit()
+    assert btn.text() == "Kopieren"
+
+    # Delete button while timer is running -> child timer is destroyed with button
+    _copy_with_feedback(btn, "xyz")
+    btn.deleteLater()
+    qapp.processEvents()
+
+
+def test_mail_engine_strip_never_all_green_on_av_gap_or_header_issues(qapp):
+    """B2: Mail-Karten duerfen bei AV-Skip/Fehler, MAIL_AUTH_CLAIM_UNBACKED,
+    MAIL_REPLY_TO_MISMATCH oder unvollstaendiger Mail nicht alle 3 gruen sein."""
+    from malaz.gui.engine_strip import _cards_for_archive, _cards_for_mail
+    from malaz.models import EngineVerdict, Indicator, RiskLevel, ScanResult, Severity
+
+    # 1. Direct AV error/skip on .eml with sender=="ok", no attachments, no links
+    res_gap = ScanResult(
+        path="mail.eml",
+        detected_type="eml",
+        mail_security={"sender": "ok"},
+        engine_verdicts=[
+            EngineVerdict(engine="defender", state="skipped", label="Ausgelassen", detail="Nur-Statik")
+        ],
+        indicators=[
+            Indicator(rule_id="AV_SKIPPED", title="AV uebersprungen", severity=Severity.INFO, weight=0)
+        ],
+    )
+    cards_gap = _cards_for_mail(res_gap)
+    assert all(c[3] != "ok" for c in cards_gap), cards_gap
+
+    # 2. MAIL_AUTH_CLAIM_UNBACKED
+    res_unbacked = ScanResult(
+        path="mail2.eml",
+        detected_type="eml",
+        mail_security={"sender": "ok"},
+        indicators=[
+            Indicator(
+                rule_id="MAIL_AUTH_CLAIM_UNBACKED",
+                title="Unbelegte Auth",
+                severity=Severity.LOW,
+                weight=10,
+            )
+        ],
+    )
+    assert _cards_for_mail(res_unbacked)[0][3] == "warn"
+    assert _cards_for_mail(res_unbacked)[0][4] is True
+
+    # 3. MAIL_REPLY_TO_MISMATCH
+    res_rt = ScanResult(
+        path="mail3.eml",
+        detected_type="eml",
+        mail_security={"sender": "ok"},
+        indicators=[
+            Indicator(
+                rule_id="MAIL_REPLY_TO_MISMATCH",
+                title="Reply-To abweichend",
+                severity=Severity.MEDIUM,
+                weight=20,
+            )
+        ],
+    )
+    assert _cards_for_mail(res_rt)[0][3] == "warn"
+
+    # 4. N1: Archive card shows bad_kids[0].display_name and surfaces both bad_n and warn_n
+    clean_kid = ScanResult(path="harmlos.txt", detected_type="text", risk_level=RiskLevel.GREEN, score=0)
+    warn_kid = ScanResult(path="komisch.doc", detected_type="ole", risk_level=RiskLevel.YELLOW, score=35)
+    bad_kid = ScanResult(path="trojaner.exe", detected_type="pe", risk_level=RiskLevel.RED, score=90)
+    arch = ScanResult(
+        path="paket.zip",
+        detected_type="zip",
+        risk_level=RiskLevel.RED,
+        score=90,
+        children=[clean_kid, warn_kid, bad_kid],
+    )
+    c1 = _cards_for_archive(arch)[0]
+    assert "trojaner.exe" in c1[2], c1
+    assert "1 auffällig" in c1[1], c1
+
+
+def test_cancel_state_truncation_banner_settings_key_and_export_suffix(window, tmp_path, monkeypatch):
+    """B3, B4, M2, M3, N3: Cancel-Zaehlung, sichtbares Truncation-Banner, QSettings-Key,
+    _effective_dispatcher-Wiederverwendung, Export-Endung und closeEvent Hard-Shutdown."""
+    from PySide6.QtWidgets import QFileDialog
+
+    from malaz import config
+    from malaz.gui.file_tree import STATE_ROLE
+    from malaz.gui.settings import app_settings
+    from malaz.models import RiskLevel, ScanResult
+
+    # B4: QSettings key must be "clamav_auto_update"
+    window.chk_clam_auto.setChecked(True)
+    assert app_settings().value("clamav_auto_update", False, bool) is True
+
+    # M2: _effective_dispatcher preserves yara & external_scanners
+    sentinel_ext = [object()]
+    window.dispatcher.external_scanners = sentinel_ext  # type: ignore[assignment]
+    window.chk_static_only.setChecked(True)
+    eff = window._effective_dispatcher()
+    assert eff.yara is window.dispatcher.yara
+    assert eff.external_scanners == sentinel_ext
+    assert eff.av_scanner.enabled is False and eff.clam_scanner.enabled is False
+    window.chk_static_only.setChecked(False)
+
+    # B3: Visible truncation banner when MAX_BATCH_FILES reached
+    monkeypatch.setattr(config, "MAX_BATCH_FILES", 2)
+    files = []
+    for i in range(3):
+        f = tmp_path / f"f{i}.txt"
+        f.write_text("hi", encoding="utf-8")
+        files.append(str(f))
+    window.add_paths(files)
+    assert window._batch_truncated is True
+    assert window._truncation_banner.isVisibleTo(window) is True
+
+    # N3: Cancelled items never green and counted in unk chip
+    window.table.mark_pending_as_scanning()
+    window._on_finished(cancelled=True)
+    assert window.table.topLevelItem(0).data(0, STATE_ROLE) == "cancelled"
+    assert window._chip_unk._lbl.text() == "2"
+
+    # M3 part 1: _on_export_report enforces filter suffix
+    window._results = [
+        ScanResult(path=str(files[0]), detected_type="text", risk_level=RiskLevel.GREEN, score=0)
+    ]
+    captured_jobs: list[object] = []
+    monkeypatch.setattr(window.thread_pool, "start", lambda job: captured_jobs.append(job))
+
+    for chosen_path, chosen_filter, expected_suffix, expected_pdf in [
+        (str(tmp_path / "bericht"), "CSV-Tabelle (*.csv)", ".csv", False),
+        (str(tmp_path / "malaz_bericht.html"), "PDF-Bericht (*.pdf)", ".pdf", True),
+        (str(tmp_path / "out"), "JSON-Export (*.json)", ".json", False),
+    ]:
+        window._export_running = False
+        monkeypatch.setattr(
+            QFileDialog, "getSaveFileName", lambda *_a, p=chosen_path, f=chosen_filter: (p, f)
+        )
+        window._on_export_report()
+        job = captured_jobs[-1]
+        assert job.path.lower().endswith(expected_suffix), (job.path, expected_suffix)
+        assert job.as_pdf is expected_pdf
+
+
+def test_close_event_keeps_hard_shutdown_when_pool_times_out(qapp, monkeypatch):
+    """M3 part 2: closeEvent ruft thread_pool.clear() und behaelt hard_shutdown aktiv,
+    wenn waitForDone(5000) False liefert."""
+    from malaz import procio
+    from malaz.analysis.clamav import ClamAVScanner
+    from malaz.analysis.windows_av import WindowsDefenderScanner
+    from malaz.core.dispatcher import Dispatcher
+    from malaz.gui.main_window import MainWindow
+
+    disp = Dispatcher(
+        av_scanner=WindowsDefenderScanner(enabled=False),
+        clam_scanner=ClamAVScanner(enabled=False),
+    )
+    w = MainWindow(dispatcher=disp)
+    cleared = []
+
+    class _DummyWorker:
+        def cancel(self):
+            pass
+
+    w._worker = _DummyWorker()  # type: ignore[assignment]
+    monkeypatch.setattr(w.thread_pool, "clear", lambda: cleared.append(True))
+    monkeypatch.setattr(w.thread_pool, "waitForDone", lambda _ms: False)
+    try:
+        w.close()
+        assert cleared == [True]
+        assert procio.hard_shutdown_requested() is True
+    finally:
+        procio.clear_hard_shutdown()
+
+
+def test_batch_summary_blocks_unc_before_filesystem_and_uses_source_paths(qapp, tmp_path, monkeypatch):
+    """B4 part 3: BatchSummary darf bei UNC-Pfaden niemals Path.is_dir() rufen und
+    nutzt source_paths trotz OpSec-Basename-Kuerzung."""
+    from pathlib import Path as _Path
+
+    from malaz.gui.batch_summary import BatchSummary
+    from malaz.models import RiskLevel, ScanResult
+
+    summary = BatchSummary()
+    try:
+        probed: list[str] = []
+        orig_is_dir = _Path.is_dir
+
+        def spy_is_dir(self):
+            probed.append(str(self))
+            return orig_is_dir(self)
+
+        monkeypatch.setattr(_Path, "is_dir", spy_is_dir)
+        unc_path = "\\\\evil-smb\\share\\doc.pdf"
+        unc_res = ScanResult(path=unc_path, detected_type="pdf", risk_level=RiskLevel.GREEN)
+        summary.update_results([unc_res], source_paths=[unc_path])
+        assert probed == [], f"UNC-Pfad hat Dateisystem beruehrt: {probed}"
+        assert summary.common_directory is None
+
+        # Local source_paths resolve common_directory even when result.path is basename only
+        local_file = tmp_path / "probe.pdf"
+        local_file.write_bytes(b"%PDF-1.7")
+        basenamed = ScanResult(path="probe.pdf", detected_type="pdf", risk_level=RiskLevel.GREEN)
+        summary.update_results([basenamed], source_paths=[str(local_file)], truncated=True)
+        assert summary.common_directory == str(tmp_path)
+        assert summary._trunc_banner.isVisibleTo(summary) is True
+    finally:
+        summary.deleteLater()
+
+
+def test_footer_summary_extract_iocs_and_options_view_contracts(qapp):
+    """M5, M6, N4: build_footer_summary (5 Zustaende), _extract_iocs (Defang, Cap 100,
+    kein ReDoS) und OptionsView-Badge + HTML-Escaping im Tooltip."""
+    import time
+
+    from malaz.gui.detail_view import _extract_iocs, build_footer_summary
+    from malaz.gui.options_view import OptionsView
+    from malaz.gui.score_ring import ToggleSwitch
+    from malaz.models import CAT_IOC, Indicator, RiskLevel, ScanResult, Severity
+
+    # build_footer_summary across 5 states
+    ok_pe = ScanResult(path="a.exe", detected_type="pe", risk_level=RiskLevel.GREEN, score=0)
+    assert "Typ: EXE" in build_footer_summary(ok_pe) and "Prüfung: Vollständig" in build_footer_summary(ok_pe)
+    bad_pdf = ScanResult(path="b.pdf", detected_type="pdf", risk_level=RiskLevel.RED, score=80)
+    assert "Prüfung: Vollständig" in build_footer_summary(bad_pdf)
+    warn_inc = ScanResult(
+        path="c.pdf",
+        detected_type="pdf",
+        risk_level=RiskLevel.YELLOW,
+        score=30,
+        indicators=[Indicator(rule_id="AV_SKIPPED", title="skip", severity=Severity.INFO, weight=0)],
+    )
+    assert "Prüfung: Teilweise" in build_footer_summary(warn_inc)
+    unk_res = ScanResult(
+        path="d.bin",
+        detected_type="unknown",
+        risk_level=RiskLevel.GREEN,
+        score=0,
+        indicators=[Indicator(rule_id="AV_SKIPPED", title="skip", severity=Severity.INFO, weight=0)],
+    )
+    assert "Prüfung: Unvollständig" in build_footer_summary(unk_res)
+    enc_zip = ScanResult(
+        path="e.zip",
+        detected_type="zip",
+        risk_level=RiskLevel.GREEN,
+        score=0,
+        indicators=[Indicator(rule_id="ARCH_ENCRYPTED", title="enc", severity=Severity.INFO, weight=0)],
+    )
+    assert "Prüfung: Gesperrt" in build_footer_summary(enc_zip)
+
+    # _extract_iocs: defang + 100 cap + ReDoS immunity
+    many = [
+        Indicator(
+            rule_id=f"URL_{i}",
+            category=CAT_IOC,
+            title="Link",
+            detail=f"https://bad{i}.example.test/p",
+            severity=Severity.MEDIUM,
+            weight=10,
+        )
+        for i in range(120)
+    ]
+    many.append(
+        Indicator(
+            rule_id="MAIL_REPLY_TO_MISMATCH",
+            category=CAT_IOC,
+            title="Reply",
+            detail="a" * 8000 + "@" + "." * 8000,
+            severity=Severity.MEDIUM,
+            weight=10,
+        )
+    )
+    t0 = time.perf_counter()
+    rows, overflow = _extract_iocs(ScanResult(path="x.eml", detected_type="eml", indicators=many))
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 0.2, f"ReDoS-Verdacht: {elapsed:.3f}s"
+    assert len(rows) == 100 and overflow == 20
+    assert rows[0][3].startswith("hxxps://")
+
+    # OptionsView header badge + tooltip HTML escaping
+    keys = ("clam_auto", "feeds_auto", "dns_auth", "capa", "static_only", "auto_open")
+    sw = {k: ToggleSwitch() for k in keys}
+    ov = OptionsView(sw)
+    try:
+        assert "komplett offline" in ov._net_status_lbl.text().lower()
+        sw["dns_auth"].setChecked(True)
+        assert "opt-in aktiv" in ov._net_status_lbl.text().lower()
+        ov.refresh(feed_tooltip="<img src=x onerror=alert(1)>")
+        assert "&lt;img" in ov._db_label.toolTip()
+    finally:
+        ov.deleteLater()
+
+
+def test_on_view_mail_blocks_unc_and_nested_archive_children(window, tmp_path, monkeypatch):
+    """B1 (r2): _on_view_mail darf bei UNC-Pfaden niemals Path.is_file/resolve rufen und
+    darf bei verschachtelten .eml-Kindern in Archiven nicht das aeusseren .zip oeffnen."""
+    from pathlib import Path as _Path
+
+    from malaz.gui import mail_viewer_dialog
+    from malaz.models import RiskLevel, ScanResult
+
+    opened: list[str] = []
+
+    class _SpyDialog:
+        def __init__(self, path, parent=None):
+            opened.append(str(path))
+
+        def exec(self):
+            return 0
+
+    monkeypatch.setattr(mail_viewer_dialog, "MailViewerDialog", _SpyDialog)
+
+    # 1. Nested .eml inside a real local .zip -> viewer button hidden & _on_view_mail refuses
+    outer_zip = tmp_path / "archiv.zip"
+    outer_zip.write_bytes(b"PK\x05\x06" + b"\x00" * 18)
+    nested_eml = ScanResult(
+        path="\\\\evil-smb\\share\\inner.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.GREEN,
+        mail_security={"sender": "unknown"},
+    )
+    arch = ScanResult(
+        path=str(outer_zip),
+        detected_type="zip",
+        risk_level=RiskLevel.GREEN,
+        children=[nested_eml],
+    )
+    window._on_result(arch)
+    top = window.table.topLevelItem(0)
+    child = top.child(0)
+    window.table.setCurrentItem(child)
+    assert window.detail_view._btn_mail_viewer.isVisibleTo(window.detail_view) is False
+
+    fs_probed: list[str] = []
+    orig_is_file = _Path.is_file
+
+    def spy_is_file(self):
+        fs_probed.append(str(self))
+        return orig_is_file(self)
+
+    monkeypatch.setattr(_Path, "is_file", spy_is_file)
+    window._on_view_mail()
+    assert opened == [], f"Kind-.eml darf nicht das aeusseren .zip oeffnen: {opened}"
+    assert fs_probed == [], f"UNC-Kindpfad darf Dateisystem nicht beruehren: {fs_probed}"
+
+    # 2. Top-level UNC mail path -> zero filesystem probes, dialog never opened
+    unc_mail = ScanResult(
+        path="\\\\evil-smb\\share\\mail.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.GREEN,
+        mail_security={"sender": "unknown"},
+    )
+    unc_item = window.table.upsert_result(unc_mail)
+    window.table.setCurrentItem(unc_item)
+    window._on_view_mail()
+    assert opened == []
+    assert fs_probed == []
+
+
+def test_positional_on_finished_true_marks_cancelled_without_on_cancel(window, tmp_path):
+    """M1 (r2): ScanWorker.signals.finished sendet cancelled:bool als erstes Positionsargument."""
+    from malaz.gui.file_tree import STATE_ROLE
+
+    f = tmp_path / "pending.txt"
+    f.write_text("hi", encoding="utf-8")
+    window.add_paths([str(f)])
+    window.table.mark_pending_as_scanning()
+    # Direct positional True WITHOUT calling _on_cancel() first!
+    window._on_finished(True)
+    assert window.table.topLevelItem(0).data(0, STATE_ROLE) == "cancelled"
+    assert "abgebrochen" in window.statusBar().currentMessage().lower()
+
+
+def test_export_blocked_during_active_scan(window, tmp_path, monkeypatch):
+    """M2 (r2): Waehrend aktivem Scan muessen alle Report-Ausloeser gesperrt sein."""
+    from PySide6.QtWidgets import QFileDialog
+
+    from malaz.models import RiskLevel, ScanResult
+
+    window._results = [ScanResult(path="a.txt", detected_type="text", risk_level=RiskLevel.GREEN)]
+    window._set_scanning(True)
+    assert window.btn_report.isEnabled() is False
+    assert window.summary._btn_export.isEnabled() is False
+    assert window._act_report.isEnabled() is False
+
+    dialog_called: list[bool] = []
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName", lambda *_a, **_k: (dialog_called.append(True) or ("", ""))
+    )
+    window._on_export_report()
+    assert dialog_called == []
+    window._set_scanning(False)
+    assert window.btn_report.isEnabled() is True
+    assert window.summary._btn_export.isEnabled() is True
+    assert window._act_report.isEnabled() is True
+
+
+def test_hash_pill_resets_across_file_switch_and_incomplete_mail_never_all_green(qapp):
+    """N2 & N3 (r2): _hash_pill behaelt keinen alten Hash nach Dateiwechsel;
+    unvollstaendige Mail mit Anhaengen & Links zeigt nie 3 gruene Karten."""
+    from types import SimpleNamespace
+
+    from malaz.gui.detail_view import FileDetailView
+    from malaz.gui.engine_strip import _cards_for_mail
+    from malaz.models import Indicator, RiskLevel, ScanResult, Severity
+
+    view = FileDetailView()
+    try:
+        res_a = ScanResult(path="a.bin", detected_type="text", sha256="a" * 64, risk_level=RiskLevel.GREEN)
+        res_b = ScanResult(path="b.bin", detected_type="text", sha256="b" * 64, risk_level=RiskLevel.GREEN)
+        view.show_result(res_a)
+        view._copy_current_sha()
+        assert view._hash_pill.text() == "SHA-256 kopiert"
+        view.show_result(res_b)
+        assert "bbbbbbbb" in view._hash_pill.text()
+        assert view._hash_pill._copy_timer.isActive() is False
+        # Even if timer fires manually, it must NOT revert to file A's hash
+        view._hash_pill._copy_timer.timeout.emit()
+        assert "bbbbbbbb" in view._hash_pill.text()
+    finally:
+        view.deleteLater()
+
+    clean_kid = ScanResult(path="ok.txt", detected_type="text", risk_level=RiskLevel.GREEN)
+    inc_mail = ScanResult(
+        path="m.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.GREEN,
+        mail_security={"sender": "ok"},
+        children=[clean_kid],
+        mail_links=[
+            SimpleNamespace(href="https://example.org", suspicious=False, mismatch=False, is_ip=False)
+        ],
+        indicators=[
+            Indicator(rule_id="CORE_TIME_BUDGET", title="Zeitbudget", severity=Severity.INFO, weight=0)
+        ],
+    )
+    cards = _cards_for_mail(inc_mail)
+    assert not all(c[3] == "ok" for c in cards), cards

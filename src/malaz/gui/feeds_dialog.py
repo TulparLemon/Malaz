@@ -52,6 +52,7 @@ from PySide6.QtWidgets import (
 from .. import config
 from ..core.feed_import import refresh_feed
 from ..core.feeds import FEEDS, Feed, FeedError
+from .display import clamp_dialog_to_screen
 from .theme import FONT_SUBTITLE
 
 
@@ -67,7 +68,7 @@ class FeedsDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Datenbanken nachladen")
-        self.resize(760, 560)
+        clamp_dialog_to_screen(self, preferred_w=760, preferred_h=560)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -120,11 +121,7 @@ class FeedsDialog(QDialog):
     def _row(self, feed: Feed) -> QWidget:
         """Eine Zeile: Zweck, Groesse, Lizenz und die Schaltflaeche."""
         rahmen = QFrame()
-        rahmen.setObjectName("verdictCard")
-        rahmen.setStyleSheet(
-            "#verdictCard { background: #1c1e25; border: 1px solid #2c2e38;"
-            " border-radius: 8px; }"
-        )
+        rahmen.setObjectName("card")
         layout = QVBoxLayout(rahmen)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(4)

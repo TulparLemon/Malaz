@@ -174,23 +174,23 @@ def test_leeres_archiv_hat_keine_kinder(archiv_fenster, window, qtbot, tmp_path)
 
 
 def test_warteschlange_schrumpft_wenn_sie_leer_ist(window, tmp_path):
-    """GEMESSEN im gerenderten Fenster: ein 110 px hoher LEERER Kasten.
+    """In Klare Flaeche v2 gibt es keinen 110 px hohen leeren Warteschlangen-Kasten mehr.
 
-    Er stand ueber der ganzen Oberflaeche und sah aus wie ein Ladefehler.
-    Die Warteschlange hat einen Platzhaltertext ("Dateien hierher ziehen") —
-    sie darf klein sein, wenn nichts drin ist, und gross, wenn etwas drin ist.
+    Dateien landen direkt im linken Dateibaum; im Leerzustand zeigt die rechte
+    Flaeche die Drop-Zone, und beim Leeren geht der Baum wieder sauber auf 0.
     """
-    assert window.file_list.count() == 0
-    leer = window.file_list.minimumHeight()
-    assert leer <= 60, f"leerer Kasten ist {leer} px hoch"
+    assert not hasattr(window, "file_list")
+    assert window.table.topLevelItemCount() == 0
+    assert window._pages.currentIndex() == 0
 
     p = tmp_path / "etwas.txt"
     p.write_text("text", encoding="utf-8")
     window.add_paths([str(p)])
-    assert window.file_list.minimumHeight() > leer, "der Kasten wuchs nicht"
+    assert window.table.topLevelItemCount() == 1
 
     window._on_clear()
-    assert window.file_list.minimumHeight() == leer, "er schrumpfte nicht zurueck"
+    assert window.table.topLevelItemCount() == 0
+    assert window._pages.currentIndex() == 0
 
 
 def test_fortschrittsbalken_ist_im_ruhezustand_weg(window):
@@ -204,23 +204,31 @@ def test_fortschrittsbalken_ist_im_ruhezustand_weg(window):
 def test_fortschrittsbalken_liegt_unter_der_knopfreihe(window):
     """Die Trennung von Aktionen und Fortschritt ist der ganze Punkt.
 
-    Gemessen wird im SICHTBAREN Zustand: ein verstecktes Widget hat keine
-    gueltige Geometrie, und der Vergleich waere leer. (Genau daran scheiterte
-    die erste Fassung dieses Tests.)
+    Gemessen wird im SICHTBAREN Zustand in Fensterkoordinaten: der
+    Fortschrittsbalken im Scan-Banner sitzt sauber unter der oberen Topbar.
     """
+    from PySide6.QtCore import QPoint
+
     window.show()
+    window.scan_banner.show()
     window.progress.show()
     window.progress.setValue(50)
     QApplication.processEvents()
 
-    knopf_unten = max(
-        b.geometry().bottom()
-        for b in (window.btn_scan, window.btn_add, window.btn_clear, window.btn_report)
+    topbar_unten = window.btn_options.mapTo(window, QPoint(0, window.btn_options.height())).y()
+    footer_oben = min(
+        b.mapTo(window, QPoint(0, 0)).y()
+        for b in (window.btn_add, window.btn_add_folder, window.btn_scan, window.btn_clear)
     )
-    balken_oben = window.progress.geometry().top()
-    assert balken_oben >= knopf_unten, (
-        f"der Fortschrittsbalken steht zwischen den Knoepfen "
-        f"(Balken oben {balken_oben}, Knoepfe unten {knopf_unten})"
+    balken_oben = window.progress.mapTo(window, QPoint(0, 0)).y()
+    balken_unten = window.progress.mapTo(window, QPoint(0, window.progress.height())).y()
+    assert balken_oben >= topbar_unten, (
+        f"der Fortschrittsbalken steht in der Topbar "
+        f"(Balken oben {balken_oben}, Topbar unten {topbar_unten})"
+    )
+    assert balken_unten <= footer_oben, (
+        f"der Fortschrittsbalken ueberlappt die Fusszeilen-Knoepfe "
+        f"(Balken unten {balken_unten}, Fusszeile oben {footer_oben})"
     )
 
 

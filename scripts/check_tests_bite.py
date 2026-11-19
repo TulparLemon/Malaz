@@ -407,10 +407,8 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         name="faehigkeiten-titel-nur-einmal",
-        file="src/malaz/gui/main_window.py",
-        old="""            self.tabs.setTabText(
-                index, f"Fähigkeiten ({len(result.capa_capabilities)})"
-            )
+        file="src/malaz/gui/detail_view.py",
+        old="""            self._btn_tab_capa.setText(f"Fähigkeiten ({len(result.capa_capabilities)})")
 """,
         new="            pass\n",
         test="tests/test_mail_viewer.py::test_capability_tab_title_follows_the_selection",
@@ -474,8 +472,8 @@ MUTATIONS: tuple[Mutation, ...] = (
     Mutation(
         name="batch-summary-nur-eltern",
         file="src/malaz/gui/batch_summary.py",
-        old="            for indicator in result.all_indicators():\n",
-        new="            for indicator in result.indicators:\n",
+        old="            for ind in r.all_indicators():\n",
+        new="            for ind in r.indicators:\n",
         test="tests/test_engine_ui.py::test_batch_summary_uses_child_rules",
         why=(
             "Die Top-Regel eines Archivs/Anhangs steht im Kind; ohne "
@@ -485,8 +483,8 @@ MUTATIONS: tuple[Mutation, ...] = (
     Mutation(
         name="tooltip-html-nicht-escaped",
         file="src/malaz/gui/engine_strip.py",
-        old="        self.setToolTip(escape_html(tooltip))\n",
-        new="        self.setToolTip(tooltip)\n",
+        old='        self.setToolTip(escape_tooltip(tooltip or f"{name}: {value} — {subtitle}"))\n',
+        new='        self.setToolTip(tooltip or f"{name}: {value} — {subtitle}")\n',
         test="tests/test_engine_ui.py::test_engine_chip_escapes_tooltip_html",
         why=(
             "Qt-Tooltips rendern AutoText; rohe Defender-/ClamAV-Ausgabe mit "
