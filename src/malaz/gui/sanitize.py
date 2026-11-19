@@ -81,7 +81,7 @@ def reveal_in_explorer(raw_path: str | Path | None) -> bool:
         return False
     try:
         resolved = Path(raw_path).resolve(strict=True)
-    except OSError:
+    except (OSError, ValueError):
         return False
     resolved_str = str(resolved)
     if is_unc_or_device_path(resolved_str):
@@ -132,8 +132,10 @@ def indicator_weight(ind) -> int:
 
 
 def result_is_incomplete(result: ScanResult) -> bool:
-    """True when any scan stage was incomplete, errored, or locked by encryption."""
-    return bool(result.is_incomplete or result.error or (is_encrypted(result) and not result.children))
+    """True when this result or any nested child was incomplete, errored, or locked."""
+    if result.is_incomplete or result.error or (is_encrypted(result) and not result.children):
+        return True
+    return any(result_is_incomplete(child) for child in result.children)
 
 
 ENCRYPTED_RULES: frozenset[str] = frozenset(

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
@@ -255,7 +256,9 @@ class BatchSummary(QWidget):
 
         self._list_card = QFrame(self)
         self._list_card.setObjectName("card")
+        self._list_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self._list_lay = QVBoxLayout(self._list_card)
+        self._list_lay.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         self._list_lay.setContentsMargins(0, 0, 0, 0)
         self._list_lay.setSpacing(0)
         root.addWidget(self._list_card)
@@ -372,6 +375,8 @@ class BatchSummary(QWidget):
                 more.setObjectName("captionLabel")
                 more.setContentsMargins(16, 8, 16, 10)
                 self._list_lay.addWidget(more)
+        self._list_card.updateGeometry()
+        self.updateGeometry()
 
 
 BatchOverviewView = BatchSummary

@@ -189,6 +189,20 @@ def visual_state(risk_level: Any, is_incomplete: bool) -> str:
 
 ARCHIVE_TYPES = frozenset({"zip", "7z", "rar", "tar", "gzip", "bzip2", "xz", "cab", "iso"})
 MAIL_TYPES = frozenset({"eml", "msg"})
+OOXML_EXT_MAP: dict[str, tuple[str, str]] = {
+    ".docx": ("DOC", "Word (.docx)"),
+    ".docm": ("DOC", "Word-Makro (.docm)"),
+    ".xlsx": ("XLS", "Excel (.xlsx)"),
+    ".xlsm": ("XLS", "Excel-Makro (.xlsm)"),
+    ".pptx": ("PPT", "PowerPoint (.pptx)"),
+    ".pptm": ("PPT", "PowerPoint-Makro (.pptm)"),
+}
+
+
+def is_ooxml_filename(filename: str | None) -> bool:
+    """True when ``filename`` ends with a standard ZIP-based OOXML Office extension."""
+    low = (filename or "").lower()
+    return any(low.endswith(ext) for ext in OOXML_EXT_MAP)
 PROGRAM_TYPES = frozenset({"pe", "elf", "macho", "ps1", "batch", "vbs", "js", "lnk"})
 DOCUMENT_TYPES = frozenset({"ole", "office", "rtf", "html", "xml", "json", "text"})
 
@@ -206,7 +220,7 @@ _TAG_BY_TYPE: dict[str, str] = {
     "iso": "ISO",
     "pe": "EXE",
     "elf": "ELF",
-    "macho": "BIN",
+    "macho": "MAC",
     "pdf": "PDF",
     "ole": "DOC",
     "office": "DOC",
@@ -229,6 +243,9 @@ _TAG_BY_TYPE: dict[str, str] = {
     "heic": "IMG",
     "avif": "IMG",
     "ico": "ICO",
+    "tiff": "TIF",
+    "tif": "TIF",
+    "swf": "SWF",
     "mp3": "MP3",
     "mp4": "MP4",
 }
@@ -261,6 +278,14 @@ _SHORT_TYPE_DE: dict[str, str] = {
     "text": "Text",
     "png": "PNG",
     "jpeg": "JPEG",
+    "gif": "GIF",
+    "bmp": "BMP",
+    "ico": "ICO",
+    "webp": "WebP",
+    "tiff": "TIFF",
+    "tif": "TIFF",
+    "macho": "Mach-O",
+    "swf": "Flash (SWF)",
     "empty": "Leer",
     "unknown": "Unbekannt",
 }
@@ -272,6 +297,8 @@ def type_filter_bucket(detected_type: str, filename: str = "") -> str:
     low = (filename or "").lower()
     if dt in MAIL_TYPES or low.endswith((".eml", ".msg")):
         return "EML"
+    if dt == "zip" and is_ooxml_filename(low):
+        return "DOC"
     if dt in ARCHIVE_TYPES or low.endswith((".zip", ".7z", ".rar", ".tar", ".gz")):
         return "ZIP"
     if dt in PROGRAM_TYPES or low.endswith((".exe", ".dll", ".scr", ".bat", ".ps1", ".lnk")):
@@ -296,10 +323,17 @@ def format_tag_code(detected_type: str, filename: str = "", *, spoofed: bool = F
             code = ext
     if not code:
         code = "DAT"
-    if dt == "pe" and filename.lower().endswith(".dll"):
+    low = (filename or "").lower()
+    if dt == "pe" and low.endswith(".dll"):
         code = "DLL"
     if spoofed:
         return (code, "spoof")
+    if dt == "zip":
+        for ext, (ox_tag, _ox_label) in OOXML_EXT_MAP.items():
+            if low.endswith(ext):
+                return (ox_tag, "container")
+    if dt == "ole" and low.endswith(".msg"):
+        return ("MSG", "container")
     if dt in MAIL_TYPES or dt in ARCHIVE_TYPES:
         return (code, "container")
     return (code, "")
@@ -308,8 +342,15 @@ def format_tag_code(detected_type: str, filename: str = "", *, spoofed: bool = F
 def format_short_type(detected_type: str, filename: str = "") -> str:
     """Concise German type string for footer & origin strip."""
     dt = (detected_type or "").lower()
-    if dt == "pe" and filename.lower().endswith(".dll"):
+    low = (filename or "").lower()
+    if dt == "pe" and low.endswith(".dll"):
         return "DLL"
+    if dt == "zip":
+        for ext, (_ox_tag, ox_label) in OOXML_EXT_MAP.items():
+            if low.endswith(ext):
+                return ox_label
+    if dt == "ole" and low.endswith(".msg"):
+        return "E-Mail (.msg)"
     return _SHORT_TYPE_DE.get(dt, dt.upper() if dt else "Datei")
 
 

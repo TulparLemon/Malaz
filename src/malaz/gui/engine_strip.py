@@ -50,6 +50,17 @@ def compact_engine_text(result: ScanResult) -> str:
     return " ".join(parts)
 
 
+_AV_ENGINE_NAMES = frozenset({"defender", "windows defender", "clamav"})
+
+
+def _elide_card(value: str | None, limit: int = 34) -> str:
+    """Single-pass clean ellipsis for compact Engine Cards (no double '(gekürzt)')."""
+    clean = masked_widget_text(value).strip()
+    if len(clean) <= limit:
+        return clean
+    return clean[: max(1, limit - 1)].rstrip() + "…"
+
+
 class EngineChip(QFrame):
     """Single clickable engine card inside the 3-card EngineCardsRow."""
 
@@ -68,7 +79,7 @@ class EngineChip(QFrame):
         )
         super().__init__(real_parent)
         self.setObjectName("engineCard")
-        self.setMinimumHeight(70)
+        self.setMinimumHeight(74)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         lay = QVBoxLayout(self)
@@ -123,9 +134,9 @@ class EngineChip(QFrame):
         ring: bool = False,
         tooltip: str = "",
     ) -> None:
-        self._name.setText(clip_text(masked_widget_text(name), 40))
-        self._val.setText(clip_text(masked_widget_text(value), 36))
-        self._sub.setText(clip_text(masked_widget_text(subtitle), 48))
+        self._name.setText(_elide_card(name, 38))
+        self._val.setText(_elide_card(value, 32))
+        self._sub.setText(_elide_card(subtitle, 44))
         self._val.setProperty("tone", tone)
         self._val.style().unpolish(self._val)
         self._val.style().polish(self._val)
@@ -219,7 +230,7 @@ def _cards_for_leaf(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
         )
     elif yara is not None and yara.state == "threat":
         cnt = max(1, len(yara_hits))
-        top_title = clip_text(masked_widget_text(yara_hits[0].title if yara_hits else yara.detail), 30)
+        top_title = masked_widget_text(yara_hits[0].title if yara_hits else yara.detail)
         deep = (
             "Tiefenprüfung",
             top_title or "YARA-Treffer",
@@ -234,7 +245,7 @@ def _cards_for_leaf(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
         sub = f"YARA: {len(yara_hits)} Treffer" if yara_hits else f"{len(static_hits)} Auffälligkeit(en)"
         deep = (
             "Tiefenprüfung",
-            clip_text(masked_widget_text(worst.title), 28),
+            masked_widget_text(worst.title),
             sub,
             tone,
             False,
@@ -286,7 +297,7 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
         c1 = (
             f"Inhalt ({len(kids)} Dateien)",
             val_txt,
-            clip_text(masked_widget_text(bad_kids[0].display_name), 34),
+            masked_widget_text(bad_kids[0].display_name),
             "bad",
             False,
             "Schädliche Datei im Archiv",
@@ -319,7 +330,7 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
     if arch_warns:
         c2 = (
             "Archiv-Struktur",
-            clip_text(masked_widget_text(arch_warns[0].title), 26),
+            masked_widget_text(arch_warns[0].title),
             "Auffällig",
             "warn",
             False,
@@ -351,32 +362,39 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
         tone = "bad" if result.risk_level.value >= 2 or indicator_weight(top) >= 35 else "warn"
         c3 = (
             "Schwerster Fund",
-            clip_text(masked_widget_text(top.title), 28),
+            masked_widget_text(top.title),
             f"Score {result.score}",
             tone,
             False,
             top.title,
         )
     else:
+        inc_arch = result_is_incomplete(result)
         c3 = (
             "Schwerster Fund",
-            "Kein Befund",
-            "Sauber",
-            "ok" if not result_is_incomplete(result) else "warn",
-            result_is_incomplete(result),
-            "Keine Befunde",
+            "Unvollständig" if inc_arch else "Kein Befund",
+            "Prüfung lückenhaft" if inc_arch else "Sauber",
+            "warn" if inc_arch else "ok",
+            inc_arch,
+            "Prüfung nicht vollständig" if inc_arch else "Keine Befunde",
         )
     return [c1, c2, c3]
 
 
 def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, str]]:
-    # Surface any direct AV threat or failure/skip on the .eml/.msg itself!
-    av_threat = next((v for v in result.engine_verdicts if v.state == "threat"), None)
-    av_gap = [v for v in result.engine_verdicts if v.state in ("error", "skipped")]
+    # Surface any direct AV threat or failure/skip on the .eml/.msg itself (real AV only, NOT Statisch)!
+    av_verdicts = [
+        v for v in result.engine_verdicts if (v.engine or "").strip().lower() in _AV_ENGINE_NAMES
+    ]
+    av_threat = next((v for v in av_verdicts if v.state == "threat"), None)
+    av_gap = [v for v in av_verdicts if v.state in ("error", "skipped")]
     ms = result.mail_security or {}
     sender_st = ms.get("sender", "unknown")
     auth_fail = any(ms.get(k) == "fail" for k in ("spf", "dkim", "dmarc"))
     rids = {i.rule_id for i in result.indicators}
+    sender_spoof = bool(
+        rids & {"MAIL_DISPLAY_NAME_SPOOF", "MAIL_RETURN_PATH_MISMATCH", "MAIL_AUTH_FAIL"}
+    )
     reply_mismatch = "MAIL_REPLY_TO_MISMATCH" in rids
     auth_unbacked = "MAIL_AUTH_CLAIM_UNBACKED" in rids
     incomplete = result_is_incomplete(result)
@@ -384,14 +402,19 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     if av_threat is not None:
         c1 = (
             f"Virenschutz ({av_threat.engine})",
-            clip_text(masked_widget_text(av_threat.detail or "Bedrohung"), 28),
+            masked_widget_text(av_threat.detail or "Bedrohung"),
             "Direkter Treffer auf E-Mail",
             "bad",
             False,
             av_threat.detail or "AV-Treffer",
         )
-    elif sender_st == "mismatch" or auth_fail:
-        sub = "SPF/DMARC fehlgeschlagen" if auth_fail else "Absender weicht ab"
+    elif sender_st == "mismatch" or auth_fail or sender_spoof:
+        if auth_fail or "MAIL_AUTH_FAIL" in rids:
+            sub = "SPF/DMARC fehlgeschlagen"
+        elif "MAIL_DISPLAY_NAME_SPOOF" in rids:
+            sub = "Anzeigename täuscht Absender vor"
+        else:
+            sub = "Absender weicht ab"
         c1 = ("Absender", "Gefälscht", sub, "bad", False, sub)
     elif reply_mismatch:
         c1 = (
@@ -414,7 +437,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     elif av_gap:
         gap_names = ", ".join(v.engine for v in av_gap[:2])
         c1 = (
-            f"Virenschutz ({clip_text(gap_names, 20)})",
+            f"Virenschutz ({gap_names})",
             "Unvollständig",
             "Prüfstufe ausgelassen/Fehler",
             "warn",
@@ -433,7 +456,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
         c2 = (
             "Anhänge",
             f"{len(bad_kids)} Schadprogramm",
-            clip_text(masked_widget_text(bad_kids[0].display_name), 30),
+            masked_widget_text(bad_kids[0].display_name),
             "bad",
             False,
             "Schädlicher Anhang",
@@ -474,7 +497,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
         c3 = (
             "Links im Text",
             f"{len(susp_links)} verdächtig",
-            clip_text(first_url, 32),
+            first_url,
             "warn",
             False,
             first_url,

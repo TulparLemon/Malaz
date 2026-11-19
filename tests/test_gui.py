@@ -2664,3 +2664,196 @@ def test_hash_pill_resets_across_file_switch_and_incomplete_mail_never_all_green
     )
     cards = _cards_for_mail(inc_mail)
     assert not all(c[3] == "ok" for c in cards), cards
+
+
+def test_batch_summary_rows_never_overlap_after_page_switch(qapp):
+    """UI-005 Bug 1: Wechsel Detail -> Ordner-Uebersicht mit 65 Funden darf Zeilen nie stapeln."""
+    from malaz.analysis.clamav import ClamAVScanner
+    from malaz.analysis.windows_av import WindowsDefenderScanner
+    from malaz.core.dispatcher import Dispatcher
+    from malaz.gui.main_window import MainWindow
+    from malaz.models import RiskLevel, ScanResult
+
+    disp = Dispatcher(
+        av_scanner=WindowsDefenderScanner(enabled=False),
+        clam_scanner=ClamAVScanner(enabled=False),
+    )
+    win = MainWindow(dispatcher=disp, fixed_size=(1400, 820))
+    try:
+        win.show()
+        for i in range(65):
+            r = ScanResult(
+                path=f"f{i}.exe",
+                detected_type="pe",
+                risk_level=RiskLevel.RED if i < 32 else RiskLevel.YELLOW,
+                score=80 if i < 32 else 30,
+            )
+            win.table.upsert_result(r)
+            win._results.append(r)
+        win.table.setCurrentItem(win.table.topLevelItem(0))
+        qapp.processEvents()
+
+        win._show_batch_overview()
+        qapp.processEvents()
+
+        r0 = win.summary._list_lay.itemAt(0).widget().geometry()
+        r1 = win.summary._list_lay.itemAt(1).widget().geometry()
+        r64 = win.summary._list_lay.itemAt(64).widget().geometry()
+        assert r0.height() >= 44
+        assert r1.top() >= r0.bottom(), f"Zeilen ueberlappen: r0={r0}, r1={r1}"
+        assert r64.top() >= 64 * 44, f"Liste gestaucht: r64={r64}"
+    finally:
+        win.close()
+
+
+def test_engine_card_single_elision_no_double_gekuerzt(qapp):
+    """UI-005 Bug 2: Engine-Karten duerfen nie doppelt '… (gekürzt)' anzeigen."""
+    from malaz.gui.engine_strip import EngineStrip
+    from malaz.models import Indicator, RiskLevel, ScanResult, Severity
+
+    res = ScanResult(
+        path="doc.pdf",
+        detected_type="pdf",
+        risk_level=RiskLevel.RED,
+        score=65,
+        indicators=[
+            Indicator(
+                rule_id="YARA_Suspicious_PowerShell_Encoded",
+                title="YARA-Treffer: Suspicious_PowerShell_Encoded_Very_Long_Rule_Name",
+                severity=Severity.HIGH,
+                weight=45,
+            )
+        ],
+    )
+    strip = EngineStrip()
+    try:
+        strip.show_result(res)
+        for card in strip._cards:
+            assert "(gekürzt)" not in card._val.text(), card._val.text()
+            assert "(gekü" not in card._val.text(), card._val.text()
+    finally:
+        strip.deleteLater()
+
+
+def test_pdf_footer_scripts_and_no_duplicate_incomplete_row(qapp):
+    """UI-005 Bug 3: PDF mit PDF_KW_JavaScript zeigt 'Skripte: Gefunden' und keine doppelte
+    PDF_PARSE_WARN-Zeile, die den eigentlichen JavaScript-Fund verdraengt."""
+    from PySide6.QtWidgets import QLabel
+
+    from malaz.gui.detail_view import FileDetailView, build_footer_summary
+    from malaz.models import Indicator, RiskLevel, ScanResult, Severity
+
+    res = ScanResult(
+        path="pdf_aa_0.pdf",
+        detected_type="pdf",
+        risk_level=RiskLevel.RED,
+        score=62,
+        indicators=[
+            Indicator(
+                rule_id="PDF_PARSE_WARN",
+                title="PDF konnte nicht geöffnet werden — Tiefen-Scan nicht gelaufen",
+                severity=Severity.MEDIUM,
+                weight=25,
+            ),
+            Indicator(
+                rule_id="PDF_KW_JavaScript",
+                title="JavaScript-Referenz (/JavaScript) x1",
+                severity=Severity.LOW,
+                weight=20,
+            ),
+            Indicator(
+                rule_id="PDF_KW_JS",
+                title="JavaScript-Aktion (/JS) x1",
+                severity=Severity.LOW,
+                weight=20,
+            ),
+        ],
+    )
+    assert "Skripte: Gefunden" in build_footer_summary(res)
+
+    view = FileDetailView()
+    try:
+        view.show_result(res)
+        ov_texts = [lbl.text() for lbl in view._page_overview.findChildren(QLabel)]
+        parse_hits = [t for t in ov_texts if "PDF konnte nicht geöffnet werden" in t]
+        assert len(parse_hits) == 1, f"Doppelte Zeile: {ov_texts}"
+        assert any("JavaScript" in t for t in ov_texts), f"JavaScript-Fund fehlt: {ov_texts}"
+    finally:
+        view.deleteLater()
+
+
+def test_mail_card_ignores_statisch_engine_and_surfaces_sender_spoof(qapp):
+    """UI-005 Bug 4: _cards_for_mail darf 'Statisch' nicht als Virenschutz-Engine anzeigen."""
+    from malaz.gui.engine_strip import _cards_for_mail
+    from malaz.models import EngineVerdict, Indicator, RiskLevel, ScanResult, Severity
+
+    res = ScanResult(
+        path="phish.eml",
+        detected_type="eml",
+        risk_level=RiskLevel.RED,
+        score=70,
+        mail_security={"sender": "unknown"},
+        engine_verdicts=[
+            EngineVerdict(engine="Defender", state="clean", label="sauber", detail=""),
+            EngineVerdict(engine="ClamAV", state="clean", label="sauber", detail=""),
+            EngineVerdict(engine="Statisch", state="threat", label="Gefährlich", detail=""),
+        ],
+        indicators=[
+            Indicator(
+                rule_id="MAIL_DISPLAY_NAME_SPOOF",
+                title="Anzeigename taeuscht Absender vor",
+                severity=Severity.HIGH,
+                weight=30,
+            ),
+            Indicator(
+                rule_id="MAIL_AUTH_FAIL",
+                title="Mail-Authentifizierung fehlgeschlagen",
+                severity=Severity.MEDIUM,
+                weight=15,
+            ),
+        ],
+    )
+    c1 = _cards_for_mail(res)[0]
+    assert c1[0] == "Absender", c1
+    assert c1[1] == "Gefälscht", c1
+    assert c1[3] == "bad", c1
+
+
+def test_incomplete_archive_child_prevents_green_parent_verdict(qapp):
+    """UI-005 Bug 5: Unvollstaendiges Archiv-Kind darf Eltern-ZIP nie gruen erscheinen lassen."""
+    from malaz.design_tokens import visual_state
+    from malaz.gui.sanitize import result_is_incomplete
+    from malaz.gui.verdict_card import VerdictCard
+    from malaz.models import Indicator, RiskLevel, ScanResult, Severity
+
+    child = ScanResult(
+        path="readme.txt",
+        detected_type="text",
+        risk_level=RiskLevel.GREEN,
+        score=0,
+        indicators=[
+            Indicator(
+                rule_id="AV_MEMBER_ERROR",
+                title="AV-Mitgliedsscan fehlerhaft",
+                severity=Severity.INFO,
+                weight=0,
+            )
+        ],
+    )
+    parent = ScanResult(
+        path="paket.zip",
+        detected_type="zip",
+        risk_level=RiskLevel.GREEN,
+        score=0,
+        children=[child],
+    )
+    assert result_is_incomplete(parent) is True
+    assert visual_state(parent.risk_level, result_is_incomplete(parent)) == "unk"
+
+    vc = VerdictCard()
+    try:
+        vc.show_result(parent)
+        assert "unvollständig" in vc.headline.text().lower()
+        assert "readme.txt" in vc.advice.text()
+    finally:
+        vc.deleteLater()

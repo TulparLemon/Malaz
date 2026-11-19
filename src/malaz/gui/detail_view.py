@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QPushButton,
     QSizePolicy,
     QStackedWidget,
@@ -37,6 +38,7 @@ from ..design_tokens import (
     format_short_type,
     format_size_de,
     format_tag_code,
+    is_ooxml_filename,
     visual_state,
 )
 from ..models import (
@@ -215,10 +217,33 @@ def build_footer_summary(result: ScanResult) -> str:
             )
             suffix = f" ({bad_k} gefährlich)" if bad_k else ""
             parts.append(f"Anhänge: {len(result.children)}{suffix}")
-    elif dt in ARCHIVE_TYPES and result.children:
+    elif (
+        dt in ARCHIVE_TYPES
+        and result.children
+        and not (dt == "zip" and is_ooxml_filename(result.display_name))
+    ):
         parts.append(f"Inhalt: {len(result.children)} Dateien")
     elif dt == "pdf":
-        has_script = any(i.category == CAT_SCRIPT and indicator_weight(i) > 0 for i in result.indicators)
+        pdf_script_ids = {
+            "PDF_KW_JavaScript",
+            "PDF_KW_JS",
+            "PDF_KW_Launch",
+            "PDF_KW_OpenAction",
+            "PDF_KW_AA",
+            "PDF_JS_SUSPICIOUS",
+            "PDF_JS_OBFUSCATED",
+            "PDF_EMBEDDED_JS",
+        }
+        has_script = any(
+            indicator_weight(i) > 0
+            and (
+                i.category == CAT_SCRIPT
+                or i.rule_id in pdf_script_ids
+                or "JAVASCRIPT" in i.rule_id.upper()
+                or i.rule_id.endswith("_JS")
+            )
+            for i in result.indicators
+        )
         parts.append("Skripte: Gefunden" if has_script else "Skripte: Keine")
 
     parts.append(f"Prüfung: {check_word}")
@@ -548,6 +573,8 @@ class FileDetailView(QWidget):
 
         grouped: dict[str, Indicator] = {}
         for ind in sorted(result.indicators, key=lambda x: (-indicator_weight(x), -int(x.severity))):
+            if ind.rule_id in _INCOMPLETE_RULES:
+                continue
             if indicator_weight(ind) <= 0 and ind.rule_id not in ENCRYPTED_RULES:
                 continue
             cat = _signal_category_label(ind)
@@ -597,7 +624,14 @@ class FileDetailView(QWidget):
                     ]
                 )
             else:
-                missing = ", ".join(masked_widget_text(i.title) for i in result.incomplete_stages[:3])
+                missing_list = [masked_widget_text(i.title) for i in result.incomplete_stages[:3]]
+                if not missing_list and result.children:
+                    missing_list = [
+                        f"{masked_widget_text(c.display_name)}: {masked_widget_text(s.title)}"
+                        for c in result.children
+                        for s in c.incomplete_stages[:1]
+                    ][:3]
+                missing = ", ".join(missing_list)
                 rows_spec.append(
                     (
                         "warn",
@@ -625,6 +659,7 @@ class FileDetailView(QWidget):
             sig_card = QFrame(self._page_overview)
             sig_card.setObjectName("card")
             sl = QVBoxLayout(sig_card)
+            sl.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
             sl.setContentsMargins(0, 0, 0, 0)
             sl.setSpacing(0)
             for idx, (dot_tone, ring, lbl, txt, b_tone, b_txt) in enumerate(rows_spec):
@@ -680,6 +715,7 @@ class FileDetailView(QWidget):
             ch_card = QFrame(self._page_overview)
             ch_card.setObjectName("card")
             cl = QVBoxLayout(ch_card)
+            cl.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
             cl.setContentsMargins(0, 0, 0, 0)
             cl.setSpacing(0)
             shown = result.children[:100]
@@ -706,6 +742,7 @@ class FileDetailView(QWidget):
         id_card = QFrame(self._page_details)
         id_card.setObjectName("card")
         il = QVBoxLayout(id_card)
+        il.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         il.setContentsMargins(0, 0, 0, 0)
         il.setSpacing(0)
 
@@ -718,7 +755,13 @@ class FileDetailView(QWidget):
                     f" ({format_size_de(result.size)})"
                 ),
                 "bad" if spoof else "",
-                ("bad", "Tarnung") if spoof else ("ok", "Verifiziert"),
+                ("bad", "Tarnung")
+                if spoof
+                else (
+                    ("warn", "Unbekannt")
+                    if (result.detected_type or "").lower() in ("", "unknown") or bool(result.error)
+                    else ("ok", "Verifiziert")
+                ),
                 None,
                 False,
             ),
@@ -796,6 +839,7 @@ class FileDetailView(QWidget):
             ioc_card = QFrame(self._page_details)
             ioc_card.setObjectName("card")
             iol = QVBoxLayout(ioc_card)
+            iol.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
             iol.setContentsMargins(0, 0, 0, 0)
             iol.setSpacing(0)
             for idx, (tone, tag, lbl, disp, raw) in enumerate(iocs):
