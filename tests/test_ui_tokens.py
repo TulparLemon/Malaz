@@ -165,7 +165,7 @@ def test_is_unc_or_device_path_exact_prefixes():
         r"\\.\pipe\malaz",
     ):
         assert is_unc_or_device_path(blocked) is True, blocked
-    for allowed in (r"C:\Users\alice\doc.pdf", r"\foo\bar.pdf", "relative/doc.pdf"):
+    for allowed in (r"C:\Temp\doc.pdf", r"\foo\bar.pdf", "relative/doc.pdf"):
         assert is_unc_or_device_path(allowed) is False, allowed
 
 
