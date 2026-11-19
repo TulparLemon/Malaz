@@ -616,19 +616,19 @@ QLabel[tone="info"] {{
 
 QLabel#engineVal[tone="bad"] {{
     color: {p["st_bad"]}; background: transparent; border: none;
-    font-size: 13px; font-weight: 600;
+    font-size: 13px; font-weight: 600; padding: 0 0 2px 0;
 }}
 QLabel#engineVal[tone="warn"] {{
     color: {p["st_warn"]}; background: transparent; border: none;
-    font-size: 13px; font-weight: 600;
+    font-size: 13px; font-weight: 600; padding: 0 0 2px 0;
 }}
 QLabel#engineVal[tone="ok"] {{
     color: {p["st_ok"]}; background: transparent; border: none;
-    font-size: 13px; font-weight: 600;
+    font-size: 13px; font-weight: 600; padding: 0 0 2px 0;
 }}
 QLabel#engineVal[tone="info"] {{
     color: {p["st_info"]}; background: transparent; border: none;
-    font-size: 13px; font-weight: 600;
+    font-size: 13px; font-weight: 600; padding: 0 0 2px 0;
 }}
 
 QProgressBar {{

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..core.mail_view import MAX_DISPLAY_CHARS
+from ..design_tokens import MAIL_TYPES
 from ..security.escaping import mask_invisible
 
 if TYPE_CHECKING:
@@ -81,7 +82,7 @@ def reveal_in_explorer(raw_path: str | Path | None) -> bool:
         return False
     try:
         resolved = Path(raw_path).resolve(strict=True)
-    except OSError:
+    except (OSError, ValueError):
         return False
     resolved_str = str(resolved)
     if is_unc_or_device_path(resolved_str):
@@ -132,8 +133,10 @@ def indicator_weight(ind) -> int:
 
 
 def result_is_incomplete(result: ScanResult) -> bool:
-    """True when any scan stage was incomplete, errored, or locked by encryption."""
-    return bool(result.is_incomplete or result.error or (is_encrypted(result) and not result.children))
+    """True when this result or any nested child was incomplete, errored, or locked."""
+    if result.is_incomplete or result.error or (is_encrypted(result) and not result.children):
+        return True
+    return any(result_is_incomplete(child) for child in result.children)
 
 
 ENCRYPTED_RULES: frozenset[str] = frozenset(
@@ -144,3 +147,39 @@ ENCRYPTED_RULES: frozenset[str] = frozenset(
 def is_encrypted(result: ScanResult) -> bool:
     """True when any indicator across the result tree marks encrypted content."""
     return any(i.rule_id in ENCRYPTED_RULES for i in result.all_indicators())
+
+
+def is_mail_result(result: ScanResult) -> bool:
+    """True for .eml/.msg mails, including OLE-based .msg even when mail_security is empty."""
+    dt = (result.detected_type or "").lower()
+    if dt in MAIL_TYPES or bool(result.mail_security):
+        return True
+    return dt == "ole" and (result.display_name or "").lower().endswith(".msg")
+
+
+def collect_incomplete_reasons(result: ScanResult, *, limit: int = 3) -> list[str]:
+    """Collect human-readable completeness gap reasons recursively across the full subtree."""
+    reasons: list[str] = []
+
+    def _walk(node: ScanResult, is_root: bool) -> None:
+        if len(reasons) >= limit:
+            return
+        prefix = "" if is_root else f"{masked_widget_text(node.display_name)}: "
+        added_here = False
+        if node.error:
+            reasons.append(f"{prefix}{masked_widget_text(node.error)}")
+            added_here = True
+        for stage in node.incomplete_stages:
+            if len(reasons) >= limit:
+                return
+            reasons.append(f"{prefix}{masked_widget_text(stage.title)}")
+            added_here = True
+        if not added_here and is_encrypted(node) and not node.children and len(reasons) < limit:
+            reasons.append(f"{prefix}Passwortgeschützt / Inhalt verschlüsselt")
+        for child in node.children:
+            if len(reasons) >= limit:
+                return
+            _walk(child, False)
+
+    _walk(result, True)
+    return reasons[:limit]

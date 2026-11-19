@@ -167,3 +167,25 @@ def test_is_unc_or_device_path_exact_prefixes():
         assert is_unc_or_device_path(blocked) is True, blocked
     for allowed in (r"C:\Users\alice\doc.pdf", r"\foo\bar.pdf", "relative/doc.pdf"):
         assert is_unc_or_device_path(allowed) is False, allowed
+
+
+def test_ooxml_msg_tiff_macho_tags_and_labels():
+    from malaz.design_tokens import format_short_type, format_tag_code, type_filter_bucket
+
+    assert format_tag_code("zip", "bericht.docx") == ("DOC", "container")
+    assert format_short_type("zip", "bericht.docx") == "Word (.docx)"
+    assert type_filter_bucket("zip", "bericht.docx") == "DOC"
+    assert format_tag_code("zip", "kalk.xlsx") == ("XLS", "container")
+    assert format_short_type("zip", "kalk.xlsx") == "Excel (.xlsx)"
+    assert format_tag_code("zip", "makro.docm") == ("DOC", "container")
+    assert format_short_type("zip", "makro.docm") == "Word-Makro (.docm)"
+    # Spoofed ZIP with .docx name keeps spoof style!
+    assert format_tag_code("zip", "fake.docx", spoofed=True)[1] == "spoof"
+    # .msg OLE container -> MSG / E-Mail (.msg)
+    assert format_tag_code("ole", "mail.msg") == ("MSG", "container")
+    assert format_short_type("ole", "mail.msg") == "E-Mail (.msg)"
+    # TIFF, Mach-O, SWF
+    assert format_tag_code("tiff", "scan.tiff")[0] == "TIF"
+    assert format_tag_code("macho", "app.macho")[0] == "MAC"
+    assert format_short_type("macho", "app.macho") == "Mach-O"
+    assert format_short_type("swf", "movie.swf") == "Flash (SWF)"

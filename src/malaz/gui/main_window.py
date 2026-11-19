@@ -19,7 +19,7 @@ import os
 from contextlib import suppress
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThreadPool, QTimer, QUrl, Signal
+from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -147,6 +147,18 @@ def _urls_to_paths(urls: list[QUrl]) -> tuple[list[str], bool]:
         return ([], False)
     files, truncated = expand_scan_paths(raw)
     return ([str(f) for f in files], truncated)
+
+
+class _AutoSizeStackedWidget(QStackedWidget):
+    """QStackedWidget sizing strictly to its current page so QScrollArea never squishes tall pages."""
+
+    def sizeHint(self) -> QSize:
+        cur = self.currentWidget()
+        return cur.sizeHint() if cur is not None else super().sizeHint()
+
+    def minimumSizeHint(self) -> QSize:
+        cur = self.currentWidget()
+        return cur.minimumSizeHint() if cur is not None else super().minimumSizeHint()
 
 
 class _ClickableFrame(QFrame):
@@ -671,7 +683,8 @@ class MainWindow(QMainWindow):
         self._detail_inner_lay.setContentsMargins(28, 20, 28, 22)
         self._detail_inner_lay.setSpacing(0)
 
-        self._pages = QStackedWidget(inner_wrap)
+        self._detail_scroll = scroll
+        self._pages = _AutoSizeStackedWidget(inner_wrap)
         self._detail_inner_lay.addWidget(self._pages, 1)
         scroll.setWidget(inner_wrap)
         rc_lay.addWidget(scroll, 1)
@@ -1257,6 +1270,13 @@ class MainWindow(QMainWindow):
 
     def _set_page(self, page_idx: int, *, footer_text: str | None = None) -> None:
         self._pages.setCurrentIndex(page_idx)
+        cur_w = self._pages.currentWidget()
+        if cur_w is not None:
+            cur_w.updateGeometry()
+        self._pages.updateGeometry()
+        if self._detail_scroll.widget() is not None:
+            self._detail_scroll.widget().updateGeometry()
+            self._detail_scroll.widget().adjustSize()
         self.summary_bar.setProperty("selected", "true" if page_idx == _PAGE_BATCH else "false")
         self.summary_bar.style().unpolish(self.summary_bar)
         self.summary_bar.style().polish(self.summary_bar)

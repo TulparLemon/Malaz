@@ -10,13 +10,15 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from ..design_tokens import ARCHIVE_TYPES, MAIL_TYPES, visual_state
+from ..design_tokens import ARCHIVE_TYPES, is_ooxml_filename, visual_state
 from ..models import RiskLevel, ScanResult
 from .sanitize import (
     clip_text,
+    collect_incomplete_reasons,
     escape_tooltip,
     indicator_weight,
     is_encrypted,
+    is_mail_result,
     masked_widget_text,
     result_is_incomplete,
 )
@@ -32,22 +34,19 @@ RISK_MARK = {level: RISK_MARKS[level.name.lower()] for level in RiskLevel}
 def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
     """Return concise (headline, 1-line action summary) for the Verdict Hero."""
     dt = (result.detected_type or "").lower()
-    is_mail = dt in MAIL_TYPES or bool(result.mail_security)
-    is_archive = dt in ARCHIVE_TYPES or (bool(result.children) and not is_mail)
+    is_mail = is_mail_result(result)
+    is_ooxml = dt == "zip" and is_ooxml_filename(result.display_name)
+    is_archive = dt in ARCHIVE_TYPES and not is_ooxml
     encrypted = is_encrypted(result)
 
     if state == "unk":
-        if encrypted:
+        if encrypted and not result.children:
             return (
                 "Ungeprüft — Passwortgeschützt",
                 "Inhalt verschlüsselt · Nach dem Entpacken erneut prüfen.",
             )
-        missing = [i.title for i in result.incomplete_stages[:2]]
-        detail = (
-            ", ".join(masked_widget_text(m) for m in missing)
-            if missing
-            else "Mindestens eine Prüfstufe lief nicht"
-        )
+        missing = collect_incomplete_reasons(result, limit=2)
+        detail = ", ".join(missing) if missing else "Mindestens eine Prüfstufe lief nicht"
         return (
             "Ungeprüft — Prüfung unvollständig",
             clip_text(f"Nicht vollständig geprüft ({detail}) · Nicht als sicher einstufen.", 140),
@@ -58,6 +57,11 @@ def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
             return (
                 "Gefährlich — Schädliche E-Mail",
                 "Nicht öffnen, keine Links klicken · E-Mail löschen oder IT melden.",
+            )
+        if is_ooxml:
+            return (
+                "Gefährlich — Schädliches Office-Dokument",
+                "Aktive Makros oder schädliche Inhalte erkannt · Nicht öffnen.",
             )
         if is_archive and result.children:
             bad_kids = sum(
