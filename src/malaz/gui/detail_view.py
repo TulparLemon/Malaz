@@ -34,7 +34,6 @@ from PySide6.QtWidgets import (
 
 from ..design_tokens import (
     ARCHIVE_TYPES,
-    MAIL_TYPES,
     format_short_type,
     format_size_de,
     format_tag_code,
@@ -64,10 +63,12 @@ from .mail_panel import MailPanel
 from .sanitize import (
     ENCRYPTED_RULES,
     clip_text,
+    collect_incomplete_reasons,
     defang_ioc,
     escape_tooltip,
     indicator_weight,
     is_encrypted,
+    is_mail_result,
     masked_widget_text,
     result_is_incomplete,
 )
@@ -210,7 +211,7 @@ def build_footer_summary(result: ScanResult) -> str:
     if dt == "pe":
         signed = any("SIGNED" in i.rule_id and "UN" not in i.rule_id for i in result.indicators)
         parts.append("Signatur: Vorhanden" if signed else "Signatur: Keine")
-    elif dt in MAIL_TYPES or bool(result.mail_security):
+    elif is_mail_result(result):
         if result.children:
             bad_k = sum(
                 1 for c in result.children if visual_state(c.risk_level, result_is_incomplete(c)) == "bad"
@@ -244,7 +245,12 @@ def build_footer_summary(result: ScanResult) -> str:
             )
             for i in result.indicators
         )
-        parts.append("Skripte: Gefunden" if has_script else "Skripte: Keine")
+        if has_script:
+            parts.append("Skripte: Gefunden")
+        elif result_is_incomplete(result):
+            parts.append("Skripte: Nicht prüfbar")
+        else:
+            parts.append("Skripte: Keine")
 
     parts.append(f"Prüfung: {check_word}")
     return " · ".join(parts)
@@ -624,14 +630,7 @@ class FileDetailView(QWidget):
                     ]
                 )
             else:
-                missing_list = [masked_widget_text(i.title) for i in result.incomplete_stages[:3]]
-                if not missing_list and result.children:
-                    missing_list = [
-                        f"{masked_widget_text(c.display_name)}: {masked_widget_text(s.title)}"
-                        for c in result.children
-                        for s in c.incomplete_stages[:1]
-                    ][:3]
-                missing = ", ".join(missing_list)
+                missing = ", ".join(collect_incomplete_reasons(result, limit=3))
                 rows_spec.append(
                     (
                         "warn",
@@ -701,10 +700,9 @@ class FileDetailView(QWidget):
             self._overview_lay.addWidget(sig_card)
 
         if result.children:
-            dt = (result.detected_type or "").lower()
             hdr_txt = (
                 f"ANHÄNGE ({len(result.children)})"
-                if dt in MAIL_TYPES or bool(result.mail_security)
+                if is_mail_result(result)
                 else f"DATEIEN IM ARCHIV ({len(result.children)})"
             )
             hdr = QLabel(hdr_txt, self._page_overview)

@@ -15,7 +15,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
-from ..design_tokens import ARCHIVE_TYPES, MAIL_TYPES, visual_state
+from ..design_tokens import ARCHIVE_TYPES, is_ooxml_filename, visual_state
 from ..models import EngineVerdict, ScanResult
 from .sanitize import (
     ENCRYPTED_RULES,
@@ -23,6 +23,7 @@ from .sanitize import (
     escape_tooltip,
     indicator_weight,
     is_encrypted,
+    is_mail_result,
     masked_widget_text,
     result_is_incomplete,
 )
@@ -50,7 +51,7 @@ def compact_engine_text(result: ScanResult) -> str:
     return " ".join(parts)
 
 
-_AV_ENGINE_NAMES = frozenset({"defender", "windows defender", "clamav"})
+_NON_SCANNER_ENGINES = frozenset({"statisch", "static"})
 
 
 def _elide_card(value: str | None, limit: int = 34) -> str:
@@ -384,7 +385,9 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
 def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, str]]:
     # Surface any direct AV threat or failure/skip on the .eml/.msg itself (real AV only, NOT Statisch)!
     av_verdicts = [
-        v for v in result.engine_verdicts if (v.engine or "").strip().lower() in _AV_ENGINE_NAMES
+        v
+        for v in result.engine_verdicts
+        if (v.engine or "").strip().lower() not in _NON_SCANNER_ENGINES
     ]
     av_threat = next((v for v in av_verdicts if v.state == "threat"), None)
     av_gap = [v for v in av_verdicts if v.state in ("error", "skipped")]
@@ -558,9 +561,10 @@ class EngineStrip(QWidget):
 
     def show_result(self, result: ScanResult) -> None:
         dt = (result.detected_type or "").lower()
-        if dt in MAIL_TYPES or bool(result.mail_security):
+        is_ooxml = dt == "zip" and is_ooxml_filename(result.display_name)
+        if is_mail_result(result):
             specs = _cards_for_mail(result)
-        elif dt in ARCHIVE_TYPES or bool(result.children):
+        elif not is_ooxml and (dt in ARCHIVE_TYPES or bool(result.children)):
             specs = _cards_for_archive(result)
         else:
             specs = _cards_for_leaf(result)

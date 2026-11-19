@@ -2857,3 +2857,114 @@ def test_incomplete_archive_child_prevents_green_parent_verdict(qapp):
         assert "readme.txt" in vc.advice.text()
     finally:
         vc.deleteLater()
+
+
+def test_ooxml_routes_to_leaf_engine_cards_and_office_verdict(qapp):
+    """UI-005 F1/F3: OOXML (.docm/.docx/.xlsx) zeigt Defender/ClamAV/Tiefenpruefung statt Archiv-Karten."""
+    from malaz.gui.detail_view import build_footer_summary
+    from malaz.gui.engine_strip import EngineStrip
+    from malaz.gui.verdict_card import VerdictCard
+    from malaz.models import EngineVerdict, Indicator, RiskLevel, ScanResult, Severity
+
+    docm = ScanResult(
+        path="makro.docm",
+        detected_type="zip",
+        risk_level=RiskLevel.RED,
+        score=90,
+        engine_verdicts=[
+            EngineVerdict(engine="Defender", state="clean", label="sauber", detail=""),
+            EngineVerdict(engine="ClamAV", state="skipped", label="ausgelassen", detail="Nur-Statik"),
+        ],
+        indicators=[
+            Indicator(
+                rule_id="OFFICE_VBA_DL_EXEC",
+                title="Download & Execute",
+                severity=Severity.CRITICAL,
+                weight=50,
+            )
+        ],
+        children=[ScanResult(path="vbaProject.bin", detected_type="ole", risk_level=RiskLevel.RED, score=90)],
+    )
+    strip = EngineStrip()
+    vc = VerdictCard()
+    try:
+        strip.show_result(docm)
+        vc.show_result(docm)
+        names = [c._name.text() for c in strip._cards]
+        assert names == ["Windows Defender", "ClamAV", "Tiefenprüfung"], names
+        assert strip._cards[1].property("state") != "ok"  # ClamAV skip surfaced!
+        assert "Office-Dokument" in vc.headline.text()
+        footer = build_footer_summary(docm)
+        assert "Word-Makro (.docm)" in footer and "Inhalt:" not in footer
+    finally:
+        strip.deleteLater()
+        vc.deleteLater()
+
+
+def test_recursive_incomplete_depth2_unknown_badge_archive_c3_and_nul_reveal(qapp):
+    """UI-005 F2/F3/F5: Tiefe>=2 Kind-Unvollstaendigkeit, Unbekannt-Badge, Archiv-Card-3,
+    .msg-Fallback, PDF-Footer 'Nicht pruefbar' und NUL-Byte-Schutz in reveal_in_explorer."""
+    from PySide6.QtWidgets import QLabel
+
+    from malaz.gui.detail_view import FileDetailView, build_footer_summary
+    from malaz.gui.engine_strip import _cards_for_archive
+    from malaz.gui.sanitize import (
+        collect_incomplete_reasons,
+        is_mail_result,
+        result_is_incomplete,
+        reveal_in_explorer,
+    )
+    from malaz.models import Indicator, RiskLevel, ScanResult, Severity
+
+    # 1. Depth 2 incomplete child (error + incomplete_stage + encrypted)
+    leaf_err = ScanResult(
+        path="deep.bin",
+        detected_type="unknown",
+        risk_level=RiskLevel.GREEN,
+        error="Lesefehler tief im Archiv",
+    )
+    mid_zip = ScanResult(
+        path="inner.zip", detected_type="zip", risk_level=RiskLevel.GREEN, children=[leaf_err]
+    )
+    outer_zip = ScanResult(
+        path="outer.zip", detected_type="zip", risk_level=RiskLevel.GREEN, children=[mid_zip]
+    )
+    assert result_is_incomplete(outer_zip) is True
+    reasons = collect_incomplete_reasons(outer_zip, limit=3)
+    assert any("deep.bin" in r and "Lesefehler" in r for r in reasons), reasons
+
+    # 2. Archive Card 3 when incomplete with no weighted findings
+    c3 = _cards_for_archive(outer_zip)[2]
+    assert c3[1] == "Unvollständig" and c3[2] == "Prüfung lückenhaft" and c3[3] == "warn" and c3[4] is True
+
+    # 3. Tab 2 'Unbekannt' badge on detected_type="unknown"
+    view = FileDetailView()
+    try:
+        view.show_result(leaf_err)
+        badges = [
+            lbl.text()
+            for lbl in view._page_details.findChildren(QLabel)
+            if lbl.objectName() == "badgeRight"
+        ]
+        assert "Unbekannt" in badges and "Verifiziert" not in badges, badges
+    finally:
+        view.deleteLater()
+
+    # 4. .msg with detected_type="ole" and empty mail_security recognized as mail
+    msg_err = ScanResult(path="kaputt.msg", detected_type="ole", risk_level=RiskLevel.GREEN, mail_security={})
+    assert is_mail_result(msg_err) is True
+
+    # 5. Incomplete PDF without script hits -> "Skripte: Nicht prüfbar" (never "Skripte: Keine")
+    inc_pdf = ScanResult(
+        path="kaputt.pdf",
+        detected_type="pdf",
+        risk_level=RiskLevel.YELLOW,
+        score=25,
+        indicators=[
+            Indicator(rule_id="PDF_PARSE_WARN", title="Parse-Warn", severity=Severity.MEDIUM, weight=25)
+        ],
+    )
+    assert "Skripte: Nicht prüfbar" in build_footer_summary(inc_pdf)
+
+    # 6. reveal_in_explorer safely rejects synthetic NUL-byte path (ValueError)
+    assert reveal_in_explorer("C:\\tmp\\bad\x00name.pdf") is False
