@@ -229,7 +229,6 @@ def _build_pdfs() -> list[Fixture]:
         ("openaction", "<< /OpenAction 3 0 R >>"),
         ("embedded", "<< /Type /Filespec /F (a.exe) /EF << /F (a.exe) >> >>"),
         ("aa", "<< /AA << /O << /S /JavaScript /JS (x) >> >> >>"),
-        ("uri", "<< /S /URI /URI (http://198.51.100.12/a) >>"),
         ("obfuscated", "<< /J#61vaScript /JS (x) >>"),
         ("richmedia", "<< /Subtype /RichMedia /RichMediaSettings << >> >>"),
         ("objstm", "<< /Type /ObjStm /N 1 /First 10 /Filter /FlateDecode >>"),
@@ -258,6 +257,36 @@ def _build_pdfs() -> list[Fixture]:
             )
         )
     import pikepdf
+
+    # Structural /URI fixtures: real page with /Annots -> /A -> /URI so pikepdf
+    # actually opens them instead of emitting PDF_PARSE_WARN on a pageless stub
+    # (Spec 006). An unblocked external link must stay GREEN (no false alarms).
+    for index in range(3):
+        pdf = pikepdf.new()
+        annot = pdf.make_indirect(
+            pikepdf.Dictionary(
+                Type=pikepdf.Name.Annot,
+                Subtype=pikepdf.Name.Link,
+                Rect=[0, 0, 100, 20],
+                A=pikepdf.Dictionary(
+                    Type=pikepdf.Name.Action,
+                    S=pikepdf.Name.URI,
+                    URI=pikepdf.String(f"http://198.51.100.12/a{index}"),
+                ),
+            )
+        )
+        pdf.pages.append(
+            pikepdf.Page(
+                pikepdf.Dictionary(
+                    Type=pikepdf.Name.Page,
+                    MediaBox=[0, 0, 612 + index, 792],
+                    Annots=pikepdf.Array([annot]),
+                )
+            )
+        )
+        buf = io.BytesIO()
+        pdf.save(buf, deterministic_id=True)
+        out.append(Fixture(f"pdf_uri_{index}.pdf", buf.getvalue(), "pdf", "green", "benign"))
 
     for index in range(20):
         pdf = pikepdf.new()
