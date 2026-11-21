@@ -534,6 +534,10 @@ class _GraphWalk:
     incomplete: bool = False
 
 
+# C-speed translation table stripping C0 controls (0x00..0x1F) and DEL (0x7F).
+_C0_STRIP_TABLE = str.maketrans("", "", "".join(chr(c) for c in range(0x20)) + "\x7f")
+
+
 def _decode_pdf_uri(raw: Any) -> str | None:
     """Decode a PDF ``/URI`` string safely (UTF-16BE/LE with or without BOM).
 
@@ -588,7 +592,7 @@ def _decode_pdf_uri(raw: Any) -> str | None:
         else:
             decoded = raw_bytes.decode("latin-1")
 
-    cleaned = "".join(ch for ch in decoded if ord(ch) >= 0x20 and ord(ch) != 0x7F).strip()
+    cleaned = decoded.translate(_C0_STRIP_TABLE).strip()
     if not cleaned:
         return None
     if len(cleaned) > max_chars:
@@ -1211,8 +1215,17 @@ class PdfPipeline(Pipeline):
 
         js_values: list = []
         uri_values: list = []
+        seen_uri_objgens: set[tuple[int, int]] = set()
         visited: set[tuple[int, int]] = set()
         state = {"nodes": 0, "launch": 0, "truncated": False}
+
+        def _record_uri(val: object) -> None:
+            uid = _identity(val)
+            if uid is not None:
+                if uid in seen_uri_objgens:
+                    return
+                seen_uri_objgens.add(uid)
+            uri_values.append(val)
 
         def _identity(obj):
             try:
@@ -1291,9 +1304,9 @@ class PdfPipeline(Pipeline):
                             except Exception:
                                 uri_values.append(None)
                             else:
-                                uri_values.append(base_val)
+                                _record_uri(base_val)
                     else:
-                        uri_values.append(uri_obj)
+                        _record_uri(uri_obj)
             for key in keys:
                 try:
                     value = obj.get(key)
@@ -1343,7 +1356,13 @@ class PdfPipeline(Pipeline):
         capped = False
         unreadable = 0
 
-        for raw in uri_values:
+        # Hard ceiling on raw /URI decodings even when all entries are direct
+        # duplicates, namespaces, or unreadable objects (prevents CPU amplification).
+        max_raw_entries = max(cap * 20, 4_000)
+        for idx, raw in enumerate(uri_values):
+            if idx >= max_raw_entries:
+                capped = True
+                break
             url = _decode_pdf_uri(raw)
             if url is None:
                 unreadable += 1

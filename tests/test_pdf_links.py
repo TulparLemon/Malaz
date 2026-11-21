@@ -396,3 +396,64 @@ def test_uri_get_exception_emits_parse_warn():
     pipe = PdfPipeline()
     indicators = pipe._link_indicators([None])
     assert any(i.rule_id == "PDF_PARSE_WARN" and i.weight == 20 for i in indicators)
+
+
+def test_repeated_large_indirect_uri_deduped_and_fast(tmp_path: Path, isolated_blocklists: Path):
+    """M1: thousands of repeated indirect 16 KB /URI refs stay fast and emit one PDF_LINK."""
+    import time
+
+    pdf = pikepdf.new()
+    shared_uri = pdf.make_indirect(pikepdf.String("https://repeat.example/" + "x" * 16_000))
+    annots = [
+        pikepdf.Dictionary(
+            Type=pikepdf.Name.Annot,
+            Subtype=pikepdf.Name.Link,
+            Rect=[0, 0, 10, 10],
+            A=pikepdf.Dictionary(Type=pikepdf.Name.Action, S=pikepdf.Name.URI, URI=shared_uri),
+        )
+        for _ in range(2_000)
+    ]
+    pdf.pages.append(
+        pikepdf.Page(
+            pikepdf.Dictionary(
+                Type=pikepdf.Name.Page,
+                MediaBox=[0, 0, 612, 792],
+                Annots=pikepdf.Array(annots),
+            )
+        )
+    )
+    buf = io.BytesIO()
+    pdf.save(buf, deterministic_id=True)
+    t0 = time.monotonic()
+    res = _scan_bytes(tmp_path, buf.getvalue(), "repeat_uri.pdf")
+    elapsed = time.monotonic() - t0
+    assert elapsed < 10.0, f"Repeated URI scan too slow: {elapsed:.2f}s"
+    links = [i for i in res.indicators if i.rule_id == "PDF_LINK"]
+    assert len(links) == 1
+    assert "(1)" in links[0].title
+
+
+def test_walker_appends_none_sentinel_on_uri_get_error(monkeypatch: pytest.MonkeyPatch):
+    """N1: obj.get(/URI) raising inside _walk_action_graph appends None -> PDF_PARSE_WARN."""
+
+    class _BadUriDict:
+        is_indirect = False
+
+        def keys(self):
+            return [pikepdf.Name.S, pikepdf.Name.URI]
+
+        def get(self, key, default=None):
+            if key == pikepdf.Name.URI:
+                raise RuntimeError("corrupt indirect URI")
+            return pikepdf.Name.URI
+
+    class _StubPdf:
+        def __init__(self) -> None:
+            self.pages = [_BadUriDict()]
+            self.Root = None
+
+    monkeypatch.setattr(pikepdf, "Dictionary", _BadUriDict)
+    pipe = PdfPipeline()
+    walk = pipe._walk_action_graph(_StubPdf(), collect_js=False, collect_uris=True)
+    assert None in walk.uri_values
+    assert any(i.rule_id == "PDF_PARSE_WARN" for i in pipe._link_indicators(walk.uri_values))
