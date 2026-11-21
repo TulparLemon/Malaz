@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Securit
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-21
+
 ### Added
 - **Trilingual UI & Report Localization (`UI-006`, DE / EN / TR / System):** Zero-dependency localization catalog (`src/malaz/i18n.py`, `src/malaz/i18n_catalog.py`, `src/malaz/i18n_catalog_tr.py`) covering **German (`Deutsch`)**, **English (`English`)**, and idiomatic **Turkish (`Türkçe`)** across the entire desktop GUI, 240+ canonical rule findings, and HTML/PDF reports. Supports automatic Windows LCID detection (`System`), live language switching in **Options → Language**, and ephemeral `--lang {system,de,en,tr}` CLI overrides while keeping JSON/CSV exports 100% machine-invariant and preserving the completeness invariant (`Ungeprüft` / `Unchecked` / `Taranamadı`) in all languages.
 - **Reproducible Showcase Asset Generator (`scripts/make_showcase_assets.py`):** Regenerates the English README screenshots (`docs/assets/malaz-{ui,overview,light,options}.png`) and animated walkthrough (`docs/assets/malaz-demo.gif`) deterministically from the real PySide6 application.
