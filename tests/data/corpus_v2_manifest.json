@@ -16,8 +16,8 @@
     "swf"
   ],
   "kinds": {
-    "benign": 133,
-    "malicious": 286,
+    "benign": 136,
+    "malicious": 283,
     "edge": 37
   },
   "fixtures": [
@@ -619,23 +619,23 @@
     {
       "name": "pdf_uri_0.pdf",
       "family": "pdf",
-      "kind": "malicious",
-      "expected": "flag",
-      "size": 199
+      "kind": "benign",
+      "expected": "green",
+      "size": 584
     },
     {
       "name": "pdf_uri_1.pdf",
       "family": "pdf",
-      "kind": "malicious",
-      "expected": "flag",
-      "size": 199
+      "kind": "benign",
+      "expected": "green",
+      "size": 584
     },
     {
       "name": "pdf_uri_2.pdf",
       "family": "pdf",
-      "kind": "malicious",
-      "expected": "flag",
-      "size": 199
+      "kind": "benign",
+      "expected": "green",
+      "size": 584
     },
     {
       "name": "pdf_obfuscated_0.pdf",

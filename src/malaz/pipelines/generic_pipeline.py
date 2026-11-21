@@ -24,6 +24,8 @@ from urllib.parse import urlsplit
 
 from .. import config
 from ..core.binary_iocs import (
+    BINARY_IOC_BLOCKED_TITLE,
+    BLOCKLIST_UNAVAILABLE_TITLE,
     IOC_DOMAIN,
     IOC_IPV4,
     IOC_IPV6,
@@ -149,7 +151,7 @@ _BINARY_IOC_LEVELS = {
     "BINARY_IOC_CAPPED": (Severity.INFO, 0),
 }
 _BINARY_IOC_TITLES = {
-    "BINARY_IOC_BLOCKED": "Adresse im Binärinhalt steht auf der Blocklist",
+    "BINARY_IOC_BLOCKED": BINARY_IOC_BLOCKED_TITLE,
     "BINARY_IOC": "Adressen im Binärinhalt",
     "BINARY_IOC_CAPPED": "Adressprüfung durch Trefferdeckel begrenzt",
 }
@@ -521,7 +523,7 @@ class GenericPipeline(Pipeline):
         """Create the zero-weight, visible marker for a failed local list."""
         return self._indicator(
             rule_id,
-            "Lokale Blockliste nicht verfügbar",
+            BLOCKLIST_UNAVAILABLE_TITLE,
             detail=detail + " Das Ergebnis ist an dieser Stelle unvollständig.",
             severity=Severity.INFO,
             category=CAT_IOC,

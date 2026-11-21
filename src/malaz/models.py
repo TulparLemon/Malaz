@@ -68,8 +68,9 @@ class RiskLevel(enum.IntEnum):
         """Plain-language recommendation what the user should do."""
         return {
             RiskLevel.GREEN: (
-                "Keine Anzeichen für Manipulation gefunden. "
-                "Die Datei kann normalerweise bedenkenlos verwendet werden."
+                "Keine technischen Auffälligkeiten oder bekannter Schadcode gefunden. "
+                "Das prüft jedoch nicht, ob Absender oder Inhalt echt sind — "
+                "bei unerwarteten Dateien kurz rückfragen."
             ),
             RiskLevel.YELLOW: (
                 "Die Datei zeigt Auffälligkeiten. Öffnen Sie sie nur, wenn Sie "
@@ -218,6 +219,7 @@ _INCOMPLETE_RULES = frozenset(
         "PDF_LIB_MISSING",
         "PDF_PARSE_WARN",
         "PDF_JS_PARSE_WARN",
+        "PDF_LINK_CAPPED",
         # Office
         "OFFICE_LIB_MISSING",
         "OFFICE_STAGE_WARN",

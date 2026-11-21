@@ -4352,37 +4352,34 @@
   "v2/pdf_uri_0.pdf": {
     "notes": [
       "BINARY_IOC",
-      "PDF_KW_Page"
+      "PDF_KW_Page",
+      "PDF_LINK"
     ],
-    "risk": "YELLOW",
-    "rules": [
-      "PDF_PARSE_WARN"
-    ],
-    "score": 25,
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
     "type": "pdf"
   },
   "v2/pdf_uri_1.pdf": {
     "notes": [
       "BINARY_IOC",
-      "PDF_KW_Page"
+      "PDF_KW_Page",
+      "PDF_LINK"
     ],
-    "risk": "YELLOW",
-    "rules": [
-      "PDF_PARSE_WARN"
-    ],
-    "score": 25,
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
     "type": "pdf"
   },
   "v2/pdf_uri_2.pdf": {
     "notes": [
       "BINARY_IOC",
-      "PDF_KW_Page"
+      "PDF_KW_Page",
+      "PDF_LINK"
     ],
-    "risk": "YELLOW",
-    "rules": [
-      "PDF_PARSE_WARN"
-    ],
-    "score": 25,
+    "risk": "GREEN",
+    "rules": [],
+    "score": 0,
     "type": "pdf"
   },
   "v2/pe_import_0_0.exe": {

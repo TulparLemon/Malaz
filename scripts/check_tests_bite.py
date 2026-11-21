@@ -262,11 +262,11 @@ MUTATIONS: tuple[Mutation, ...] = (
         name="rohbyte-namespace-filter-aus",
         file="src/malaz/core/binary_iocs.py",
         old=(
-            "        if _is_namespace(value):\n"
+            "        if is_namespace_host(value):\n"
             "            continue\n"
-            "        url_hosts.add(_host_of_url(value))\n"
+            "        url_hosts.add(host_of_url(value))\n"
         ),
-        new="        url_hosts.add(_host_of_url(value))\n",
+        new="        url_hosts.add(host_of_url(value))\n",
         test="tests/test_binary_iocs.py::test_namespace_urls_are_not_reported",
         why=(
             "Ohne den Namespace-Filter meldet jedes Office-Dokument und jede "
@@ -278,7 +278,7 @@ MUTATIONS: tuple[Mutation, ...] = (
     Mutation(
         name="rohbyte-url-host-nicht-gegen-liste",
         file="src/malaz/core/binary_iocs.py",
-        old="        return _host_is_blocked(_host_of_url(value), domains, nets)\n",
+        old="        return _host_is_blocked(host_of_url(value), domains, nets)\n",
         new="        return False\n",
         test="tests/test_binary_iocs.py::test_split_uses_domain_ip_and_url_lists",
         why=(
@@ -506,6 +506,53 @@ MUTATIONS: tuple[Mutation, ...] = (
         ),
         test="tests/test_large_files.py::test_time_budget_stops_streaming_and_is_visible",
         why=("Ohne das Flag sieht ein nach 120 s gestoppter Scan aus wie eine vollstaendige Analyse."),
+    ),
+    Mutation(
+        name="pdf-link-gewicht-falsch",
+        file="src/malaz/pipelines/pdf_pipeline.py",
+        old=(
+            "                    severity=Severity.INFO,\n"
+            "                    category=CAT_IOC,\n"
+            "                    weight=0,\n"
+            "                )\n"
+            "            )\n"
+            "        return out"
+        ),
+        new=(
+            "                    severity=Severity.INFO,\n"
+            "                    category=CAT_IOC,\n"
+            "                    weight=20,\n"
+            "                )\n"
+            "            )\n"
+            "        return out"
+        ),
+        test="tests/test_pdf_links.py::test_legitimate_link_stays_green",
+        why=(
+            "Spec 006 (PDF-001): PDF_LINK mit Gewicht 20 wuerde jede normale "
+            "Rechnung mit Website-Link auf GELB heben."
+        ),
+    ),
+    Mutation(
+        name="pdf-link-blocklist-aus",
+        file="src/malaz/pipelines/pdf_pipeline.py",
+        old="        blocked, plain, unavailable = split_blocked_iocs(hits)\n",
+        new="        blocked, plain, unavailable = [], hits, []\n",
+        test="tests/test_pdf_links.py::test_utf16_without_bom_is_decoded",
+        why=(
+            "Spec 006 (PDF-001): ohne split_blocked_iocs im PDF-Link-Pfad "
+            "faellt ein UTF-16-Phishing-Link wieder still auf GRUEN 0."
+        ),
+    ),
+    Mutation(
+        name="pdf-walk-incomplete-aus",
+        file="src/malaz/pipelines/pdf_pipeline.py",
+        old='        graph_incomplete = bool(collect_uris and not visited and not state["truncated"])\n',
+        new="        graph_incomplete = False\n",
+        test="tests/test_pdf_links.py::test_graph_incomplete_when_pages_and_root_unreadable",
+        why=(
+            "Spec 006 (PDF-001): ohne graph_incomplete bleiben unlesbare "
+            "Seitenbaum-/Root-Objekte beim Link-Scan still unbemerkt."
+        ),
     ),
 )
 

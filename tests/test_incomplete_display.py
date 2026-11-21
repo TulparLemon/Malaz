@@ -157,6 +157,7 @@ def test_jede_stufenmeldung_ist_entweder_gemeldet_oder_bewusst_ausgenommen():
         "PDF_LIB_MISSING",
         "PDF_PARSE_WARN",
         "PDF_JS_PARSE_WARN",
+        "PDF_LINK_CAPPED",
         "OFFICE_LIB_MISSING",
         "OFFICE_STAGE_WARN",
         "OFFICE_DDE_PARSE_WARN",

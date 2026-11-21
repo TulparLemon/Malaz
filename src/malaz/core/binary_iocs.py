@@ -60,6 +60,11 @@ IOC_DOMAIN = "domain"
 # ``split_blocked_iocs``-Treffern: der Marker ist keine Adresse.
 IOC_CAP = "capped"
 
+# Shared finding titles used by both generic_pipeline and pdf_pipeline
+# (single source of truth for check_duplicate_logic.py).
+BINARY_IOC_BLOCKED_TITLE = "Adresse im Binärinhalt steht auf der Blocklist"
+BLOCKLIST_UNAVAILABLE_TITLE = "Lokale Blockliste nicht verfügbar"
+
 # TLD-Auswahl für Domain-Treffer — bewusst DIESELBE Liste wie im Textpfad
 # (pipelines/generic_pipeline.py baut sein Muster daraus auf). Zwei getrennte
 # Listen liefen auseinander, und dieselbe Adresse bekäme je nach erkanntem
@@ -159,21 +164,47 @@ _DOMAIN_RE = re.compile(
 _TRAILING_PUNCTUATION = ".,;:"
 
 
-def _host_of_url(value: str) -> str:
-    """Der Host einer URL (ohne Schema, Port, Pfad, Query, Fragment)."""
-    rest = value.split("://", 1)[1] if "://" in value else value
-    host = rest.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+# Bounded RFC-3986 leading scheme prefix (only matches at start of string so
+# '://'' inside a query parameter cannot spoof the host or namespace filter).
+_LEADING_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]{0,31}://")
+
+
+def host_of_url(value: str) -> str:
+    """Der Host einer URL (ohne Schema, Userinfo, Port, Pfad, Query, Fragment)."""
+    m = _LEADING_SCHEME_RE.match(value)
+    if m:
+        rest = value[m.end() :]
+    elif value.startswith("//"):
+        rest = value[2:]
+    else:
+        rest = value
+    authority = rest.split("/", 1)[0].split("\\", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    # Strip attacker-controlled userinfo (e.g. https://w3.org:1@evil.tld/login)
+    # BEFORE splitting on ':' so a fake namespace prefix cannot spoof the host.
+    host = authority.rsplit("@", 1)[-1].strip()
     if host.startswith("["):  # IPv6-Literal: [::1]:8080
-        return host[1:].split("]", 1)[0].lower()
-    return host.split(":", 1)[0].strip().lower()
+        return host[1:].split("]", 1)[0].lower().rstrip(".")
+    return host.split(":", 1)[0].strip().lower().rstrip(".")
 
 
-def _is_namespace(value: str) -> bool:
+def is_namespace_host(value: str) -> bool:
     """True für Format-Namespaces und Herstellerhosts (siehe NAMESPACE_HOSTS)."""
-    host = _host_of_url(value) if "://" in value else value.strip(".").lower()
+    if _LEADING_SCHEME_RE.match(value) or value.startswith("//"):
+        host = host_of_url(value)
+    elif ":" in value.split("/", 1)[0]:
+        # Non-hierarchical schemes such as javascript: or mailto: are never
+        # benign XML/document format namespaces.
+        return False
+    else:
+        host = host_of_url(value)
     return host in NAMESPACE_HOSTS or any(
         host.endswith("." + listed) for listed in NAMESPACE_HOSTS
     )
+
+
+# Backward-compatible private aliases for internal callers/tests.
+_host_of_url = host_of_url
+_is_namespace = is_namespace_host
 
 
 def _valid_ipv6(candidate: bytes) -> str | None:
@@ -229,9 +260,9 @@ def extract_binary_iocs(data: bytes) -> list[tuple[str, str]]:
 
     for match in _URL_RE.finditer(scan):
         value = match.group().decode("ascii", "replace").rstrip(_TRAILING_PUNCTUATION)
-        if _is_namespace(value):
+        if is_namespace_host(value):
             continue
-        url_hosts.add(_host_of_url(value))
+        url_hosts.add(host_of_url(value))
         add(IOC_URL, value)
 
     for match in _IPV4_RE.finditer(scan):
@@ -244,7 +275,7 @@ def extract_binary_iocs(data: bytes) -> list[tuple[str, str]]:
 
     for match in _DOMAIN_RE.finditer(scan):
         value = match.group().decode("ascii", "replace")
-        if value.lower() in url_hosts or _is_namespace(value):
+        if value.lower() in url_hosts or is_namespace_host(value):
             continue
         add(IOC_DOMAIN, value)
 
@@ -280,7 +311,7 @@ def _is_blocked(
         # Ein Link ist auch dann ein Treffer, wenn nur sein HOST auf einer
         # Liste steht: die Domain-Liste führt die Absender-/C2-Hosts, und eine
         # gemeldete URL trägt genau diesen Host.
-        return _host_is_blocked(_host_of_url(value), domains, nets)
+        return _host_is_blocked(host_of_url(value), domains, nets)
     if kind == IOC_DOMAIN:
         return _host_is_blocked(value, domains, nets)
     if kind in (IOC_IPV4, IOC_IPV6):
