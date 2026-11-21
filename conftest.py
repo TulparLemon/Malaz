@@ -198,11 +198,18 @@ def _isolate_log_dir(tmp_path_factory, monkeypatch):
 @pytest.fixture(autouse=True)
 def _isolate_language():
     """Keep active UI language deterministically pinned to ``de`` between tests."""
+    from contextlib import suppress
+
     from malaz import i18n
-    from malaz.gui import settings as gui_settings
 
     i18n.set_language("de")
-    gui_settings._ACTIVE_LANG_PREF = None
+    with suppress(ImportError):
+        from malaz.gui import settings as gui_settings
+
+        gui_settings._ACTIVE_LANG_PREF = None
     yield
     i18n.set_language("de")
-    gui_settings._ACTIVE_LANG_PREF = None
+    with suppress(ImportError):
+        from malaz.gui import settings as gui_settings
+
+        gui_settings._ACTIVE_LANG_PREF = None

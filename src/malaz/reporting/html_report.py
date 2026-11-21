@@ -110,13 +110,17 @@ def _risk_badge(result: ScanResult, *, lang: str) -> str:
     color = result.risk_level.color
     if result.is_incomplete:
         if lang == "tr":
-            label = f"{escape_html(result.risk_level.short_for('tr'))} (Denetlenmedi / eksik)"
             if result.risk_level == RiskLevel.GREEN:
+                label = "Denetlenmedi (eksik)"
                 color = "#8a5a00"
+            else:
+                label = f"{escape_html(result.risk_level.short_for('tr'))} (eksik)"
         elif lang == "en":
-            label = f"{escape_html(result.risk_level.short_for('en'))} (Unchecked / incomplete)"
             if result.risk_level == RiskLevel.GREEN:
+                label = "Unchecked (incomplete)"
                 color = "#8a5a00"
+            else:
+                label = f"{escape_html(result.risk_level.short_for('en'))} (incomplete)"
         else:
             label = f"{escape_html(result.risk_level.short_for('de'))} (unvollständig)"
     else:
@@ -193,7 +197,7 @@ def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "d
         '<div class="file-head">'
         f'<span class="name">{escape_html(_clip(result.display_name, MAX_DISPLAY_CHARS))}</span>'
         f"{_risk_badge(result, lang=lang)}"
-        f'<span class="score">Score: {result.score}/100'
+        f'<span class="score">{pick("Score:", "Score:", "Puan:", lang=lang)} {result.score}/100'
         + (anchor_str if result.anchored else "")
         + (discount_str if result.av_discount else "")
         + "</span>"
@@ -223,10 +227,11 @@ def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "d
     th_sev = pick("Schwere", "Severity", "Önem", lang=lang)
     th_rule = pick("Regel", "Rule", "Kural", lang=lang)
     th_find = pick("Befund", "Finding", "Bulgu", lang=lang)
+    th_detail = pick("Detail", "Detail", "Detay", lang=lang)
     table = (
         "<table><thead><tr>"
         f"<th style='width:90px'>{th_sev}</th><th style='width:200px'>{th_rule}</th>"
-        f"<th style='width:280px'>{th_find}</th><th>Detail</th>"
+        f"<th style='width:280px'>{th_find}</th><th>{th_detail}</th>"
         "</tr></thead><tbody>" + _indicator_rows(result.indicators, lang=lang) + "</tbody></table>"
     )
 

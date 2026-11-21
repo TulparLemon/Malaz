@@ -352,8 +352,14 @@ def _render_result(
     # Pruefung Luecken, steht das IM Chip: ein Grün ohne diesen Zusatz liest
     # sich als Freispruch, und genau das ist es nicht.
     short_lbl = result.risk_level.short_for(r.lang)
-    inc_tag = pick("unvollständig", "Unchecked", "Denetlenmedi", lang=r.lang)
-    chip_lbl = f"{short_lbl} ({inc_tag})" if result.is_incomplete else short_lbl
+    if result.is_incomplete:
+        if (is_en or is_tr) and result.risk_level == RiskLevel.GREEN:
+            chip_lbl = "Denetlenmedi" if is_tr else "Unchecked"
+        else:
+            inc_tag = pick("unvollständig", "incomplete", "eksik", lang=r.lang)
+            chip_lbl = f"{short_lbl} ({inc_tag})"
+    else:
+        chip_lbl = short_lbl
     chip_color = (
         _RISK_COLORS[RiskLevel.YELLOW]
         if ((is_en or is_tr) and result.is_incomplete and result.risk_level == RiskLevel.GREEN)

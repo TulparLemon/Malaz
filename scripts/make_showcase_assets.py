@@ -343,50 +343,51 @@ def generate_assets(out_dir: Path, *, lang: str = "en", make_gif: bool = True) -
     p_ov = _grab_png(win, out_dir / "malaz-overview.png")
     produced.append(p_ov)
 
-    # 3. Dark mode — Unchecked encrypted archive frame for GIF
-    win._select_result_in_tree(results[3])
-    win.detail_view.select_tab(0)
     p_unk = out_dir / "_tmp_unk.png"
-    _grab_png(win, p_unk)
-
-    # 4. Dark mode — Options & Auto-Update (malaz-options.png)
-    win._toggle_options_view()
-    p_opt = _grab_png(win, out_dir / "malaz-options.png")
-    produced.append(p_opt)
-    win._leave_options()
-
-    # 5. Light mode — Clean PDF detail (malaz-light.png)
-    apply_theme(app, "light", persist=False)
-    win._select_result_in_tree(results[4])
-    win.detail_view.select_tab(0)
-    p_light = _grab_png(win, out_dir / "malaz-light.png")
-    produced.append(p_light)
-
-    # 6. Light mode — Technical details frame for GIF
-    win._select_result_in_tree(results[0])
-    win.detail_view.select_tab(1)
     p_tech = out_dir / "_tmp_tech.png"
-    _grab_png(win, p_tech)
+    try:
+        # 3. Dark mode — Unchecked encrypted archive frame for GIF
+        win._select_result_in_tree(results[3])
+        win.detail_view.select_tab(0)
+        _grab_png(win, p_unk)
 
-    if make_gif:
-        gif_frames = [p_ov, p_ui, p_tech, p_unk, p_light, p_opt]
-        imgs = [Image.open(fp).convert("RGB") for fp in gif_frames]
-        # Quantize smoothly to 256-color palette for crisp small GitHub GIF
-        pal_imgs = [im.quantize(colors=256, method=Image.Quantize.MEDIANCUT) for im in imgs]
-        p_gif = out_dir / "malaz-demo.gif"
-        pal_imgs[0].save(
-            p_gif,
-            save_all=True,
-            append_images=pal_imgs[1:],
-            duration=[2200, 2600, 2200, 2200, 2400, 2200],
-            loop=0,
-            optimize=True,
-        )
-        produced.append(p_gif)
+        # 4. Dark mode — Options & Auto-Update (malaz-options.png)
+        win._toggle_options_view()
+        p_opt = _grab_png(win, out_dir / "malaz-options.png")
+        produced.append(p_opt)
+        win._leave_options()
 
-    for tmp_p in (p_unk, p_tech):
-        tmp_p.unlink(missing_ok=True)
-    win.close()
+        # 5. Light mode — Clean PDF detail (malaz-light.png)
+        apply_theme(app, "light", persist=False)
+        win._select_result_in_tree(results[4])
+        win.detail_view.select_tab(0)
+        p_light = _grab_png(win, out_dir / "malaz-light.png")
+        produced.append(p_light)
+
+        # 6. Light mode — Technical details frame for GIF
+        win._select_result_in_tree(results[0])
+        win.detail_view.select_tab(1)
+        _grab_png(win, p_tech)
+
+        if make_gif:
+            gif_frames = [p_ov, p_ui, p_tech, p_unk, p_light, p_opt]
+            imgs = [Image.open(fp).convert("RGB") for fp in gif_frames]
+            # Quantize smoothly to 256-color palette for crisp small GitHub GIF
+            pal_imgs = [im.quantize(colors=256, method=Image.Quantize.MEDIANCUT) for im in imgs]
+            p_gif = out_dir / "malaz-demo.gif"
+            pal_imgs[0].save(
+                p_gif,
+                save_all=True,
+                append_images=pal_imgs[1:],
+                duration=[2200, 2600, 2200, 2200, 2400, 2200],
+                loop=0,
+                optimize=True,
+            )
+            produced.append(p_gif)
+    finally:
+        for tmp_p in (p_unk, p_tech):
+            tmp_p.unlink(missing_ok=True)
+        win.close()
     return produced
 
 

@@ -81,30 +81,124 @@ _AUTH_LABELS_TR: dict[str, str] = {
 }
 
 
-def _tr_mail_score_label(label: str) -> str:
+_MAIL_REASON_MAP: dict[str, tuple[str, str]] = {
+    "Der angezeigte Name passt nicht zur Absenderadresse — der Name ist frei waehlbar": (
+        "Display name does not match sender address — display names are freely editable",
+        "Görünen ad gönderici adresiyle eşleşmiyor — görünen ad serbestçe yazılabilir",
+    ),
+    "Die Mail behauptet bestandene Authentifizierung durch einen Server, der in der Empfangskette fehlt": (
+        "Email claims passed authentication from a server missing from the delivery chain",
+        "E-posta, teslimat zincirinde yer almayan bir sunucudan başarılı doğrulama iddia ediyor",
+    ),
+    "Diese Adresse steht auf der Blockliste bekannter Schad-Adressen": (
+        "This address matches a local blocklist of known malicious destinations",
+        "Bu adres bilinen zararlı hedeflerin yerel engelleme listesinde yer alıyor",
+    ),
+    "Der sichtbare Linktext nennt eine andere Adresse als das Ziel — das ist "
+    "die haeufigste Phishing-Bauform": (
+        "Visible link text displays a different destination than the actual target (phishing)",
+        "Görünen bağlantı metni gerçek hedeften farklı bir adres gösteriyor (oltalama)",
+    ),
+    "Der Name enthaelt Unicode-Zeichen und kann wie eine bekannte Marke aussehen, ohne es zu sein": (
+        "Domain uses Unicode/Punycode characters that can imitate a known brand",
+        "Alan adı bilinen bir markayı taklit edebilen Unicode/Punycode karakterler içeriyor",
+    ),
+    "Der Link fuehrt keinen Webbrowser aus, sondern startet ein Programm oder greift auf lokale Dateien zu": (
+        "Link invokes a local program or file URI instead of a web page",
+        "Bağlantı bir web sayfası yerine yerel program veya dosya URI'si başlatıyor",
+    ),
+    "In der Adresse stehen Zugangsdaten vor dem @ — damit laesst sich eine echte Domain vortaeuschen": (
+        "URL contains credentials before '@' to spoof a legitimate domain",
+        "URL, gerçek bir alan adını taklit etmek için '@' öncesinde kimlik bilgisi içeriyor",
+    ),
+    "Der Link nennt eine nackte IP-Adresse statt eines Namens": (
+        "Link points to a raw IP address instead of a domain name",
+        "Bağlantı alan adı yerine doğrudan IP adresine yönlendiriyor",
+    ),
+    "Die Endung der Domain gilt als haeufig missbraucht": (
+        "Domain uses a top-level domain frequently abused for phishing",
+        "Alan adı oltalama için sıkça kötüye kullanılan bir uzantıya sahip",
+    ),
+    "Ein Kurzlink verbirgt das Ziel": (
+        "URL shortener hides the final destination",
+        "Kısaltılmış bağlantı gerçek hedef adresi gizliyor",
+    ),
+}
+
+
+def localize_mail_score_label(label: str, *, lang: str | None = None) -> str:
+    """Localize sender/link score labels from ``core/mail_score.py``."""
+    eff = resolve_language(lang) if lang is not None else get_language()
+    if eff == "de":
+        return label
     low = (label or "").lower()
+    is_tr = eff == "tr"
+    if "teilweise stimmig" in low:
+        return "Gönderici bilgileri kısmen tutarlı" if is_tr else "Sender details partially consistent"
+    if "stimmig" in low:
+        return "Gönderici bilgileri tutarlı" if is_tr else "Sender details consistent"
+    if "widerspr" in low or "fehlend" in low:
+        return (
+            "Gönderici bilgileri çelişkili veya eksik" if is_tr else "Sender details conflicting or missing"
+        )
     if "gefährlich" in low or "gefaehrlich" in low or "hoch" in low or "betrug" in low:
-        return "Şüpheli"
-    if "verdächtig" in low or "verdaechtig" in low or "widerspr" in low or "prüf" in low:
-        return "İnceleme gerekli"
+        return "Şüpheli" if is_tr else "Suspicious"
+    if "verdächtig" in low or "verdaechtig" in low or "auffaellig" in low or "prüf" in low:
+        return "İnceleme gerekli" if is_tr else "Needs review"
     if "nicht beurteilbar" in low or "unbekannt" in low:
-        return "Doğrulanamadı"
+        return "Doğrulanamadı" if is_tr else "Unverifiable"
     if "unauffällig" in low or "unauffaellig" in low or "ok" in low:
-        return "Normal"
+        return "Normal" if is_tr else "Unremarkable"
     return label
+
+
+def _tr_mail_score_label(label: str) -> str:
+    return localize_mail_score_label(label, lang="tr")
 
 
 def _en_mail_score_label(label: str) -> str:
-    low = (label or "").lower()
-    if "gefährlich" in low or "gefaehrlich" in low or "hoch" in low or "betrug" in low:
-        return "Suspicious"
-    if "verdächtig" in low or "verdaechtig" in low or "widerspr" in low or "prüf" in low:
-        return "Needs review"
-    if "nicht beurteilbar" in low or "unbekannt" in low:
-        return "Unverifiable"
-    if "unauffällig" in low or "unauffaellig" in low or "ok" in low:
-        return "Unremarkable"
-    return label
+    return localize_mail_score_label(label, lang="en")
+
+
+def localize_mail_mechanism(verdict: str, *, claimed: bool = False, lang: str | None = None) -> str:
+    """Localize a single SPF/DKIM/DMARC verdict (with unbacked-claim marker)."""
+    eff = resolve_language(lang) if lang is not None else get_language()
+    labels = _AUTH_LABELS_TR if eff == "tr" else (_AUTH_LABELS_EN if eff == "en" else AUTH_LABELS)
+    fallback = "bilinmiyor" if eff == "tr" else ("unknown" if eff == "en" else "unbekannt")
+    text = labels.get(verdict, fallback)
+    if claimed and verdict in ("pass", "fail"):
+        if eff == "tr":
+            return f"iddia edilen: {text}"
+        if eff == "en":
+            return f"claimed: {text}"
+        return f"behauptet: {text}"
+    return text
+
+
+def localize_mail_reason(reason: str, *, lang: str | None = None) -> str:
+    """Localize a single sender or link reason string from ``core/mail_score.py``."""
+    eff = resolve_language(lang) if lang is not None else get_language()
+    if eff == "de" or not reason:
+        return reason
+    idx = 1 if eff == "tr" else 0
+    exact = _MAIL_REASON_MAP.get(reason)
+    if exact is not None:
+        return exact[idx]
+    for prefix in ("SPF: ", "DKIM: ", "DMARC: "):
+        if reason.startswith(prefix):
+            rest = reason[len(prefix) :]
+            sub_map = {
+                "fehlgeschlagen": ("failed", "başarısız"),
+                "vom Absender nicht verwendet": ("not used by sender", "gönderici tarafından kullanılmıyor"),
+                "nicht beurteilbar (keine Angabe in der Datei)": (
+                    "unverifiable (no header record in file)",
+                    "doğrulanamadı (dosya başlığında kayıt yok)",
+                ),
+                "bestanden": ("passed", "başarılı"),
+            }
+            if rest in sub_map:
+                return f"{prefix}{sub_map[rest][idx]}"
+    return reason
 
 
 def auth_summary(result: ScanResult, *, lang: str | None = None) -> str:
@@ -158,9 +252,7 @@ def sender_line(result: ScanResult, *, lang: str | None = None) -> str:
     return ""
 
 
-def mail_lines(
-    result: ScanResult, *, lang: str | None = None
-) -> list[tuple[str, str]]:
+def mail_lines(result: ScanResult, *, lang: str | None = None) -> list[tuple[str, str]]:
     """Beschriftung/Wert-Zeilen fuer den Bericht; leer bei Nicht-Mails."""
     if not result.mail_security:
         return []
@@ -223,16 +315,12 @@ def mail_lines(
         auffaellig = [e for e in link_scores(links, limit=len(links)) if e.score > 0]
         if auffaellig:
             for nummer, eintrag in enumerate(auffaellig[:8], start=1):
-                grund = eintrag.reasons[0] if eintrag.reasons else ""
-                elbl = (
-                    _tr_mail_score_label(eintrag.label)
-                    if is_tr
-                    else (_en_mail_score_label(eintrag.label) if is_en else eintrag.label)
-                )
+                grund = localize_mail_reason(eintrag.reasons[0] if eintrag.reasons else "", lang=eff)
+                elbl = localize_mail_score_label(eintrag.label, lang=eff)
                 val = (
-                    f"{eintrag.host} — {elbl} ({eintrag.score}/100)"
-                    if (is_en or is_tr)
-                    else f"{eintrag.host} — {elbl} ({eintrag.score}/100). {grund}"
+                    f"{eintrag.host} — {elbl} ({eintrag.score}/100). {grund}"
+                    if grund
+                    else f"{eintrag.host} — {elbl} ({eintrag.score}/100)"
                 )
                 lines.append((f"Link {nummer}", val))
             if len(auffaellig) > 8:

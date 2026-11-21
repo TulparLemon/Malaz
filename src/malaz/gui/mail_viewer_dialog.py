@@ -49,9 +49,14 @@ from PySide6.QtWidgets import (
 
 from .. import config
 from ..core.eml_analysis import analyze_structure, looks_like_mail, parse_mail
-from ..core.mail_score import mechanism_label, sender_score
+from ..core.mail_score import sender_score
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip, render_mail, sender_verdict
 from ..i18n import pick, t
+from ..reporting.mail_section import (
+    localize_mail_mechanism,
+    localize_mail_reason,
+    localize_mail_score_label,
+)
 from ..security.escaping import mask_invisible
 from .display import clamp_dialog_to_screen
 from .theme import FONT_SUBTITLE, RISK_COLORS, RISK_MARKS
@@ -214,18 +219,18 @@ class MailViewerDialog(QDialog):
         mark = RISK_MARKS[score.color]
 
         self._add(pick("Absender", "Sender", "Gönderici"), heading=True)
-        zeile = QLabel(mask_invisible(f"{mark}  {score.label}"))
+        zeile = QLabel(mask_invisible(f"{mark}  {localize_mail_score_label(score.label)}"))
         zeile.setStyleSheet(
             f"color: {farbe}; font-size: {FONT_SUBTITLE}; font-weight: 700;"
         )
         self._layout.addWidget(zeile)
 
         for grund in score.reasons:
-            self._add("• " + grund)
+            self._add("• " + localize_mail_reason(grund))
         for name, key in (("SPF", "spf"), ("DKIM", "dkim"), ("DMARC", "dmarc")):
             self._add(
                 f"    {name}: "
-                + mechanism_label(facts.auth_verdicts.get(key, ""), claimed=unbacked)
+                + localize_mail_mechanism(facts.auth_verdicts.get(key, ""), claimed=unbacked)
             )
 
     def _add(self, text: str, *, heading: bool = False) -> None:

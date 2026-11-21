@@ -466,12 +466,12 @@ class OptionsView(QWidget):
 def _localize_engine_status_line(text: str, lang: str = "en") -> str:
     low = text.lower()
     is_tr = lang == "tr"
-    if low == "verfügbar":
-        return "Kullanılabilir" if is_tr else "Available"
-    if low == "nicht verfügbar":
+    if "nicht verfügbar" in low or "nicht verfuegbar" in low:
         return "Kullanılamıyor" if is_tr else "Unavailable"
     if "nicht installiert" in low or "nicht gefunden" in low or "fehlt" in low:
         return "Bu sistemde kurulu değil" if is_tr else "Not installed on this system"
+    if low == "verfügbar":
+        return "Kullanılabilir" if is_tr else "Available"
     if "aktiv" in low and "defender" in low:
         return "Windows Defender aktif (MpCmdRun)" if is_tr else "Windows Defender active (MpCmdRun)"
     if "daemon" in low or "clamd" in low:

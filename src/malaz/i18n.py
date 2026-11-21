@@ -391,11 +391,11 @@ def localized_engine_detail(
     clean = strip_bidi(detail or "").strip()
     if eff == "de" or not clean:
         return clean
+    if state == "threat":
+        return clean
     translated_inc = localized_incomplete_reason(clean, lang=eff)
     if translated_inc != clean:
         return translated_inc
-    if state == "threat":
-        return clean
     if "nicht installiert" in clean or "nicht verfügbar" in clean:
         return (
             "Tarama motoru bu sistemde kurulu değil veya kullanılamıyor."
@@ -521,8 +521,9 @@ def _extract_evidence_snippets(raw_detail: str, eff: str) -> str:
         return ""
     urls = _DEFANGED_URL_RE.findall(raw_detail)
     if urls:
-        unique = list(dict.fromkeys(urls))[:5]
-        extra = len(urls) - len(unique)
+        all_unique = list(dict.fromkeys(urls))
+        unique = all_unique[:5]
+        extra = len(all_unique) - len(unique)
         suffix = (f" (+{extra} daha)" if eff == "tr" else f" (+{extra} more)") if extra > 0 else ""
         return " · ".join(unique) + suffix
     hashes = [h for h in _SHA256_RE.findall(raw_detail) if len(h) >= 32]

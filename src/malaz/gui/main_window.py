@@ -1761,9 +1761,20 @@ class MainWindow(QMainWindow):
         dlg.show()
 
     def _on_update_yara(self) -> None:
+        lang = get_language()
         dlg = _StreamUpdateDialog(
-            "YARA-Regeln aktualisieren",
-            "Lädt lizenzgeprüfte YARA-Regeln nach (siehe docs/SECURITY_MODEL.md).",
+            pick(
+                "YARA-Regeln aktualisieren",
+                "Update YARA rules",
+                "YARA kurallarını güncelle",
+                lang=lang,
+            ),
+            pick(
+                "Lädt lizenzgeprüfte YARA-Regeln nach (siehe docs/SECURITY_MODEL.md).",
+                "Downloads license-verified YARA rules (see docs/SECURITY_MODEL.md).",
+                "Lisans onaylı YARA kurallarını indirir (bkz. docs/SECURITY_MODEL.md).",
+                lang=lang,
+            ),
             _yara_rules_runner,
             self,
         )
@@ -1826,8 +1837,8 @@ class MainWindow(QMainWindow):
         path, selected = QFileDialog.getSaveFileName(
             self,
             t("dialog.export_title"),
-            "malaz_bericht.html",
-            "HTML-Bericht (*.html);;PDF-Bericht (*.pdf);;CSV-Tabelle (*.csv);;JSON-Export (*.json)",
+            pick("malaz_bericht.html", "malaz_report.html", "malaz_rapor.html"),
+            t("dialog.export_filter"),
         )
         if not path:
             return
@@ -1850,7 +1861,9 @@ class MainWindow(QMainWindow):
         as_pdf = path.lower().endswith(".pdf")
         self._export_running = True
         self._sync_report_enabled()
-        self.statusBar().showMessage("Bericht wird erstellt…")
+        self.statusBar().showMessage(
+            pick("Bericht wird erstellt…", "Generating report…", "Rapor oluşturuluyor…")
+        )
 
         sig = _ExportSignals(self)
         sig.saved.connect(self._on_report_saved)
@@ -1860,14 +1873,26 @@ class MainWindow(QMainWindow):
     def _on_report_saved(self, path: str) -> None:
         self._export_running = False
         self._sync_report_enabled()
-        self.statusBar().showMessage(f"Bericht gespeichert: {masked_widget_text(path)}")
+        self.statusBar().showMessage(
+            pick(
+                f"Bericht gespeichert: {masked_widget_text(path)}",
+                f"Report saved: {masked_widget_text(path)}",
+                f"Rapor kaydedildi: {masked_widget_text(path)}",
+            )
+        )
         if self.chk_auto_open.isChecked() and os.environ.get("QT_QPA_PLATFORM") != "offscreen":
             QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
     def _on_report_failed(self, error: str) -> None:
         self._export_running = False
         self._sync_report_enabled()
-        self.statusBar().showMessage(f"Bericht fehlgeschlagen: {masked_widget_text(error)}")
+        self.statusBar().showMessage(
+            pick(
+                f"Bericht fehlgeschlagen: {masked_widget_text(error)}",
+                f"Report export failed: {masked_widget_text(error)}",
+                f"Rapor dışa aktarma başarısız: {masked_widget_text(error)}",
+            )
+        )
         show_message_box(self, t("dialog.export_failed_title"), error, icon=QMessageBox.Icon.Critical)
 
     def _on_view_mail(self) -> None:

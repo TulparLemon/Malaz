@@ -72,6 +72,7 @@ def _sample_result(
     score: int = 0,
     risk: RiskLevel = RiskLevel.GREEN,
     indicators: list[Indicator] | None = None,
+    children: list[ScanResult] | None = None,
 ) -> ScanResult:
     res = ScanResult(
         path=f"C:/samples/{name}",
@@ -83,6 +84,7 @@ def _sample_result(
         score=score,
         risk_level=risk,
         indicators=list(indicators or []),
+        children=list(children or []),
     )
     res.engine_verdicts = build_engine_verdicts(res, yara_available=True)
     return res
@@ -230,7 +232,22 @@ def test_language_context_thread_isolation() -> None:
 
 
 def test_json_csv_invariant_under_en_and_tr(tmp_path) -> None:
-    """JSON and CSV schemas/values remain 100 % invariant regardless of active UI language."""
+    """JSON and CSV schemas/values remain 100 % invariant (incl. incomplete stages & children)."""
+    child_inc = _sample_result(
+        name="embedded.zip",
+        detected_type="zip",
+        score=0,
+        risk=RiskLevel.GREEN,
+        indicators=[
+            Indicator(
+                rule_id="ARCH_ENCRYPTED",
+                title="Archiv ist passwortgeschützt",
+                detail="Inhalt konnte nicht entpackt werden",
+                severity=Severity.MEDIUM,
+                weight=0,
+            )
+        ],
+    )
     res = _sample_result(
         name="invoice.pdf",
         detected_type="pdf",
@@ -243,8 +260,16 @@ def test_json_csv_invariant_under_en_and_tr(tmp_path) -> None:
                 detail="hxxps://example.invalid/login",
                 severity=Severity.INFO,
                 weight=0,
-            )
+            ),
+            Indicator(
+                rule_id="AV_SKIPPED",
+                title="Windows Defender: Scan übersprungen",
+                detail="MpCmdRun nicht verfügbar",
+                severity=Severity.MEDIUM,
+                weight=0,
+            ),
         ],
+        children=[child_inc],
     )
 
     outputs_json: dict[str, str] = {}
@@ -502,3 +527,244 @@ def test_score_ring_footer_and_engine_capsule_trilingual(qapp) -> None:
     assert all(lbl.isVisible() for _, lbl in win.status_capsule._items)
     win.close()
     set_language("de")
+
+
+def test_localize_engine_status_line_never_flips_unavailable_to_available() -> None:
+    """B1 regression: multi-word 'nicht verfügbar' must NEVER become 'Available locally'."""
+    from malaz.gui.options_view import _localize_engine_status_line
+
+    for phrase in (
+        "Nicht verfügbar",
+        "ClamAV nicht verfügbar",
+        "7-Zip nicht verfügbar",
+        "MpCmdRun nicht verfuegbar",
+    ):
+        assert _localize_engine_status_line(phrase, "en") == "Unavailable"
+        assert _localize_engine_status_line(phrase, "tr") == "Kullanılamıyor"
+
+    assert _localize_engine_status_line("Verfügbar", "en") == "Available"
+    assert _localize_engine_status_line("Verfügbar", "tr") == "Kullanılabilir"
+
+
+def test_engine_strip_routes_non_archive_with_children_to_child_cards(qapp) -> None:
+    """B2 regression: PDF/OLE containers with extracted children must show child risk, not leaf Clean."""
+    from malaz.gui.engine_strip import EngineStrip
+
+    bad_child = _sample_result(
+        name="payload.exe",
+        detected_type="pe",
+        score=95,
+        risk=RiskLevel.RED,
+        indicators=[
+            Indicator(
+                rule_id="AV_THREAT",
+                title="Windows Defender: Trojan:Win32/Test",
+                detail="Trojan:Win32/Test",
+                severity=Severity.CRITICAL,
+                weight=100,
+            )
+        ],
+    )
+    pdf_container = _sample_result(
+        name="wrapper.pdf",
+        detected_type="pdf",
+        score=95,
+        risk=RiskLevel.RED,
+        indicators=[],
+        children=[bad_child],
+    )
+    i18n.set_language("en")
+    strip = EngineStrip()
+    strip.show_result(pdf_container)
+    from PySide6.QtWidgets import QLabel
+
+    texts = [lbl.text() for c in strip.chips for lbl in c.findChildren(QLabel)]
+    assert any("dangerous" in txt.lower() for txt in texts), texts
+    assert not any(txt == "Clean" for txt in texts), texts
+
+
+def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp_path) -> None:
+    """M1 regression: incomplete GREEN results in EN/TR HTML & PDF must say Unchecked/Denetlenmedi."""
+    from malaz.reporting.html_report import generate_report
+    from malaz.reporting.pdf_report import _render_result, save_pdf_report
+
+    inc_green = _sample_result(
+        name="mystery.bin",
+        detected_type="unknown",
+        score=0,
+        risk=RiskLevel.GREEN,
+        indicators=[
+            Indicator(
+                rule_id="AV_SKIPPED",
+                title="Windows Defender: Scan übersprungen",
+                detail="MpCmdRun nicht verfügbar",
+                severity=Severity.MEDIUM,
+                weight=0,
+            )
+        ],
+    )
+
+    html_en = generate_report([inc_green], lang="en")
+    assert "Unchecked (incomplete)" in html_en
+    assert "Clean (Unchecked" not in html_en
+
+    html_tr = generate_report([inc_green], lang="tr")
+    assert "Denetlenmedi (eksik)" in html_tr
+    assert "Temiz (Denetlenmedi" not in html_tr
+    assert "Puan:" in html_tr
+    assert "<th>Detay</th>" in html_tr
+
+    # Verify PDF chip text via save_pdf_report + rendered chip capture
+    chips_seen: list[str] = []
+
+    class _SpyRenderer:
+        def __init__(self, lang: str) -> None:
+            self.lang = lang
+            self.x = 0.0
+            self.y = 0.0
+            self.width = 500.0
+
+        def chip(self, text: str, *_args, **_kwargs) -> None:
+            chips_seen.append(f"{self.lang}:{text}")
+
+        def __getattr__(self, _name: str):
+            return lambda *a, **k: 0
+
+    for lang in ("en", "tr"):
+        pdf_out = tmp_path / f"inc_{lang}.pdf"
+        save_pdf_report([inc_green], pdf_out, lang=lang)
+        assert pdf_out.is_file() and pdf_out.stat().st_size > 1000
+
+    # Direct chip-label check on _render_result by monkeypatching chip capture
+    import malaz.reporting.pdf_report as pr_mod
+
+    orig_chip = pr_mod._PdfRenderer.chip
+
+    def _capture_chip(self, label: str, *args, **kwargs):
+        chips_seen.append(f"{self.lang}:{label}")
+        return orig_chip(self, label, *args, **kwargs)
+
+    pr_mod._PdfRenderer.chip = _capture_chip  # type: ignore[method-assign]
+    try:
+        save_pdf_report([inc_green], tmp_path / "spy_en.pdf", lang="en")
+        save_pdf_report([inc_green], tmp_path / "spy_tr.pdf", lang="tr")
+    finally:
+        pr_mod._PdfRenderer.chip = orig_chip  # type: ignore[method-assign]
+
+    assert "en:Unchecked" in chips_seen
+    assert not any(c.startswith("en:Clean") for c in chips_seen), chips_seen
+    assert "tr:Denetlenmedi" in chips_seen
+    assert not any(c.startswith("tr:Temiz") for c in chips_seen), chips_seen
+    _ = _render_result
+
+
+def test_cli_lang_ephemeral_and_options_language_persistence(qapp, monkeypatch, tmp_path) -> None:
+    """M3 Spec §4: --cli --lang never touches QSettings; OptionsView._cycle_language persists."""
+    from malaz import __main__ as cli
+    from malaz.gui import settings as gui_settings
+    from malaz.gui.options_view import OptionsView
+
+    sample = tmp_path / "plain.txt"
+    sample.write_text("hello world", encoding="utf-8")
+
+    # Seed QSettings with 'de', then invoke --cli --lang tr -> QSettings stays untouched
+    gui_settings.apply_language("de", persist=True)
+    assert gui_settings.saved_language_preference() == "de"
+
+    called_langs: list[str] = []
+
+    def _fake_cli(files, report_path=None, *, static_only=False):
+        called_langs.append(i18n.get_language())
+        return 0
+
+    monkeypatch.setattr(cli, "run_cli", _fake_cli)
+    rc = cli.main(["--cli", str(sample), "--lang", "tr"])
+    assert rc == 0
+    assert called_langs == ["tr"]
+    # QSettings preference was NEVER overwritten by CLI --lang
+    assert gui_settings.saved_language_preference() == "de"
+
+    # Ephemeral GUI override (persist=False) also leaves QSettings intact
+    gui_settings.apply_language("en", persist=False)
+    assert i18n.get_language() == "en"
+    assert gui_settings.saved_language_preference() == "de"
+
+    # OptionsView._cycle_language persists explicitly
+    ov = OptionsView({})
+    ov._cycle_language()
+    assert gui_settings.saved_language_preference() in ("system", "de", "en", "tr")
+    assert gui_settings.saved_language_preference() == gui_settings.active_language_preference()
+
+
+def test_dynamic_helpers_threat_order_url_dedup_and_mail_reasons() -> None:
+    """N1 & M2: threat detail preserved, duplicate URLs deduplicated, mail link reasons localized."""
+    from malaz.core.eml_analysis import LinkFacts
+    from malaz.reporting.mail_section import mail_lines
+
+    # Threat detail never rewritten even if signature text contains an incomplete phrase
+    assert (
+        i18n.localized_engine_detail("threat", "Trojan:Win32/Timeout.A", lang="en")
+        == "Trojan:Win32/Timeout.A"
+    )
+    assert (
+        i18n.localized_engine_detail("threat", "Trojan:Win32/Timeout.A", lang="tr")
+        == "Trojan:Win32/Timeout.A"
+    )
+
+    # Dynamic rule titles (AV, ClamAV, YARA, EXT)
+    av_ind = Indicator(
+        rule_id="AV_THREAT",
+        title="Windows Defender: Trojan:Win32/AgentTesla",
+        detail="",
+        severity=Severity.CRITICAL,
+        weight=100,
+    )
+    assert i18n.localized_indicator_title(av_ind, lang="en") == "Windows Defender: Trojan:Win32/AgentTesla"
+    assert i18n.localized_indicator_title(av_ind, lang="tr") == "Windows Defender: Trojan:Win32/AgentTesla"
+
+    yara_ind = Indicator(
+        rule_id="YARA_SuspiciousDropper",
+        title="YARA-Treffer: SuspiciousDropper",
+        detail="",
+        severity=Severity.MEDIUM,
+        weight=40,
+    )
+    assert i18n.localized_indicator_title(yara_ind, lang="en") == "YARA match: SuspiciousDropper"
+    assert i18n.localized_indicator_title(yara_ind, lang="tr") == "YARA eşleşmesi: SuspiciousDropper"
+
+    ext_ind = Indicator(
+        rule_id="EXT_ESET_THREAT",
+        title="ESET: Win32/Kryptik",
+        detail="",
+        severity=Severity.CRITICAL,
+        weight=90,
+    )
+    assert i18n.localized_indicator_title(ext_ind, lang="en") == "Eset: Win32/Kryptik"
+    assert i18n.localized_indicator_title(ext_ind, lang="tr") == "Eset: Win32/Kryptik"
+
+    # Deduplicated URL overflow count (3 unique URLs repeated -> NO "+N more")
+    dup_detail = " ".join(["hxxps://a.example/1", "hxxps://a.example/1", "hxxps://b.example/2"] * 4)
+    snip = i18n._extract_evidence_snippets(dup_detail, "en")
+    assert "+ " not in snip and "(+" not in snip, snip
+
+    # Mail link reasons appear localized in EN & TR instead of being dropped
+    mail_res = _sample_result(
+        name="phish.eml",
+        detected_type="eml",
+        score=55,
+        risk=RiskLevel.RED,
+        indicators=[],
+    )
+    mail_res.mail_security = {"spf": "fail", "dkim": "none", "dmarc": "fail", "sender": "mismatch"}
+    mail_res.mail_links = [
+        LinkFacts(
+            url="https://bit.ly/abc",
+            host="bit.ly",
+            scheme="https",
+            is_shortener=True,
+        )
+    ]
+    en_lines = dict(mail_lines(mail_res, lang="en"))
+    tr_lines = dict(mail_lines(mail_res, lang="tr"))
+    assert "URL shortener hides the final destination" in en_lines["Link 1"]
+    assert "Kısaltılmış bağlantı gerçek hedef adresi gizliyor" in tr_lines["Link 1"]

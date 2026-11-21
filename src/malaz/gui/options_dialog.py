@@ -124,10 +124,18 @@ class OptionsDialog(QDialog):
 
     def _build_network(self) -> None:
         rahmen, layout = _gruppe(
-            "Netzwerk",
-            "Jeder Haken hier erlaubt Malaz eine Verbindung nach aussen. Ohne "
-            "Haken findet die jeweilige Prüfung nicht statt — und der Bericht "
-            "sagt das dann auch, statt sie als sauber auszugeben.",
+            pick("Netzwerk", "Network", "Ağ"),
+            pick(
+                "Jeder Haken hier erlaubt Malaz eine Verbindung nach aussen. Ohne "
+                "Haken findet die jeweilige Prüfung nicht statt — und der Bericht "
+                "sagt das dann auch, statt sie als sauber auszugeben.",
+                "Each toggle here allows Malaz to open an outbound connection. When "
+                "disabled, the check does not run — and reports state that honestly "
+                "instead of showing it as clean.",
+                "Buradaki her seçenek Malaz'ın dış ağ bağlantısı açmasına izin verir. "
+                "Kapalıysa ilgili kontrol çalışmaz ve rapor bunu temiz göstermek "
+                "yerine açıkça belirtir.",
+            ),
         )
         for schluessel in ("clam_auto", "feeds_auto", "dns_auth"):
             kaestchen = self._switches.get(schluessel)
@@ -139,13 +147,23 @@ class OptionsDialog(QDialog):
     def _dns_hinweis(self) -> QWidget:
         """Die Begruendung, die der DNS-Haken selbst nicht tragen kann."""
         text = QLabel(
-            "SPF/DMARC über DNS ist der einzige Haken, der einen Bezug zur "
-            "analysierten Datei herstellt: der Domainname aus der Mail geht an "
-            "den DNS-Server. Ein gefälschter Eintrag macht aus einer ehrlichen "
-            "Lücke eine gelogene Bestätigung — deshalb wird nur gemeldet, was "
-            "wirklich geprüft wurde, und ein fehlgeschlagener Abruf heisst "
-            "„unbekannt“, nie „sauber“. Die DKIM-Signatur und die DNSSEC-Kette "
-            "werden NICHT geprüft."
+            pick(
+                "SPF/DMARC über DNS ist der einzige Haken, der einen Bezug zur "
+                "analysierten Datei herstellt: der Domainname aus der Mail geht an "
+                "den DNS-Server. Ein gefälschter Eintrag macht aus einer ehrlichen "
+                "Lücke eine gelogene Bestätigung — deshalb wird nur gemeldet, was "
+                "wirklich geprüft wurde, und ein fehlgeschlagener Abruf heisst "
+                "„unbekannt“, nie „sauber“. Die DKIM-Signatur und die DNSSEC-Kette "
+                "werden NICHT geprüft.",
+                "SPF/DMARC via DNS is the only toggle related to scanned files: the "
+                "sender domain from the email is queried at your DNS resolver. Failed "
+                "lookups always report 'unknown', never 'clean'. DKIM signatures and "
+                "DNSSEC are NOT verified.",
+                "DNS üzerinden SPF/DMARC, taranan dosyayla ilişkili tek seçenektir: "
+                "e-postadaki gönderici alan adı DNS sunucunuza sorgulanır. Başarısız "
+                "sorgular asla 'temiz' değil, her zaman 'bilinmiyor' olarak bildirilir. "
+                "DKIM imzası ve DNSSEC denetlenmez.",
+            )
         )
         text.setWordWrap(True)
         text.setObjectName("mutedLabel")
@@ -155,9 +173,13 @@ class OptionsDialog(QDialog):
 
     def _build_output(self) -> None:
         rahmen, layout = _gruppe(
-            "Ausgabe",
-            "Nur Darstellung und Ablage. Der Report bleibt lokal, solange Sie "
-            "ihn nicht selbst weitergeben.",
+            pick("Ausgabe", "Output", "Çıktı"),
+            pick(
+                "Nur Darstellung und Ablage. Der Report bleibt lokal, solange Sie "
+                "ihn nicht selbst weitergeben.",
+                "Display and storage only. Reports stay local unless you share them yourself.",
+                "Yalnızca görünüm ve kayıt ayarları. Siz paylaşmadıkça raporlar yerel kalır.",
+            ),
         )
         kaestchen = self._switches.get("auto_open")
         if kaestchen is not None:
@@ -168,17 +190,31 @@ class OptionsDialog(QDialog):
 
     def _build_analysis(self) -> None:
         rahmen, layout = _gruppe(
-            "Analyse",
-            "Rein lokal. Diese Schalter ändern nur, wie gründlich geprüft wird "
-            "— nicht, ob etwas das Gerät verlässt.",
+            pick("Analyse", "Analysis", "Analiz"),
+            pick(
+                "Rein lokal. Diese Schalter ändern nur, wie gründlich geprüft wird "
+                "— nicht, ob etwas das Gerät verlässt.",
+                "Strictly local. These toggles only adjust inspection depth — "
+                "nothing ever leaves this device.",
+                "Tamamen yereldir. Bu seçenekler yalnızca analiz derinliğini değiştirir; "
+                "hiçbir veri cihazınızdan çıkmaz.",
+            ),
         )
         kaestchen = self._switches.get("capa")
         if kaestchen is not None:
             layout.addWidget(kaestchen)
         hinweis = QLabel(
-            "Die Fähigkeits-Analyse prüft, WAS ein Programm tun KÖNNTE "
-            "(Verschlüsselung, Netzwerk, Prozessstart). Sie ist der langsamste "
-            "Schritt; ohne sie sagt der Bericht, dass sie nicht gelaufen ist."
+            pick(
+                "Die Fähigkeits-Analyse prüft, WAS ein Programm tun KÖNNTE "
+                "(Verschlüsselung, Netzwerk, Prozessstart). Sie ist der langsamste "
+                "Schritt; ohne sie sagt der Bericht, dass sie nicht gelaufen ist.",
+                "Capability analysis inspects WHAT an executable could do "
+                "(encryption, networking, process launch). It is the slowest stage; "
+                "when disabled, reports note that it did not run.",
+                "Yetenek analizi bir programın NELER yapabileceğini inceler "
+                "(şifreleme, ağ erişimi, işlem başlatma). En yavaş aşamadır; "
+                "kapalıyken rapor bu adımın çalışmadığını belirtir.",
+            )
         )
         hinweis.setWordWrap(True)
         hinweis.setObjectName("mutedLabel")
@@ -188,9 +224,15 @@ class OptionsDialog(QDialog):
         # Der Stand der Datenbanken gehoert zum Verstaendnis dazu: ohne
         # Regeln findet auch die beste Analyse nichts.
         stand, layout2 = _gruppe(
-            "Datenbanken",
-            "Was gerade an Regeln und Listen vorliegt. Nachladen holt nur, was "
-            "fehlt; die Dateien bleiben auf diesem Rechner.",
+            pick("Datenbanken", "Databases", "Veritabanları"),
+            pick(
+                "Was gerade an Regeln und Listen vorliegt. Nachladen holt nur, was "
+                "fehlt; die Dateien bleiben auf diesem Rechner.",
+                "Currently installed rules and blocklists. Updates only fetch missing "
+                "data; all files remain local on this PC.",
+                "Şu anda kurulu olan kurallar ve engelleme listeleri. Güncellemeler "
+                "yalnızca eksikleri indirir; tüm dosyalar bu bilgisayarda kalır.",
+            ),
         )
         self._db_label = QLabel("…")
         self._db_label.setWordWrap(True)
@@ -203,18 +245,25 @@ class OptionsDialog(QDialog):
         """Den Stand der vier Listen nennen — ohne sie zu laden."""
         from pathlib import Path
 
+        missing_lbl = pick("nicht vorhanden", "not present", "mevcut değil")
         zeilen = []
         for name, pfad in (
-            ("Datei-Hashes", Path(config.USER_HASH_BLOCKLIST_FILE)),
-            ("Schad-URLs", Path(config.URL_BLOCKLIST_FILE)),
-            ("Absender-Domains", Path(config.DOMAIN_BLOCKLIST_FILE)),
-            ("Absender-Netze", Path(config.IP_BLOCKLIST_FILE)),
+            (pick("Datei-Hashes", "File hashes", "Dosya özetleri"), Path(config.USER_HASH_BLOCKLIST_FILE)),
+            (pick("Schad-URLs", "Malicious URLs", "Zararlı URL'ler"), Path(config.URL_BLOCKLIST_FILE)),
+            (
+                pick("Absender-Domains", "Sender domains", "Gönderici alan adları"),
+                Path(config.DOMAIN_BLOCKLIST_FILE),
+            ),
+            (
+                pick("Absender-Netze", "Sender networks", "Gönderici IP ağları"),
+                Path(config.IP_BLOCKLIST_FILE),
+            ),
         ):
             if pfad.is_file():
                 groesse = pfad.stat().st_size
                 zeilen.append(f"{name}: {groesse / 1024:.0f} KB")
             else:
-                zeilen.append(f"{name}: nicht vorhanden")
+                zeilen.append(f"{name}: {missing_lbl}")
         self._db_label.setText(" | ".join(zeilen))
 
     def refresh(self) -> None:

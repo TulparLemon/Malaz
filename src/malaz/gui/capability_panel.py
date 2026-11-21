@@ -95,6 +95,7 @@ _GROUP_EN: dict[str, str] = {
     "collection": "Data Collection",
     "communication": "Network & Communication",
     "c2": "Command & Control",
+    "compiler": "Compiler / Packer",
     "data-manipulation": "Encryption & Data Manipulation",
     "executable": "Executable & Loading",
     "host-interaction": "System & Host Interaction",
@@ -106,7 +107,29 @@ _GROUP_EN: dict[str, str] = {
     "malware-family": "Malware Family",
     "nursery": "Experimental Rules",
     "persistence": "Persistence",
+    "runtime": "Runtime",
     "targeting": "Targeting",
+}
+
+_GROUP_TR: dict[str, str] = {
+    "anti-analysis": "Analiz Engelleme",
+    "collection": "Veri Toplama",
+    "communication": "Ağ ve İletişim",
+    "c2": "Komuta ve Kontrol (C2)",
+    "compiler": "Derleyici / Paketleyici",
+    "data-manipulation": "Şifreleme ve Veri İşleme",
+    "executable": "Çalıştırılabilir Yapı",
+    "host-interaction": "Sistem ve İşletim Sistemi",
+    "impact": "Etki ve Değişiklik",
+    "internal": "Dahili / Yardımcı",
+    "lib": "Kütüphaneler",
+    "linking": "Bağlama",
+    "load-code": "Kod Yükleme",
+    "malware-family": "Zararlı Yazılım Ailesi",
+    "nursery": "Deneysel Kurallar",
+    "persistence": "Kalıcılık",
+    "runtime": "Çalışma Zamanı",
+    "targeting": "Hedefleme",
 }
 
 
@@ -200,30 +223,11 @@ class CapabilityPanel(QScrollArea):
             )
 
         gruppen: dict[str, list[str]] = defaultdict(list)
-        group_tr = {
-            "anti-analysis": "Analiz Engelleme",
-            "collection": "Veri Toplama",
-            "communication": "Ağ ve İletişim",
-            "compiler": "Derleyici / Paketleyici",
-            "data-manipulation": "Şifreleme ve Veri İşleme",
-            "executable": "Çalıştırılabilir Yapı",
-            "host-interaction": "Sistem ve İşletim Sistemi",
-            "impact": "Etki ve Değişiklik",
-            "internal": "Dahili / Yardımcı",
-            "lib": "Kütüphaneler",
-            "linking": "Bağlama",
-            "load-code": "Kod Yükleme",
-            "malware-family": "Zararlı Yazılım Ailesi",
-            "nursery": "Diğer",
-            "persistence": "Kalıcılık",
-            "runtime": "Çalışma Zamanı",
-            "targeting": "Hedefleme",
-        }
         for eintrag in faehigkeiten:
             ns = str(eintrag.get("namespace", ""))
             top_ns = ns.split("/", 1)[0].strip().lower()
             if lang == "tr":
-                glabel = group_tr.get(top_ns, top_ns.replace("-", " ").title() if top_ns else "Diğer")
+                glabel = _GROUP_TR.get(top_ns, top_ns.replace("-", " ").title() if top_ns else "Diğer")
             elif is_en:
                 glabel = _GROUP_EN.get(top_ns, top_ns.replace("-", " ").title() if top_ns else "Other")
             else:

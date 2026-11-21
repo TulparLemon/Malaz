@@ -44,10 +44,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.mail_score import link_scores, mechanism_label, sender_score
+from ..core.mail_score import link_scores, sender_score
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip
 from ..i18n import pick
 from ..models import ScanResult
+from ..reporting.mail_section import (
+    localize_mail_mechanism,
+    localize_mail_reason,
+    localize_mail_score_label,
+)
 from ..security.escaping import mask_invisible
 from .theme import FONT_SUBTITLE, RISK_COLORS, RISK_MARKS
 
@@ -218,19 +223,20 @@ class MailPanel(QScrollArea):
         mark = RISK_MARKS[score.color]
 
         # EIN Urteil, gross und mit Zeichen — nicht drei Kuerzel.
-        verdict = _plain_label(f"{mark}  {score.label}")
+        verdict = _plain_label(f"{mark}  {localize_mail_score_label(score.label)}")
         verdict.setStyleSheet(f"color: {color}; font-size: {FONT_SUBTITLE}; font-weight: 700;")
         verdict.setWordWrap(True)
         self._layout.addWidget(verdict)
 
         for reason in score.reasons:
-            self._layout.addWidget(_kv("", "• " + reason))
+            self._layout.addWidget(_kv("", "• " + localize_mail_reason(reason)))
 
         # Erst danach die Einzelmechanismen: Fachwissen, aber vollstaendig.
         unbacked = "MAIL_AUTH_CLAIM_UNBACKED" in rules
         for name, key in (("SPF", "spf"), ("DKIM", "dkim"), ("DMARC", "dmarc")):
-            verdict_text = mechanism_label(security.get(key, ""), claimed=unbacked)
-            farbe = RISK_COLORS["red"] if "FEHLGESCHLAGEN" in verdict_text else None
+            raw_v = security.get(key, "")
+            verdict_text = localize_mail_mechanism(raw_v, claimed=unbacked)
+            farbe = RISK_COLORS["red"] if raw_v == "fail" else None
             self._layout.addWidget(_kv(name, verdict_text, farbe))
 
         self._layout.addWidget(
@@ -293,12 +299,13 @@ class MailPanel(QScrollArea):
         for entry in sichtbar:
             color = RISK_COLORS[entry.color]
             mark = RISK_MARKS[entry.color]
-            zeile = _plain_label(f"{mark}  {_clip(entry.host, MAX_DISPLAY_CHARS)}  —  {entry.label}")
+            entry_lbl = localize_mail_score_label(entry.label)
+            zeile = _plain_label(f"{mark}  {_clip(entry.host, MAX_DISPLAY_CHARS)}  —  {entry_lbl}")
             zeile.setStyleSheet(f"color: {color}; font-weight: 600;")
             zeile.setWordWrap(True)
             self._layout.addWidget(zeile)
             for reason in entry.reasons:
-                self._layout.addWidget(_kv("", "• " + reason))
+                self._layout.addWidget(_kv("", "• " + localize_mail_reason(reason)))
             self._layout.addWidget(_kv("", _clip(entry.link.url, MAX_DISPLAY_CHARS)))
 
         weitere = len(scored) - len(sichtbar)

@@ -846,7 +846,7 @@ class EngineStrip(QWidget):
         is_ooxml = dt == "zip" and is_ooxml_filename(result.display_name)
         if is_mail_result(result):
             specs = _cards_for_mail(result)
-        elif dt in ARCHIVE_TYPES and not is_ooxml:
+        elif not is_ooxml and (dt in ARCHIVE_TYPES or bool(result.children)):
             specs = _cards_for_archive(result)
         else:
             specs = _cards_for_leaf(result)

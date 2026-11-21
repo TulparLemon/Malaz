@@ -76,15 +76,23 @@ class FeedsDialog(QDialog):
         outer.setSpacing(8)
 
         kopf = QLabel(
-            "Malaz arbeitet offline. Diese Quellen werden nur geladen, wenn "
-            "Sie die Schaltflaeche druecken — es gibt keinen automatischen "
-            "Abruf. Die Dateien bleiben auf diesem Rechner."
+            pick(
+                "Malaz arbeitet offline. Diese Quellen werden nur geladen, wenn "
+                "Sie die Schaltflaeche druecken — es gibt keinen automatischen "
+                "Abruf. Die Dateien bleiben auf diesem Rechner.",
+                "Malaz runs offline. These sources are only downloaded when you "
+                "click the button — there is no automatic background fetch. All "
+                "files stay local on this PC.",
+                "Malaz çevrimdışı çalışır. Bu kaynaklar yalnızca düğmeye tıkladığınızda "
+                "indirilir — otomatik arka plan indirmesi yapılmaz. Tüm dosyalar "
+                "bu bilgisayarda kalır.",
+            )
         )
         kopf.setWordWrap(True)
         kopf.setObjectName("panelValue")
         outer.addWidget(kopf)
 
-        ziel = QLabel(f"Ablage: {_feed_dir()}")
+        ziel = QLabel(f"{pick('Ablage', 'Storage', 'Kayıt konumu')}: {_feed_dir()}")
         ziel.setObjectName("panelKey")
         ziel.setWordWrap(True)
         outer.addWidget(ziel)
@@ -107,11 +115,11 @@ class FeedsDialog(QDialog):
         # EIN Knopf fuer alle Quellen: sechs einzelne Klicks sind fuer den
         # ersten Start unnoetig muehsam, und die Reihenfolge ist ohnehin
         # egal - jede Quelle landet in ihrem eigenen Verzeichnis.
-        self.btn_alle = QPushButton("Alle installieren")
+        self.btn_alle = QPushButton(pick("Alle installieren", "Install all", "Tümünü kur"))
         self.btn_alle.setObjectName("primaryAction")
         self.btn_alle.clicked.connect(self._laden_alle)
 
-        schliessen = QPushButton("Schliessen")
+        schliessen = QPushButton(t("btn.close"))
         schliessen.clicked.connect(self.accept)
         unten = QHBoxLayout()
         unten.addWidget(self.btn_alle)
@@ -171,19 +179,24 @@ class FeedsDialog(QDialog):
         for feed, status, knopf in self._rows:
             if not knopf.isEnabled():
                 continue  # laeuft schon oder ist fertig
-            self._laden(feed, status, knopf, still=True)
-            if "Fehlgeschlagen" in status.text():
+            if not self._laden(feed, status, knopf, still=True):
                 fehler += 1
             QApplication.processEvents()
         self.btn_alle.setEnabled(True)
         if fehler:
-            self.btn_alle.setText(f"Alle installieren ({fehler} fehlgeschlagen)")
+            self.btn_alle.setText(
+                pick(
+                    f"Alle installieren ({fehler} fehlgeschlagen)",
+                    f"Install all ({fehler} failed)",
+                    f"Tümünü kur ({fehler} başarısız)",
+                )
+            )
         else:
-            self.btn_alle.setText("Alle installiert")
+            self.btn_alle.setText(pick("Alle installiert", "All installed", "Tümü kuruldu"))
 
     def _laden(
         self, feed: Feed, status: QLabel, knopf: QPushButton, *, still: bool = False
-    ) -> None:
+    ) -> bool:
         """Einzelnen Feed holen — synchron, mit sichtbarem Zustand.
 
         Bewusst NICHT in einem Thread: der Dialog ist modal, und ein
@@ -197,16 +210,17 @@ class FeedsDialog(QDialog):
         # Ein Aufruf fuer beide Schritte — dieselbe Funktion nutzt die
         # automatische Auffrischung beim Start, damit die Reihenfolge
         # (erst holen, dann uebernehmen) nur an EINER Stelle steht.
+        fail_prefix = pick("Fehlgeschlagen", "Failed", "Başarısız")
         try:
             ziel, ergebnis = refresh_feed(feed, _feed_dir())
         except FeedError as exc:
-            status.setText(f"Fehlgeschlagen: {exc}")
+            status.setText(f"{fail_prefix}: {exc}")
             knopf.setEnabled(True)
-            return
+            return False
         except Exception as exc:
-            status.setText(f"Fehlgeschlagen: {type(exc).__name__}: {exc}")
+            status.setText(f"{fail_prefix}: {type(exc).__name__}: {exc}")
             knopf.setEnabled(True)
-            return
+            return False
 
         groesse = ziel.stat().st_size
         status.setText(f"{ergebnis.summary} — {ziel.name} ({groesse / 1024:.0f} KB)")
@@ -215,7 +229,7 @@ class FeedsDialog(QDialog):
         # den im stillen Lauf niemand geben kann (gemessen: der erste Feed
         # haengte 600 s). Der Status steht in der Zeile, das genuegt.
         if still:
-            return
+            return True
         hinweis = f"\n\n{ergebnis.note}" if ergebnis.note else ""
         lang = get_language()
         show_message_box(
@@ -235,3 +249,4 @@ class FeedsDialog(QDialog):
             ),
             icon=QMessageBox.Icon.Information,
         )
+        return True
