@@ -35,10 +35,19 @@ from PySide6.QtWidgets import (
 from ..design_tokens import (
     ARCHIVE_TYPES,
     format_short_type,
-    format_size_de,
+    format_size,
     format_tag_code,
     is_ooxml_filename,
+    state_label,
     visual_state,
+)
+from ..i18n import (
+    get_language,
+    localized_incomplete_reason,
+    localized_indicator_detail,
+    localized_indicator_title,
+    pick,
+    t,
 )
 from ..models import (
     _INCOMPLETE_RULES,
@@ -88,7 +97,9 @@ def _reset_copy_button(btn: QPushButton) -> None:
     btn.setProperty("_orig_copy_text", None)
 
 
-def _copy_with_feedback(btn: QPushButton, raw_text: str, feedback: str = "Kopiert") -> None:
+def _copy_with_feedback(btn: QPushButton, raw_text: str, feedback: str | None = None) -> None:
+    if feedback is None:
+        feedback = pick("Kopiert", "Copied", "Kopyalandı")
     cb = QGuiApplication.clipboard()
     if cb is not None:
         cb.setText(raw_text)
@@ -127,27 +138,27 @@ def _clear_layout(lay: QVBoxLayout | QHBoxLayout) -> None:
 
 def _severity_badge(ind: Indicator) -> tuple[str, str]:
     if indicator_weight(ind) >= 40 or ind.severity >= Severity.CRITICAL:
-        return ("bad", "Kritisch")
+        return ("bad", pick("Kritisch", "Critical", "Kritik"))
     if ind.rule_id in ENCRYPTED_RULES or ind.rule_id in _INCOMPLETE_RULES:
-        return ("warn", "Ungeprüft")
+        return ("warn", pick("Ungeprüft", "Unchecked", "Denetlenmedi"))
     if indicator_weight(ind) >= 15 or ind.severity >= Severity.MEDIUM:
-        return ("warn", "Warnung")
-    return ("ok", "Hinweis")
+        return ("warn", pick("Warnung", "Warning", "Uyarı"))
+    return ("ok", pick("Hinweis", "Info", "Bilgi"))
 
 
 def _signal_category_label(ind: Indicator) -> str:
     cat = (ind.category or "").lower()
     if cat in (CAT_AV, CAT_SIGNATURE, CAT_HASHLIST):
-        return "Schadsoftware"
+        return pick("Schadsoftware", "Malware", "Zararlı Yazılım")
     if cat == CAT_FORMAT:
-        return "Datei-Tarnung"
+        return pick("Datei-Tarnung", "File Spoofing", "Tür Gizleme")
     if cat in (CAT_SCRIPT, CAT_MACRO):
-        return "Aktive Inhalte"
+        return pick("Aktive Inhalte", "Active Content", "Aktif İçerik")
     if cat in (CAT_MAIL, CAT_IOC):
-        return "Absender & Links"
+        return pick("Absender & Links", "Sender & Links", "Gönderici ve Bağlantılar")
     if cat in (CAT_ARCHIVE, CAT_ENTROPY):
-        return "Archiv & Tarnung"
-    return "Struktur & Inhalt"
+        return pick("Archiv & Tarnung", "Archive & Obfuscation", "Arşiv ve Şifreleme")
+    return pick("Struktur & Inhalt", "Structure & Content", "Yapı ve İçerik")
 
 
 def _extract_iocs(result: ScanResult) -> tuple[list[tuple[str, str, str, str, str]], int]:
@@ -174,20 +185,27 @@ def _extract_iocs(result: ScanResult) -> tuple[list[tuple[str, str, str, str, st
                 or getattr(lnk, "mismatch", False)
                 or getattr(lnk, "is_ip", False)
             )
-            _add("warn" if susp else "info", "URL", "Mail-Link", href)
+            _add(
+                "warn" if susp else "info", "URL", pick("Mail-Link", "Email link", "E-posta bağlantısı"), href
+            )
 
     for ind in result.indicators:
         hay = f"{ind.title} {ind.detail or ''}"[:4096]
         if ind.rule_id == "MAIL_REPLY_TO_MISMATCH":
             for m in _EMAIL_RE.findall(hay):
-                _add("bad", "E-Mail", "Reply-To", m)
+                _add("bad", pick("E-Mail", "Email", "E-posta"), "Reply-To", m)
         if ind.category in (CAT_IOC, CAT_MAIL, CAT_HASHLIST) or ind.rule_id.startswith(
             ("URL_", "PDF_URI", "MAIL_")
         ):
             for u in _URL_RE.findall(hay):
-                _add("warn" if indicator_weight(ind) > 0 else "info", "URL", "Link", u)
+                _add(
+                    "warn" if indicator_weight(ind) > 0 else "info",
+                    "URL",
+                    pick("Link", "Link", "Bağlantı"),
+                    u,
+                )
             for ip in _IP_RE.findall(hay):
-                _add("info", "IPv4", "IP-Adresse", ip)
+                _add("info", "IPv4", pick("IP-Adresse", "IP Address", "IP adresi"), ip)
 
     total = len(rows)
     return rows[:_MAX_IOC_ROWS], max(0, total - _MAX_IOC_ROWS)
@@ -195,35 +213,66 @@ def _extract_iocs(result: ScanResult) -> tuple[list[tuple[str, str, str, str, st
 
 def build_footer_summary(result: ScanResult) -> str:
     """Crisp footer grounding line per Design 004 v2.1 wording table."""
+    lang = get_language()
     state = visual_state(result.risk_level, result_is_incomplete(result))
-    dt_short = format_short_type(result.detected_type, result.display_name)
+    dt_short = format_short_type(result.detected_type, result.display_name, lang=lang)
     encrypted = is_encrypted(result)
 
     if state == "ok":
-        check_word = "Vollständig"
+        check_word = pick("Vollständig", "Complete", "Tam", lang=lang)
     elif state in ("bad", "warn"):
-        check_word = "Teilweise" if result_is_incomplete(result) else "Vollständig"
+        check_word = (
+            pick("Teilweise", "Partial", "Kısmi", lang=lang)
+            if result_is_incomplete(result)
+            else pick("Vollständig", "Complete", "Tam", lang=lang)
+        )
     else:
-        check_word = "Gesperrt" if encrypted else "Unvollständig"
+        check_word = (
+            pick("Gesperrt", "Locked", "Kilitli", lang=lang)
+            if encrypted
+            else pick("Unvollständig", "Incomplete", "Eksik", lang=lang)
+        )
 
-    parts = [f"Typ: {dt_short}"]
+    parts = [f"{pick('Typ', 'Type', 'Tür', lang=lang)}: {dt_short}"]
     dt = (result.detected_type or "").lower()
     if dt == "pe":
         signed = any("SIGNED" in i.rule_id and "UN" not in i.rule_id for i in result.indicators)
-        parts.append("Signatur: Vorhanden" if signed else "Signatur: Keine")
+        parts.append(
+            pick("Signatur: Vorhanden", "Signature: Valid", "İmza: Geçerli", lang=lang)
+            if signed
+            else pick("Signatur: Keine", "Signature: None", "İmza: Yok", lang=lang)
+        )
     elif is_mail_result(result):
         if result.children:
             bad_k = sum(
                 1 for c in result.children if visual_state(c.risk_level, result_is_incomplete(c)) == "bad"
             )
-            suffix = f" ({bad_k} gefährlich)" if bad_k else ""
-            parts.append(f"Anhänge: {len(result.children)}{suffix}")
+            suffix = (
+                pick(f" ({bad_k} gefährlich)", f" ({bad_k} dangerous)", f" ({bad_k} tehlikeli)", lang=lang)
+                if bad_k
+                else ""
+            )
+            parts.append(
+                pick(
+                    f"Anhänge: {len(result.children)}{suffix}",
+                    f"Attachments: {len(result.children)}{suffix}",
+                    f"Ekler: {len(result.children)}{suffix}",
+                    lang=lang,
+                )
+            )
     elif (
         dt in ARCHIVE_TYPES
         and result.children
         and not (dt == "zip" and is_ooxml_filename(result.display_name))
     ):
-        parts.append(f"Inhalt: {len(result.children)} Dateien")
+        parts.append(
+            pick(
+                f"Inhalt: {len(result.children)} Dateien",
+                f"Contents: {len(result.children)} files",
+                f"İçerik: {len(result.children)} dosya",
+                lang=lang,
+            )
+        )
     elif dt == "pdf":
         pdf_script_ids = {
             "PDF_KW_JavaScript",
@@ -246,13 +295,15 @@ def build_footer_summary(result: ScanResult) -> str:
             for i in result.indicators
         )
         if has_script:
-            parts.append("Skripte: Gefunden")
+            parts.append(pick("Skripte: Gefunden", "Scripts: Found", "Betikler: Var", lang=lang))
         elif result_is_incomplete(result):
-            parts.append("Skripte: Nicht prüfbar")
+            parts.append(
+                pick("Skripte: Nicht prüfbar", "Scripts: Unchecked", "Betikler: Denetlenmedi", lang=lang)
+            )
         else:
-            parts.append("Skripte: Keine")
+            parts.append(pick("Skripte: Keine", "Scripts: None", "Betikler: Yok", lang=lang))
 
-    parts.append(f"Prüfung: {check_word}")
+    parts.append(f"{pick('Prüfung', 'Inspection', 'Tarama', lang=lang)}: {check_word}")
     return " · ".join(parts)
 
 
@@ -306,12 +357,13 @@ class _ClickableChildRow(QFrame):
             ),
             None,
         )
+        lang = get_language()
         desc = (
-            masked_widget_text(top_i.title)
+            masked_widget_text(localized_indicator_title(top_i, lang=lang))
             if top_i is not None
             else (
-                f"{format_short_type(child.detected_type, child.display_name)}"
-                f" · {format_size_de(child.size)}"
+                f"{format_short_type(child.detected_type, child.display_name, lang=lang)}"
+                f" · {format_size(child.size, lang=lang)}"
             )
         )
         d_lbl = QLabel(clip_text(desc, 85), self)
@@ -319,9 +371,7 @@ class _ClickableChildRow(QFrame):
         d_lbl.setTextFormat(Qt.TextFormat.PlainText)
         lay.addWidget(d_lbl, 1)
 
-        b_txt = {"bad": "Gefährlich", "warn": "Verdächtig", "unk": "Ungeprüft", "ok": "Sauber"}.get(
-            st, "Ungeprüft"
-        )
+        b_txt = state_label(st, lang=lang)
         b_tone = "warn" if st == "unk" else st
         badge = QLabel(b_txt, self)
         badge.setObjectName("badgeRight")
@@ -347,6 +397,8 @@ class FileDetailView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._current: ScanResult | None = None
+        self._last_root_path: str = ""
+        self._last_ancestors: list[tuple[str, object]] = []
         self._compact = False
 
         root = QVBoxLayout(self)
@@ -385,10 +437,10 @@ class FileDetailView(QWidget):
         self._tab_group = QButtonGroup(self)
         self._tab_group.setExclusive(True)
 
-        self._btn_tab_overview = QPushButton("Einschätzung", tab_bar)
-        self._btn_tab_details = QPushButton("Technische Details", tab_bar)
-        self._btn_tab_mail = QPushButton("E-Mail-Text", tab_bar)
-        self._btn_tab_capa = QPushButton("Fähigkeiten", tab_bar)
+        self._btn_tab_overview = QPushButton("", tab_bar)
+        self._btn_tab_details = QPushButton("", tab_bar)
+        self._btn_tab_mail = QPushButton("", tab_bar)
+        self._btn_tab_capa = QPushButton("", tab_bar)
 
         for idx, btn in enumerate(
             (self._btn_tab_overview, self._btn_tab_details, self._btn_tab_mail, self._btn_tab_capa)
@@ -410,7 +462,7 @@ class FileDetailView(QWidget):
         self._hash_pill.clicked.connect(self._copy_current_sha)
         tb_lay.addWidget(self._hash_pill)
 
-        self.btn_report = QPushButton("Bericht speichern", tab_bar)
+        self.btn_report = QPushButton("", tab_bar)
         self.btn_report.setEnabled(False)
         self.btn_report.clicked.connect(self.export_requested.emit)
         tb_lay.addWidget(self.btn_report)
@@ -440,7 +492,7 @@ class FileDetailView(QWidget):
         mail_hdr = QHBoxLayout()
         mail_hdr.setContentsMargins(0, 0, 0, 0)
         mail_hdr.addStretch(1)
-        self._btn_mail_viewer = QPushButton("Vollständige Mail-Ansicht…", self._page_mail)
+        self._btn_mail_viewer = QPushButton("", self._page_mail)
         self._btn_mail_viewer.clicked.connect(self.mail_viewer_requested.emit)
         mail_hdr.addWidget(self._btn_mail_viewer)
         mail_lay.addLayout(mail_hdr)
@@ -456,6 +508,7 @@ class FileDetailView(QWidget):
         self._stack.addWidget(self._page_capa)
 
         self._tab_group.idClicked.connect(self.select_tab)
+        self._apply_static_texts()
 
     def set_compact(self, compact: bool) -> None:
         self._compact = bool(compact)
@@ -466,9 +519,29 @@ class FileDetailView(QWidget):
             btns[idx].setChecked(True)
             self._stack.setCurrentIndex(idx)
 
+    def _apply_static_texts(self) -> None:
+        self._btn_tab_overview.setText(pick("Einschätzung", "Overview", "Özet"))
+        if self._current is None:
+            self._btn_tab_details.setText(pick("Technische Details", "Technical Details", "Teknik Detaylar"))
+            self._btn_tab_capa.setText(pick("Fähigkeiten", "Capabilities", "Yetenekler"))
+        self._btn_tab_mail.setText(pick("E-Mail-Text", "Email Body", "E-posta Metni"))
+        self.btn_report.setText(t("btn.export"))
+        self._btn_mail_viewer.setText(
+            pick("Vollständige Mail-Ansicht…", "Full Safe Email View…", "Tam Güvenli E-posta Görünümü…")
+        )
+
+    def retranslate(self) -> None:
+        self._apply_static_texts()
+        if self._current is not None:
+            self.show_result(
+                self._current,
+                root_path=self._last_root_path,
+                ancestor_chain=self._last_ancestors,
+            )
+
     def _copy_current_sha(self) -> None:
         if self._current and self._current.sha256:
-            _copy_with_feedback(self._hash_pill, self._current.sha256, "SHA-256 kopiert")
+            _copy_with_feedback(self._hash_pill, self._current.sha256, t("detail.copied_sha256"))
 
     def show_result(
         self,
@@ -478,7 +551,11 @@ class FileDetailView(QWidget):
         ancestor_chain: list[tuple[str, object]] | None = None,
     ) -> None:
         self._current = result
+        self._last_root_path = root_path
+        self._last_ancestors = list(ancestor_chain or [])
         ancestors = list(ancestor_chain or [])
+        self._apply_static_texts()
+        lang = get_language()
 
         _clear_layout(self._origin_lay)
         parent_dir = str(Path(root_path or result.path).parent) if (root_path or result.path) else ""
@@ -510,9 +587,8 @@ class FileDetailView(QWidget):
                 self._origin_lay.addWidget(dots)
 
         self._origin_lay.addStretch(1)
-        meta_txt = (
-            f"{format_short_type(result.detected_type, result.display_name)} · {format_size_de(result.size)}"
-        )
+        short_t = format_short_type(result.detected_type, result.display_name, lang=lang)
+        meta_txt = f"{short_t} · {format_size(result.size, lang=lang)}"
         meta_lbl = QLabel(meta_txt, self)
         meta_lbl.setObjectName("captionLabel")
         meta_lbl.setTextFormat(Qt.TextFormat.PlainText)
@@ -526,7 +602,14 @@ class FileDetailView(QWidget):
         self.engines.show_result(result)
 
         tech_items = self._select_tech_findings(result)
-        self._btn_tab_details.setText(f"Technische Details  {len(tech_items)}")
+        self._btn_tab_details.setText(
+            pick(
+                f"Technische Details  {len(tech_items)}",
+                f"Technical Details  {len(tech_items)}",
+                f"Teknik Detaylar  {len(tech_items)}",
+                lang=lang,
+            )
+        )
 
         has_mail = bool(result.mail_preview or result.mail_security)
         self._btn_tab_mail.setVisible(has_mail)
@@ -539,7 +622,14 @@ class FileDetailView(QWidget):
         has_capa = bool(result.capa_capabilities)
         self._btn_tab_capa.setVisible(has_capa)
         if has_capa:
-            self._btn_tab_capa.setText(f"Fähigkeiten ({len(result.capa_capabilities)})")
+            self._btn_tab_capa.setText(
+                pick(
+                    f"Fähigkeiten ({len(result.capa_capabilities)})",
+                    f"Capabilities ({len(result.capa_capabilities)})",
+                    f"Yetenekler ({len(result.capa_capabilities)})",
+                    lang=lang,
+                )
+            )
             self.capa_panel.show_result(result)
         else:
             self.capa_panel.clear()
@@ -553,7 +643,16 @@ class FileDetailView(QWidget):
         if result.sha256:
             short_sha = f"{result.sha256[:8]}…{result.sha256[-6:]}"
             self._hash_pill.setText(f"SHA-256  {short_sha}")
-            self._hash_pill.setToolTip(escape_tooltip(f"Volle SHA-256 kopieren: {result.sha256}"))
+            self._hash_pill.setToolTip(
+                escape_tooltip(
+                    pick(
+                        f"Volle SHA-256 kopieren: {result.sha256}",
+                        f"Copy full SHA-256: {result.sha256}",
+                        f"Tam SHA-256 değerini kopyala: {result.sha256}",
+                        lang=lang,
+                    )
+                )
+            )
             self._hash_pill.show()
         else:
             self._hash_pill.hide()
@@ -589,70 +688,159 @@ class FileDetailView(QWidget):
             if len(grouped) >= 4:
                 break
 
+        lang = get_language()
+        is_en = lang == "en"
         rows_spec: list[tuple[str, bool, str, str, str, str]] = []
         if result.error:
             rows_spec.append(
                 (
                     "bad",
                     False,
-                    "Prüffehler",
+                    pick("Prüffehler", "Scan Error", "Tarama Hatası", lang=lang),
                     masked_widget_text(result.error),
                     "bad",
-                    "Fehler",
+                    pick("Fehler", "Error", "Hata", lang=lang),
                 )
             )
         if grouped:
             for label, ind in grouped.items():
                 tone, b_txt = _severity_badge(ind)
                 is_ring = ind.rule_id in ENCRYPTED_RULES or ind.rule_id in _INCOMPLETE_RULES
-                rows_spec.append((tone, is_ring, label, masked_widget_text(ind.title), tone, b_txt))
+                rows_spec.append(
+                    (
+                        tone,
+                        is_ring,
+                        label,
+                        masked_widget_text(localized_indicator_title(ind, lang=lang)),
+                        tone,
+                        b_txt,
+                    )
+                )
 
         if result_is_incomplete(result):
             if encrypted and not grouped and not result.error:
-                rows_spec.extend(
-                    [
-                        (
-                            "warn",
-                            True,
-                            "Verschlüsselt",
-                            "Passwortschutz verhindert jede Inhaltsprüfung",
-                            "warn",
-                            "Ungeprüft",
-                        ),
-                        (
-                            "warn",
-                            False,
-                            "Vorgehen",
-                            "Nur bei bekanntem Absender entpacken und Ordner neu prüfen",
-                            "warn",
-                            "Hinweis",
-                        ),
-                    ]
-                )
+                if lang == "tr":
+                    rows_spec.extend(
+                        [
+                            (
+                                "warn",
+                                True,
+                                "Şifreli",
+                                "Parola koruması içerik incelemesini engelliyor",
+                                "warn",
+                                "Denetlenmedi",
+                            ),
+                            (
+                                "warn",
+                                False,
+                                "Öneri",
+                                "Yalnızca göndericiye güveniyorsanız dışarı çıkarıp yeniden tarayın",
+                                "warn",
+                                "Bilgi",
+                            ),
+                        ]
+                    )
+                elif is_en:
+                    rows_spec.extend(
+                        [
+                            (
+                                "warn",
+                                True,
+                                "Encrypted",
+                                "Password protection prevents content inspection",
+                                "warn",
+                                "Unchecked",
+                            ),
+                            (
+                                "warn",
+                                False,
+                                "Next Steps",
+                                "Only extract if you trust the sender, then re-scan the folder",
+                                "warn",
+                                "Info",
+                            ),
+                        ]
+                    )
+                else:
+                    rows_spec.extend(
+                        [
+                            (
+                                "warn",
+                                True,
+                                "Verschlüsselt",
+                                "Passwortschutz verhindert jede Inhaltsprüfung",
+                                "warn",
+                                "Ungeprüft",
+                            ),
+                            (
+                                "warn",
+                                False,
+                                "Vorgehen",
+                                "Nur bei bekanntem Absender entpacken und Ordner neu prüfen",
+                                "warn",
+                                "Hinweis",
+                            ),
+                        ]
+                    )
             else:
-                missing = ", ".join(collect_incomplete_reasons(result, limit=3))
+                missing_list = [
+                    localized_incomplete_reason(r, lang=lang)
+                    for r in collect_incomplete_reasons(result, limit=3)
+                ]
+                missing = ", ".join(missing_list)
                 rows_spec.append(
                     (
                         "warn",
                         True,
-                        "Unvollständige Prüfung",
-                        missing or "Mindestens eine Prüfstufe lief nicht",
+                        pick("Unvollständige Prüfung", "Incomplete Scan", "Eksik Tarama", lang=lang),
+                        missing
+                        or pick(
+                            "Mindestens eine Prüfstufe lief nicht",
+                            "At least one inspection stage did not run",
+                            "En az bir kontrol aşaması çalışmadı",
+                            lang=lang,
+                        ),
                         "warn",
-                        "Ungeprüft",
+                        pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang),
                     )
                 )
         elif not rows_spec and not result.children:
-            rows_spec = [
-                ("ok", False, "Virenprüfung", "Lokale Signaturen & Muster ohne Befund", "ok", "Sauber"),
-                (
-                    "ok",
-                    False,
-                    "Inhalt",
-                    "Keine schädlichen Skripte, Makros oder versteckten Aktionen",
-                    "ok",
-                    "Sauber",
-                ),
-            ]
+            if lang == "tr":
+                rows_spec = [
+                    ("ok", False, "Antivirüs", "Yerel imzalar ve kurallar tehdit bulmadı", "ok", "Temiz"),
+                    (
+                        "ok",
+                        False,
+                        "İçerik",
+                        "Zararlı betik, makro veya gizli eylem tespit edilmedi",
+                        "ok",
+                        "Temiz",
+                    ),
+                ]
+            elif is_en:
+                rows_spec = [
+                    ("ok", False, "Antivirus", "Local signatures & rules found no threats", "ok", "Clean"),
+                    (
+                        "ok",
+                        False,
+                        "Content",
+                        "No malicious scripts, macros, or hidden actions",
+                        "ok",
+                        "Clean",
+                    ),
+                ]
+            else:
+                rows_spec = [
+                    ("ok", False, "Virenprüfung", "Lokale Signaturen & Muster ohne Befund", "ok", "Sauber"),
+                    (
+                        "ok",
+                        False,
+                        "Inhalt",
+                        "Keine schädlichen Skripte, Makros oder versteckten Aktionen",
+                        "ok",
+                        "Sauber",
+                    ),
+                ]
 
         if rows_spec:
             sig_card = QFrame(self._page_overview)
@@ -700,11 +888,24 @@ class FileDetailView(QWidget):
             self._overview_lay.addWidget(sig_card)
 
         if result.children:
-            hdr_txt = (
-                f"ANHÄNGE ({len(result.children)})"
-                if is_mail_result(result)
-                else f"DATEIEN IM ARCHIV ({len(result.children)})"
-            )
+            if lang == "tr":
+                hdr_txt = (
+                    f"EKLER ({len(result.children)})"
+                    if is_mail_result(result)
+                    else f"ARŞİVDEKİ DOSYALAR ({len(result.children)})"
+                )
+            elif is_en:
+                hdr_txt = (
+                    f"ATTACHMENTS ({len(result.children)})"
+                    if is_mail_result(result)
+                    else f"FILES IN ARCHIVE ({len(result.children)})"
+                )
+            else:
+                hdr_txt = (
+                    f"ANHÄNGE ({len(result.children)})"
+                    if is_mail_result(result)
+                    else f"DATEIEN IM ARCHIV ({len(result.children)})"
+                )
             hdr = QLabel(hdr_txt, self._page_overview)
             hdr.setObjectName("sectionTitle")
             hdr.setTextFormat(Qt.TextFormat.PlainText)
@@ -722,7 +923,16 @@ class FileDetailView(QWidget):
                 c_row.clicked.connect(self.child_selected.emit)
                 cl.addWidget(c_row)
             if len(result.children) > 100:
-                more = QLabel(f"+ {len(result.children) - 100} weitere Einträge im Baum links", ch_card)
+                extra_n = len(result.children) - 100
+                more = QLabel(
+                    pick(
+                        f"+ {extra_n} weitere Einträge im Baum links",
+                        f"+ {extra_n} more entries in the left tree",
+                        f"+ sol listede {extra_n} öğe daha",
+                        lang=lang,
+                    ),
+                    ch_card,
+                )
                 more.setObjectName("captionLabel")
                 more.setContentsMargins(16, 8, 16, 10)
                 cl.addWidget(more)
@@ -733,7 +943,8 @@ class FileDetailView(QWidget):
     def _populate_details(self, result: ScanResult, tech_items: list[Indicator]) -> None:
         _clear_layout(self._details_lay)
 
-        s1 = QLabel("DATEI", self._page_details)
+        lang = get_language()
+        s1 = QLabel(pick("DATEI", "FILE", "DOSYA", lang=lang), self._page_details)
         s1.setObjectName("sectionTitle")
         self._details_lay.addWidget(s1)
 
@@ -747,45 +958,84 @@ class FileDetailView(QWidget):
         spoof = is_spoofed_result(result)
         id_rows: list[tuple[str, str, str, tuple[str, str] | None, str | None, bool]] = [
             (
-                "Typ",
+                pick("Typ", "Type", "Tür", lang=lang),
                 (
-                    f"{format_short_type(result.detected_type, result.display_name)}"
-                    f" ({format_size_de(result.size)})"
+                    f"{format_short_type(result.detected_type, result.display_name, lang=lang)}"
+                    f" ({format_size(result.size, lang=lang)})"
                 ),
                 "bad" if spoof else "",
-                ("bad", "Tarnung")
+                ("bad", pick("Tarnung", "Spoofed", "Yanıltıcı", lang=lang))
                 if spoof
                 else (
-                    ("warn", "Unbekannt")
+                    ("warn", pick("Unbekannt", "Unknown", "Bilinmiyor", lang=lang))
                     if (result.detected_type or "").lower() in ("", "unknown") or bool(result.error)
-                    else ("ok", "Verifiziert")
+                    else ("ok", pick("Verifiziert", "Verified", "Doğrulandı", lang=lang))
                 ),
                 None,
                 False,
             ),
-            ("SHA-256", result.sha256 or "Nicht berechnet", "", None, result.sha256 or None, True),
-            ("Dauer", f"{result.duration_ms} ms", "", None, None, False),
+            (
+                "SHA-256",
+                result.sha256 or pick("Nicht berechnet", "Not computed", "Hesaplanmadı", lang=lang),
+                "",
+                None,
+                result.sha256 or None,
+                True,
+            ),
+            (pick("Dauer", "Duration", "Süre", lang=lang), f"{result.duration_ms} ms", "", None, None, False),
         ]
         if (result.detected_type or "").lower() == "pe":
             signed = any("SIGNED" in i.rule_id and "UN" not in i.rule_id for i in result.indicators)
             id_rows.append(
                 (
-                    "Signatur",
-                    "Digitale Signatur vorhanden" if signed else "Keine digitale Signatur",
+                    pick("Signatur", "Signature", "İmza", lang=lang),
+                    (
+                        pick(
+                            "Digitale Signatur vorhanden",
+                            "Digital signature present",
+                            "Dijital imza mevcut",
+                            lang=lang,
+                        )
+                        if signed
+                        else pick(
+                            "Keine digitale Signatur",
+                            "Not digitally signed",
+                            "Dijital imza yok",
+                            lang=lang,
+                        )
+                    ),
                     "" if signed else "warn",
-                    ("ok", "Vorhanden") if signed else ("warn", "Keine"),
+                    (
+                        ("ok", pick("Vorhanden", "Valid", "Geçerli", lang=lang))
+                        if signed
+                        else ("warn", pick("Keine", "None", "Yok", lang=lang))
+                    ),
                     None,
                     False,
                 )
             )
         if result.error:
             id_rows.append(
-                ("Fehler", masked_widget_text(result.error), "bad", ("bad", "Fehler"), None, False)
+                (
+                    pick("Fehler", "Error", "Hata", lang=lang),
+                    masked_widget_text(result.error),
+                    "bad",
+                    ("bad", pick("Fehler", "Error", "Hata", lang=lang)),
+                    None,
+                    False,
+                )
             )
         if result_is_incomplete(result):
             stages = ", ".join(masked_widget_text(i.rule_id) for i in result.incomplete_stages[:6])
             id_rows.append(
-                ("Nicht gelaufen", stages or "Unvollständig", "warn", ("warn", "Ungeprüft"), None, False)
+                (
+                    pick("Nicht gelaufen", "Skipped Stages", "Atlanan Aşamalar", lang=lang),
+                    stages or pick("Unvollständig", "Incomplete", "Eksik", lang=lang),
+                    "warn",
+                    ("warn", pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang)),
+                    None,
+                    False,
+                )
             )
 
         for idx, (k, v, acc, badge_spec, copy_val, is_hash) in enumerate(id_rows):
@@ -820,7 +1070,7 @@ class FileDetailView(QWidget):
                 b.setTextFormat(Qt.TextFormat.PlainText)
                 rl.addWidget(b)
             elif copy_val:
-                btn = QPushButton("Kopieren", row)
+                btn = QPushButton(pick("Kopieren", "Copy", "Kopyala", lang=lang), row)
                 btn.setObjectName("copyButton")
                 btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 btn.clicked.connect(lambda _=False, b=btn, val=copy_val: _copy_with_feedback(b, val))
@@ -830,7 +1080,10 @@ class FileDetailView(QWidget):
 
         iocs, overflow = _extract_iocs(result)
         if iocs:
-            s2 = QLabel("INDIKATOREN (IOCS)", self._page_details)
+            s2 = QLabel(
+                pick("INDIKATOREN (IOCS)", "INDICATORS (IOCS)", "GÖSTERGELER (IOC)", lang=lang),
+                self._page_details,
+            )
             s2.setObjectName("sectionTitle")
             self._details_lay.addWidget(s2)
 
@@ -873,20 +1126,28 @@ class FileDetailView(QWidget):
                 v_lbl.setToolTip(escape_tooltip(disp))
                 rl.addWidget(v_lbl, 1)
 
-                c_btn = QPushButton("Kopieren", row)
+                c_btn = QPushButton(pick("Kopieren", "Copy", "Kopyala", lang=lang), row)
                 c_btn.setObjectName("copyButton")
                 c_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 c_btn.clicked.connect(lambda _=False, b=c_btn, val=raw: _copy_with_feedback(b, val))
                 rl.addWidget(c_btn)
                 iol.addWidget(row)
             if overflow:
-                ov = QLabel(f"+ {overflow} weitere Indikatoren im Bericht", ioc_card)
+                ov = QLabel(
+                    pick(
+                        f"+ {overflow} weitere Indikatoren im Bericht",
+                        f"+ {overflow} more indicators in full report",
+                        f"+ tam raporda {overflow} gösterge daha",
+                        lang=lang,
+                    ),
+                    ioc_card,
+                )
                 ov.setObjectName("captionLabel")
                 ov.setContentsMargins(16, 8, 16, 10)
                 iol.addWidget(ov)
             self._details_lay.addWidget(ioc_card)
 
-        s3 = QLabel("BEFUNDE", self._page_details)
+        s3 = QLabel(pick("BEFUNDE", "FINDINGS", "BULGULAR", lang=lang), self._page_details)
         s3.setObjectName("sectionTitle")
         self._details_lay.addWidget(s3)
 
@@ -899,23 +1160,51 @@ class FileDetailView(QWidget):
         rows_f: list[tuple[str, str, str, str]] = []
         for ind in tech_items[:120]:
             tone, chip = _severity_badge(ind)
-            text = masked_widget_text(ind.title)
-            if ind.detail and ind.detail.strip() and ind.detail.strip() != ind.title.strip():
-                text = f"{text} — {masked_widget_text(ind.detail)}"
+            t_loc = localized_indicator_title(ind, lang=lang)
+            d_loc = localized_indicator_detail(ind, lang=lang)
+            text = masked_widget_text(t_loc)
+            if d_loc and d_loc.strip() and d_loc.strip() != t_loc.strip():
+                text = f"{text} — {masked_widget_text(d_loc)}"
             rows_f.append((ind.rule_id, clip_text(text, 200), tone, chip))
 
         if result.av_discount > 0:
             rows_f.append(
                 (
-                    "AV-Entlastung",
-                    f"−{result.av_discount} Punkte durch saubere Virenprüfung (Endwert {result.score}/100)",
+                    pick("AV-Entlastung", "AV Discount", "AV İndirimi", lang=lang),
+                    pick(
+                        (
+                            f"−{result.av_discount} Punkte durch saubere Virenprüfung "
+                            f"(Endwert {result.score}/100)"
+                        ),
+                        (
+                            f"−{result.av_discount} points from clean antivirus verdicts "
+                            f"(final score {result.score}/100)"
+                        ),
+                        (
+                            f"Temiz antivirüs sonuçları nedeniyle −{result.av_discount} puan "
+                            f"(son puan {result.score}/100)"
+                        ),
+                        lang=lang,
+                    ),
                     "ok",
-                    "Abzug",
+                    pick("Abzug", "Credit", "İndirim", lang=lang),
                 )
             )
 
         if not rows_f:
-            rows_f.append(("Struktur", "Keine auffälligen Befunde erkannt", "ok", "Sauber"))
+            rows_f.append(
+                (
+                    pick("Struktur", "Structure", "Yapı", lang=lang),
+                    pick(
+                        "Keine auffälligen Befunde erkannt",
+                        "No suspicious findings detected",
+                        "Şüpheli bir bulgu tespit edilmedi",
+                        lang=lang,
+                    ),
+                    "ok",
+                    pick("Sauber", "Clean", "Temiz", lang=lang),
+                )
+            )
 
         for idx, (rk, rv, tone, chip) in enumerate(rows_f):
             row = QFrame(tf_card)

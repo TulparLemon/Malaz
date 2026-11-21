@@ -244,13 +244,14 @@ def _gui_app_icon():
     return icon if isinstance(icon, QIcon) else QIcon()
 
 
-def run_gui(initial_paths: list[str] | None = None) -> int:
+def run_gui(initial_paths: list[str] | None = None, *, lang_override: str | None = None) -> int:
     # Imported here so CLI mode never requires a Qt platform / display.
     from PySide6.QtCore import Qt, QThreadPool
     from PySide6.QtGui import QGuiApplication
     from PySide6.QtWidgets import QApplication
 
     from .gui.main_window import MainWindow
+    from .gui.settings import apply_language, saved_language_preference
     from .gui.theme import apply_theme
 
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
@@ -270,6 +271,10 @@ def run_gui(initial_paths: list[str] | None = None) -> int:
                 "Malaz.Scanner"
             )
     apply_theme(app)
+    if lang_override is not None:
+        apply_language(lang_override, persist=False)
+    else:
+        apply_language(saved_language_preference(), persist=False)
     window = MainWindow(initial_paths=initial_paths)
     window.show()
     code = app.exec()
@@ -464,6 +469,12 @@ def main(argv: list[str] | None = None) -> int:
             "database.clamav.net (explicit opt-in to a single small request)"
         ),
     )
+    parser.add_argument(
+        "--lang",
+        choices=("system", "de", "en", "tr"),
+        default=None,
+        help="UI and report language (system, de, en, tr); ephemeral for this run",
+    )
     parser.add_argument("--version", action="version", version=f"{config.APP_NAME} {__version__}")
     parser.add_argument(
         "files",
@@ -490,6 +501,12 @@ def main(argv: list[str] | None = None) -> int:
     else:
         modus = "gui"
     _warn_ignored_options(args, modus)
+    # Headless CLI/status/evaluate modes never read/write QSettings("ui/language"):
+    # explicit --lang applies ephemerally; omitted stays deterministic "de".
+    if modus != "gui" and args.lang is not None:
+        from .i18n import set_language
+
+        set_language(args.lang)
 
     if modus == "status":
         dispatcher = Dispatcher()
@@ -533,6 +550,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.static_only:
             return run_cli(args.cli, args.report, static_only=True)
         return run_cli(args.cli, args.report)
+    if args.lang is not None:
+        return run_gui(args.files or None, lang_override=args.lang)
     return run_gui(args.files or None)
 
 

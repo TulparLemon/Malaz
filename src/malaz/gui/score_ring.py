@@ -17,6 +17,7 @@ from PySide6.QtCore import QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from ..i18n import get_language, pick
 from .theme import current_palette
 
 
@@ -184,10 +185,10 @@ class ScoreRingWidget(QFrame):
         right.setContentsMargins(0, 0, 0, 0)
         right.setSpacing(2)
 
-        lbl_cap = QLabel("Risiko", self)
-        lbl_cap.setObjectName("mutedLabel")
-        lbl_cap.setTextFormat(Qt.TextFormat.PlainText)
-        right.addWidget(lbl_cap)
+        self._cap_lbl = QLabel(pick("Risiko", "Risk", "Risk"), self)
+        self._cap_lbl.setObjectName("mutedLabel")
+        self._cap_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        right.addWidget(self._cap_lbl)
 
         self._level_lbl = QLabel("Niedrig", self)
         self._level_lbl.setObjectName("engineVal")
@@ -205,13 +206,17 @@ class ScoreRingWidget(QFrame):
         self._gauge.set_data(self._score, state)
         self._bar.set_data(self._score, state)
 
+        lang = get_language()
+        self._cap_lbl.setText(pick("Risiko", "Risk", "Risk", lang=lang))
         word_map = {
-            "bad": ("Hoch", "bad"),
-            "warn": ("Mittel", "warn"),
-            "unk": ("Ungeprüft", "warn"),
-            "ok": ("Niedrig", "ok"),
+            "bad": (pick("Hoch", "High", "Yüksek", lang=lang), "bad"),
+            "warn": (pick("Mittel", "Medium", "Orta", lang=lang), "warn"),
+            "unk": (pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang), "warn"),
+            "ok": (pick("Niedrig", "Low", "Düşük", lang=lang), "ok"),
         }
-        word, tone = word_map.get(state, ("Ungeprüft", "warn"))
+        word, tone = word_map.get(
+            state, (pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang), "warn")
+        )
         self._level_lbl.setText(word)
         self._level_lbl.setProperty("tone", tone)
         self._level_lbl.style().unpolish(self._level_lbl)
@@ -219,8 +224,12 @@ class ScoreRingWidget(QFrame):
         self.setToolTip(tooltip)
         self.update()
 
+    def retranslate(self) -> None:
+        self.set_score(self._score, self._state, tooltip=self.toolTip())
+
     def clear(self) -> None:
         self.setToolTip("")
+        self._cap_lbl.setText(pick("Risiko", "Risk", "Risk"))
         self._gauge.set_data(0, "ok")
         self._bar.set_data(0, "ok")
         self._level_lbl.setText("—")

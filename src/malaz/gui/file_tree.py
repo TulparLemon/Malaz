@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..design_tokens import format_tag_code, type_filter_bucket, visual_state
+from ..i18n import localized_indicator_title, pick, t
 from ..models import ScanResult
 from .sanitize import (
     clip_text,
@@ -184,6 +185,23 @@ class FileTreeWidget(QTreeWidget):
         self.customContextMenuRequested.connect(self._show_context_menu)
         self._locked = False
 
+    def retranslate(self) -> None:
+        """Refresh tooltips and repaint tree rows after a live language switch."""
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            if item is not None and item.data(0, STATE_ROLE) == "cancelled":
+                item.setToolTip(
+                    0,
+                    escape_tooltip(
+                        pick(
+                            "Prüfung abgebrochen — nicht geprüft",
+                            "Scan cancelled — unchecked",
+                            "Tarama durduruldu — denetlenmedi",
+                        )
+                    ),
+                )
+        self.viewport().update()
+
     def set_locked(self, locked: bool) -> None:
         self._locked = bool(locked)
 
@@ -306,7 +324,16 @@ class FileTreeWidget(QTreeWidget):
             item = self.topLevelItem(i)
             if item.data(0, RESULT_ROLE) is None and item.data(0, STATE_ROLE) == "scanning":
                 item.setData(0, STATE_ROLE, "cancelled")
-                item.setToolTip(0, escape_tooltip("Prüfung abgebrochen — nicht geprüft"))
+                item.setToolTip(
+                    0,
+                    escape_tooltip(
+                        pick(
+                            "Prüfung abgebrochen — nicht geprüft",
+                            "Scan cancelled — unchecked",
+                            "Tarama durduruldu — denetlenmedi",
+                        )
+                    ),
+                )
         self.viewport().update()
 
     def find_item_for_result(self, target: ScanResult) -> QTreeWidgetItem | None:
@@ -351,6 +378,7 @@ class FileTreeWidget(QTreeWidget):
                     hay.append((res.detected_type or "").lower())
                     hay.append((res.sha256 or "").lower())
                     hay.extend(i.title.lower() for i in res.indicators)
+                    hay.extend(localized_indicator_title(i).lower() for i in res.indicators)
                     hay.extend(i.rule_id.lower() for i in res.indicators)
                 if not any(q in part for part in hay):
                     return False
@@ -404,12 +432,12 @@ class FileTreeWidget(QTreeWidget):
         has_pending_sel = any(
             it.parent() is None and it.data(0, RESULT_ROLE) is None for it in self.selectedItems()
         )
-        act_rm = menu.addAction("Aus Warteschlange entfernen")
+        act_rm = menu.addAction(pick("Aus Warteschlange entfernen", "Remove from queue", "Sıradan kaldır"))
         act_rm.setEnabled(has_pending_sel and not self._locked)
         act_rm.triggered.connect(self.remove_selected_pending)
 
         menu.addSeparator()
-        act_clear = menu.addAction("Liste leeren")
+        act_clear = menu.addAction(t("menu.file.clear"))
         act_clear.setEnabled(self.topLevelItemCount() > 0 and not self._locked)
         act_clear.triggered.connect(self.clear_requested.emit)
         return menu

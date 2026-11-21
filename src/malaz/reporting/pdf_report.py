@@ -30,6 +30,16 @@ from PySide6.QtGui import (
 
 from .. import __version__, config
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip
+from ..i18n import (
+    get_language,
+    language_context,
+    localized_engine_label,
+    localized_engine_name,
+    localized_indicator_detail,
+    localized_indicator_title,
+    pick,
+    resolve_language,
+)
 from ..models import Indicator, RiskLevel, ScanResult, Severity, type_description
 from ..security.escaping import mask_invisible
 from .mail_section import is_mail_result, mail_lines
@@ -59,14 +69,14 @@ _SEV_COLORS = {
 }
 
 
-
 class _PdfRenderer:
     """Incremental painter over one PDF document with page-break handling."""
 
-    def __init__(self, writer: QPdfWriter):
+    def __init__(self, writer: QPdfWriter, *, lang: str = "de"):
         self.writer = writer
         self.painter = QPainter(writer)
         self.page = 1
+        self.lang = lang
         self.page_rect = writer.pageLayout().paintRectPixels(writer.resolution())
         self.x = self.page_rect.x()
         self.y: float = float(self.page_rect.y())
@@ -75,10 +85,12 @@ class _PdfRenderer:
     # -- page management -------------------------------------------------- #
 
     def footer(self) -> None:
-        text = (
-            f"Malaz v{__version__} — rein statische Analyse, 100% offline · "
-            f"Seite {self.page}"
-        )
+        if self.lang == "tr":
+            text = f"Malaz v{__version__} — yerel statik analiz, %100 çevrimdışı · Sayfa {self.page}"
+        elif self.lang == "en":
+            text = f"Malaz v{__version__} — local static analysis, 100% offline · Page {self.page}"
+        else:
+            text = f"Malaz v{__version__} — rein statische Analyse, 100% offline · Seite {self.page}"
         font = QFont("Segoe UI")
         font.setPointSizeF(7.5)
         self.painter.setFont(font)
@@ -160,17 +172,13 @@ class _PdfRenderer:
         metrics = self.painter.fontMetrics()
         return (len(lines) - 1) * metrics.lineSpacing() + metrics.height()
 
-    def draw_lines_at(
-        self, lines: list[str], x: float, y: float, font: QFont, color: QColor
-    ) -> None:
+    def draw_lines_at(self, lines: list[str], x: float, y: float, font: QFont, color: QColor) -> None:
         """Draw pre-wrapped lines with the first baseline at ``y`` (top)."""
         self.painter.setFont(font)
         self.painter.setPen(color)
         metrics = self.painter.fontMetrics()
         for i, line in enumerate(lines):
-            self.painter.drawText(
-                QPointF(x, y + i * metrics.lineSpacing() + metrics.ascent()), line
-            )
+            self.painter.drawText(QPointF(x, y + i * metrics.lineSpacing() + metrics.ascent()), line)
 
     def draw_text(
         self,
@@ -217,9 +225,7 @@ class _PdfRenderer:
     def hline(self, color: QColor = _LINE) -> None:
         self.ensure(6)
         self.painter.setPen(color)
-        self.painter.drawLine(
-            QPointF(self.x, self.y + 2), QPointF(self.right, self.y + 2)
-        )
+        self.painter.drawLine(QPointF(self.x, self.y + 2), QPointF(self.right, self.y + 2))
         self.y += 6
 
 
@@ -243,9 +249,7 @@ def _kv_line(r: _PdfRenderer, label: str, value: object, width: float) -> None:
     # Anzeigename, der Link-Host. Qt wendet den Bidi-Algorithmus an — aus
     # "rechnung<U+202E>gpj.exe" wird beim Zeichnen "rechnungexe.jpg", und der
     # Leser liest eine andere Adresse als die, die in der Datei steht.
-    value_lines = r.wrap_lines(
-        mask_invisible(str(value)), width - label_w - 8, value_font
-    )
+    value_lines = r.wrap_lines(mask_invisible(str(value)), width - label_w - 8, value_font)
     label_lines = r.wrap_lines(mask_invisible(str(label)), label_w, label_font)
     height = max(
         r.lines_height(value_lines, value_font),
@@ -254,26 +258,20 @@ def _kv_line(r: _PdfRenderer, label: str, value: object, width: float) -> None:
     )
     r.ensure(height)
     r.draw_lines_at(label_lines, x, r.y, label_font, _MUTED)
-    r.draw_lines_at(
-        value_lines, x + label_w, r.y, value_font, _INK
-    )
+    r.draw_lines_at(value_lines, x + label_w, r.y, value_font, _INK)
     r.y += height
 
 
-def _indicator_row(
-    r: _PdfRenderer, ind: Indicator, width: float, indent: float
-) -> None:
+def _indicator_row(r: _PdfRenderer, ind: Indicator, width: float, indent: float) -> None:
     sev_w, rule_w = 66.0, 150.0
     title_w = width - sev_w - rule_w - 12
     title_font = _font(8.5, bold=True)
     detail_font = _font(7.5, mono=True)
     rule_font = _font(7.5, mono=True)
-    title_lines = r.wrap_lines(ind.title, title_w, title_font)
-    detail_lines = (
-        r.wrap_lines(ind.detail or "", title_w, detail_font)
-        if ind.detail
-        else []
-    )
+    title_txt = localized_indicator_title(ind, lang=r.lang)
+    detail_txt = localized_indicator_detail(ind, lang=r.lang)
+    title_lines = r.wrap_lines(title_txt, title_w, title_font)
+    detail_lines = r.wrap_lines(detail_txt, title_w, detail_font) if detail_txt else []
     rule_lines = r.wrap_lines(f"{ind.rule_id} · {ind.source}", rule_w, rule_font)
     height = (
         max(
@@ -291,7 +289,7 @@ def _indicator_row(
     r.fill(QRectF(r.x + indent, top, width, height), _ROW_BG)
 
     sev_color = _SEV_COLORS.get(ind.severity, _SEV_COLORS[Severity.INFO])
-    r.chip(ind.severity.label, sev_color, r.x + indent + 5, top + 5)
+    r.chip(ind.severity.label_for(r.lang), sev_color, r.x + indent + 5, top + 5)
 
     title_x = r.x + indent + sev_w
     r.draw_lines_at(title_lines, title_x, top + 3, title_font, _INK)
@@ -322,14 +320,20 @@ def _render_result(
     # before it. The name stops 260 px short of the right edge, so the three
     # areas can never overlap — previously the score was clipped to whatever
     # the chip left free (regression caught in review).
+    is_en = r.lang == "en"
+    is_tr = r.lang == "tr"
     name_font = _font(10.5 if depth == 0 else 9, bold=True)
     chip_x = r.x + indent + width - 115
-    score_text = f"Score {result.score}/100" + (" · Anker" if result.anchored else "")
+    anchor_lbl = pick(" · Anker", " · Anchor", " · Kritik eşik", lang=r.lang)
+    score_word = "Skor" if is_tr else "Score"
+    score_text = f"{score_word} {result.score}/100" + (anchor_lbl if result.anchored else "")
     if result.av_discount:
-        # Same reason the CLI prints it (§ models.ScanResult.av_discount): a
-        # score that sits below its raw findings — and the colour that follows
-        # from it — must name the discount, otherwise the number is arbitrary.
-        score_text += f" · −{result.av_discount} AV-ohne-Fund"
+        score_text += pick(
+            f" · −{result.av_discount} AV-ohne-Fund",
+            f" · −{result.av_discount} AV clean",
+            f" · −{result.av_discount} AV temiz",
+            lang=r.lang,
+        )
     # The score strip is MEASURED, not a fixed 125 px: Qt clips drawText to the
     # rect, so a longer string (German text, the discount) would vanish
     # silently. The name column gives up exactly what the score needs.
@@ -347,14 +351,21 @@ def _render_result(
     # Der Chip ist das, was der Kunde auf einen Blick sieht. Traegt die
     # Pruefung Luecken, steht das IM Chip: ein Grün ohne diesen Zusatz liest
     # sich als Freispruch, und genau das ist es nicht.
-    r.chip(
-        f"{result.risk_level.short} (unvollständig)"
-        if result.is_incomplete
-        else result.risk_level.short,
-        _RISK_COLORS[result.risk_level],
-        chip_x,
-        r.y,
+    short_lbl = result.risk_level.short_for(r.lang)
+    if result.is_incomplete:
+        if (is_en or is_tr) and result.risk_level == RiskLevel.GREEN:
+            chip_lbl = "Denetlenmedi" if is_tr else "Unchecked"
+        else:
+            inc_tag = pick("unvollständig", "incomplete", "eksik", lang=r.lang)
+            chip_lbl = f"{short_lbl} ({inc_tag})"
+    else:
+        chip_lbl = short_lbl
+    chip_color = (
+        _RISK_COLORS[RiskLevel.YELLOW]
+        if ((is_en or is_tr) and result.is_incomplete and result.risk_level == RiskLevel.GREEN)
+        else _RISK_COLORS[result.risk_level]
     )
+    r.chip(chip_lbl, chip_color, chip_x, r.y)
     r.painter.setFont(_font(8))
     r.painter.setPen(_MUTED)
     r.painter.drawText(
@@ -364,67 +375,65 @@ def _render_result(
     )
     r.y += max(name_h, 22) + 3
 
-    # Was NICHT geprüft wurde — vor der Empfehlung, nicht danach. Die
-    # Empfehlung ("kann verwendet werden") ist ohne diesen Satz irreführend,
-    # wenn eine Stufe nie lief.
     if result.is_incomplete:
         fehlt_font = _font(8.5)
-        fehlt_lines = r.wrap_lines(
-            "Nicht geprüft: "
-            + " | ".join(i.title for i in result.incomplete_stages)
-            + " — das Urteil oben deckt diese Stufen NICHT ab.",
-            width - 110,
-            fehlt_font,
+        stage_names = " | ".join(localized_indicator_title(i, lang=r.lang) for i in result.incomplete_stages)
+        inc_line = pick(
+            f"Nicht geprüft: {stage_names} — das Urteil oben deckt diese Stufen NICHT ab.",
+            f"Unchecked: {stage_names} — the verdict above does NOT cover these stages.",
+            f"Denetlenmedi: {stage_names} — yukarıdaki karar bu aşamaları KAPSAMAZ.",
+            lang=r.lang,
         )
+        fehlt_lines = r.wrap_lines(inc_line, width - 110, fehlt_font)
         fehlt_h = r.lines_height(fehlt_lines, fehlt_font)
         r.ensure(fehlt_h + 10)
         r.fill(QRectF(r.x + indent, r.y, width, fehlt_h + 10), _ADVICE_BG)
-        r.draw_lines_at(
-            fehlt_lines, r.x + indent + 8, r.y + 4, fehlt_font, _INK
-        )
+        r.draw_lines_at(fehlt_lines, r.x + indent + 8, r.y + 4, fehlt_font, _INK)
         r.y += fehlt_h + 14
 
     # Recommendation band.
     advice_font = _font(8.5)
     label_font = _font(8.5, bold=True)
-    advice_lines = r.wrap_lines(
-        result.risk_level.advice, width - 110, advice_font
-    )
-    label_lines = r.wrap_lines("Empfehlung:", 90, label_font)
+    advice_lines = r.wrap_lines(result.risk_level.advice_for(r.lang), width - 110, advice_font)
+    label_lines = r.wrap_lines(pick("Empfehlung:", "Advice:", "Öneri:", lang=r.lang), 90, label_font)
     advice_h = max(
         r.lines_height(advice_lines, advice_font),
         r.lines_height(label_lines, label_font),
     )
     r.ensure(advice_h + 10)
     r.fill(QRectF(r.x + indent, r.y, width, advice_h + 10), _ADVICE_BG)
-    r.draw_lines_at(
-        label_lines, r.x + indent + 8, r.y + 4, label_font, _INK
-    )
-    r.draw_lines_at(
-        advice_lines, r.x + indent + 98, r.y + 4, advice_font, _INK
-    )
+    r.draw_lines_at(label_lines, r.x + indent + 8, r.y + 4, label_font, _INK)
+    r.draw_lines_at(advice_lines, r.x + indent + 98, r.y + 4, advice_font, _INK)
     r.y += advice_h + 14
 
     # Metadata.
-    _kv_line(r, "Pfad", _clip(result.path, MAX_DISPLAY_CHARS), width)
-    _kv_line(r, "Typ", type_description(result.detected_type, result.mime_hint), width)
-    _kv_line(r, "Größe", f"{result.size} Bytes", width)
+    _kv_line(r, pick("Pfad", "Path", "Konum", lang=r.lang), _clip(result.path, MAX_DISPLAY_CHARS), width)
+    _kv_line(
+        r,
+        pick("Typ", "Type", "Tür", lang=r.lang),
+        type_description(result.detected_type, result.mime_hint, lang=r.lang),
+        width,
+    )
+    _kv_line(
+        r,
+        pick("Größe", "Size", "Boyut", lang=r.lang),
+        pick(f"{result.size} Bytes", f"{result.size} bytes", f"{result.size} bayt", lang=r.lang),
+        width,
+    )
     _kv_line(r, "SHA-256", result.sha256 or "—", width)
-    _kv_line(r, "Dauer", f"{result.duration_ms} ms", width)
+    _kv_line(r, pick("Dauer", "Duration", "Süre", lang=r.lang), f"{result.duration_ms} ms", width)
     if result.error:
-        _kv_line(r, "Hinweis", result.error, width)
-    # Das Absender-Urteil. Ohne diese Zeilen zeigte der Bericht nur den
-    # Rohbefund MAIL_AUTH_FAIL und nicht die Aussage dahinter — und nicht, ob
-    # der angezeigte Name zur Absenderadresse passt. Die Daten kommen aus
-    # reporting.mail_section, damit HTML und PDF dasselbe sagen.
-    for label, value in mail_lines(result):
+        _kv_line(r, pick("Hinweis", "Note", "Not", lang=r.lang), result.error, width)
+    for label, value in mail_lines(result, lang=r.lang):
         _kv_line(r, label, value, width)
     if result.engine_verdicts:
         _kv_line(
             r,
             "Engines",
             " · ".join(
-                f"{v.engine}: {v.label}" for v in result.engine_verdicts
+                f"{localized_engine_name(v.engine, lang=r.lang)}: "
+                f"{localized_engine_label(v.state, v.label, lang=r.lang)}"
+                for v in result.engine_verdicts
             ),
             width,
         )
@@ -439,7 +448,12 @@ def _render_result(
         r.painter.drawText(
             QRectF(r.x + indent, r.y, width, 14),
             int(Qt.TextFlag.TextSingleLine),
-            f"Befunde ({len(indicators)}):",
+            pick(
+                f"Befunde ({len(indicators)}):",
+                f"Findings ({len(indicators)}):",
+                f"Bulgular ({len(indicators)}):",
+                lang=r.lang,
+            ),
         )
         r.y += 16
         for ind in indicators:
@@ -447,24 +461,36 @@ def _render_result(
     else:
         r.ensure(14)
         r.draw_text(
-            "Keine Auffälligkeiten.", r.x + indent, width - indent,
-            _font(8), _MUTED, min_height=12,
+            pick("Keine Auffälligkeiten.", "No findings.", "Bulgu yok.", lang=r.lang),
+            r.x + indent,
+            width - indent,
+            _font(8),
+            _MUTED,
+            min_height=12,
         )
 
     # Nested members: attachments for a mail, archive entries otherwise.
     if result.children:
         r.gap(4)
         if is_mail_result(result):
-            head = f"Anhänge ({len(result.children)}):"
+            head = pick(
+                f"Anhänge ({len(result.children)}):",
+                f"Attachments ({len(result.children)}):",
+                f"Ekler ({len(result.children)}):",
+                lang=r.lang,
+            )
         else:
-            head = f"Archiv-Inhalt ({len(result.children)} Einträge):"
+            head = pick(
+                f"Archiv-Inhalt ({len(result.children)} Einträge):",
+                f"Archive contents ({len(result.children)} entries):",
+                f"Arşiv içeriği ({len(result.children)} öğe):",
+                lang=r.lang,
+            )
         head_font = _font(8.5, bold=True)
         head_lines = r.wrap_lines(head, width - indent, head_font)
         head_h = r.lines_height(head_lines, head_font)
         r.ensure(head_h)
-        r.draw_lines_at(
-            head_lines, r.x + indent, r.y, head_font, _INK
-        )
+        r.draw_lines_at(head_lines, r.x + indent, r.y, head_font, _INK)
         r.y += head_h + 6
         for child in result.children:
             r.ensure(30)
@@ -475,7 +501,11 @@ def _render_result(
 
 
 def _header(r: _PdfRenderer, title: str) -> None:
-    now = datetime.datetime.now().astimezone().strftime("%d.%m.%Y %H:%M")
+    now = (
+        datetime.datetime.now()
+        .astimezone()
+        .strftime("%Y-%m-%d %H:%M" if r.lang == "en" else "%d.%m.%Y %H:%M")
+    )
     r.fill(QRectF(r.x, r.y, r.page_rect.width(), 64), _HEAD_BG)
     r.painter.setFont(_font(15, bold=True))
     r.painter.setPen(QColor("#ffffff"))
@@ -486,11 +516,18 @@ def _header(r: _PdfRenderer, title: str) -> None:
     )
     r.painter.setFont(_font(8))
     r.painter.setPen(QColor("#cfd8e3"))
+    subtitle = pick(
+        f"Analysebericht · erstellt {now} · Version {__version__} · "
+        "100% offline · kein JavaScript, keine Cloud",
+        f"Security report · generated {now} · Version {__version__} · 100% offline · no JavaScript, no cloud",
+        f"Güvenlik raporu · oluşturma {now} · Sürüm {__version__} · "
+        "%100 çevrimdışı · JavaScript yok, bulut yok",
+        lang=r.lang,
+    )
     r.painter.drawText(
         QRectF(r.x + 16, r.y + 34, r.page_rect.width() - 32, 18),
         int(Qt.TextFlag.TextSingleLine),
-        f"Analysebericht · erstellt {now} · Version {__version__} · 100% offline · "
-        "kein JavaScript, keine Cloud",
+        subtitle,
     )
     r.y += 64 + 14
 
@@ -502,10 +539,10 @@ def _summary_cards(r: _PdfRenderer, results: list[ScanResult]) -> None:
     gap = 10.0
     card_w = (r.page_rect.width() - 3 * gap) / 4
     cards = (
-        ("Dateien gesamt", len(results), _INK),
-        ("Unauffällig", counts[RiskLevel.GREEN], _RISK_COLORS[RiskLevel.GREEN]),
-        ("Verdächtig", counts[RiskLevel.YELLOW], _RISK_COLORS[RiskLevel.YELLOW]),
-        ("Gefährlich", counts[RiskLevel.RED], _RISK_COLORS[RiskLevel.RED]),
+        (pick("Dateien gesamt", "Total files", "Toplam dosya", lang=r.lang), len(results), _INK),
+        (RiskLevel.GREEN.short_for(r.lang), counts[RiskLevel.GREEN], _RISK_COLORS[RiskLevel.GREEN]),
+        (RiskLevel.YELLOW.short_for(r.lang), counts[RiskLevel.YELLOW], _RISK_COLORS[RiskLevel.YELLOW]),
+        (RiskLevel.RED.short_for(r.lang), counts[RiskLevel.RED], _RISK_COLORS[RiskLevel.RED]),
     )
     r.ensure(74)
     for index, (label, value, color) in enumerate(cards):
@@ -532,38 +569,45 @@ def _summary_cards(r: _PdfRenderer, results: list[ScanResult]) -> None:
         )
     r.y += 64 + 8
 
-    legend = (
+    legend = pick(
         "Einordnung: Unauffällig = keine Anzeichen für Manipulation · "
         "Verdächtig = nur bei vertrauenswürdigem Absender öffnen · "
-        "Gefährlich = nicht öffnen, löschen und ggf. die IT informieren."
+        "Gefährlich = nicht öffnen, löschen und ggf. die IT informieren.",
+        "Classification: Clean = no signs of tampering · "
+        "Suspicious = only open if you trust the sender · "
+        "Dangerous = do not open, delete and notify IT.",
+        "Değerlendirme: Temiz = teknik tehdit işareti yok · "
+        "Şüpheli = yalnızca göndericiye güveniyorsanız açın · "
+        "Tehlikeli = açmayın, silin ve BT ekibinize bildirin.",
+        lang=r.lang,
     )
     r.draw_text(legend, r.x, r.page_rect.width(), _font(8), _MUTED)
     r.gap(10)
 
 
-def generate_pdf(results: list[ScanResult], path: str | Path, title: str | None = None) -> Path:
-    """Render the batch of results into a real PDF file at ``path``.
-
-    The document is rendered to a temporary file in the same directory and
-    atomically moved into place on success — a crash or viewer-lock mid-write
-    can never leave a half-written PDF at the target path (the previous
-    behaviour let QPdfWriter create the 0-byte target at begin() and only
-    flush content at end()).
-
-    Raises ``OSError`` when the target cannot be written (e.g. the PDF is
-    open in a viewer that locks it) — a silent "success" with a missing or
-    half-written file is worse than a visible failure.
-    """
+def generate_pdf(
+    results: list[ScanResult],
+    path: str | Path,
+    title: str | None = None,
+    *,
+    lang: str | None = None,
+) -> Path:
+    """Render the batch of results into a real PDF file at ``path``."""
+    eff = resolve_language(lang) if lang is not None else get_language()
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    doc_title = title or f"{config.APP_NAME} — Analysebericht"
+    default_title = pick(
+        f"{config.APP_NAME} — Analysebericht",
+        f"{config.APP_NAME} — Security Scan Report",
+        f"{config.APP_NAME} — Güvenlik Tarama Raporu",
+        lang=eff,
+    )
+    doc_title = title or default_title
 
-    # Same directory as the target so os.replace stays on one volume (atomic).
     tmp_out = out.with_name(f".{out.name}.tmp-{os.getpid()}")
     try:
-        _render_to_file(results, tmp_out, doc_title, out)
-        # Windows: os.replace is atomic and replaces an existing read-only-
-        # locked target with a clear error instead of corrupting it.
+        with language_context(eff):
+            _render_to_file(results, tmp_out, doc_title, out, lang=eff)
         os.replace(tmp_out, out)
     except Exception:
         with suppress(OSError):
@@ -573,7 +617,12 @@ def generate_pdf(results: list[ScanResult], path: str | Path, title: str | None 
 
 
 def _render_to_file(
-    results: list[ScanResult], target: Path, doc_title: str, original: Path
+    results: list[ScanResult],
+    target: Path,
+    doc_title: str,
+    original: Path,
+    *,
+    lang: str = "de",
 ) -> None:
     writer = QPdfWriter(str(target))
     writer.setTitle(doc_title)
@@ -582,10 +631,8 @@ def _render_to_file(
     writer.setPageMargins(QMarginsF(14, 12, 14, 16), QPageLayout.Unit.Millimeter)
     writer.setResolution(96)
 
-    r = _PdfRenderer(writer)
+    r = _PdfRenderer(writer, lang=lang)
     if not r.painter.isActive():
-        # QPdfWriter could not open the file (locked by a viewer, read-only
-        # directory, ...) — it does not raise on its own.
         raise OSError(f"PDF-Zieldatei nicht schreibbar: {original}")
     try:
         _header(r, doc_title)
@@ -595,12 +642,13 @@ def _render_to_file(
                 _render_result(r, result, r.page_rect.width())
         else:
             r.draw_text(
-                "Keine Dateien analysiert.", r.x, r.page_rect.width(),
-                _font(9.5), _MUTED,
+                pick("Keine Dateien analysiert.", "No files analyzed.", "Taranan dosya yok.", lang=lang),
+                r.x,
+                r.page_rect.width(),
+                _font(9.5),
+                _MUTED,
             )
     except Exception:
-        # Best-effort cleanup of the partial file, then re-raise — replacing
-        # the original error with an end()-OSError would hide the cause.
         with suppress(Exception):
             r.painter.end()
         raise
@@ -609,5 +657,6 @@ def _render_to_file(
         raise OSError(f"PDF konnte nicht abgeschlossen werden: {original}")
 
 
-# Friendly alias matching html_report.save_report.
+# Friendly aliases matching html_report.save_report and spec naming.
 save_pdf_report = generate_pdf
+export_pdf_report = generate_pdf

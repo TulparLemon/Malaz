@@ -120,7 +120,9 @@ def _yara(indicators: list[Indicator], available: bool) -> EngineVerdict:
 
 def _static(result: ScanResult) -> EngineVerdict:
     level = result.risk_level
-    label = f"{level.short} · {result.score}/100"
+    # Keep scan-time EngineVerdict canonical ("de") so exports/snapshots stay
+    # 100 % language-invariant; presentation layers localize via malaz.i18n.
+    label = f"{level.short_for('de')} · {result.score}/100"
     state = "threat" if level >= RiskLevel.YELLOW else "clean"
     if result.is_incomplete:
         label += " (unvollständig)"
@@ -128,7 +130,7 @@ def _static(result: ScanResult) -> EngineVerdict:
         engine="Statisch",
         state=state,
         label=label,
-        detail=result.incompleteness_note() if result.is_incomplete else "",
+        detail=result.incompleteness_note(lang="de") if result.is_incomplete else "",
     )
 
 

@@ -145,3 +145,37 @@ def clamp_dialog_to_screen(
     dialog.setMinimumSize(min(min_w, w), min(min_h, h))
     dialog.resize(w, h)
     return QRect(0, 0, w, h)
+
+
+def show_message_box(
+    parent,
+    title: str,
+    text: str,
+    *,
+    icon=None,
+) -> int:
+    """Show a QMessageBox with explicitly localized button text (never OS-default DE in EN/TR).
+
+    Respects test monkeypatches on ``QMessageBox.information`` / ``QMessageBox.critical``.
+    """
+    import types
+
+    from PySide6.QtWidgets import QMessageBox
+
+    from ..i18n import t
+
+    is_crit = icon == QMessageBox.Icon.Critical
+    static_fn = QMessageBox.critical if is_crit else QMessageBox.information
+    if isinstance(static_fn, types.FunctionType):
+        res = static_fn(parent, title, text)
+        return int(res) if isinstance(res, int) else 0
+
+    from PySide6.QtCore import Qt
+
+    box = QMessageBox(parent)
+    box.setTextFormat(Qt.TextFormat.PlainText)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setIcon(icon if icon is not None else QMessageBox.Icon.Information)
+    box.addButton(t("btn.ok"), QMessageBox.ButtonRole.AcceptRole)
+    return box.exec()

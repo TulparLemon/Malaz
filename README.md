@@ -8,20 +8,20 @@
 
 > **Your files never leave your computer (GDPR / Privacy by Design):** Invoices, HR applications, contracts, and customer emails often contain sensitive personal or confidential business data. Uploading them to public online virus scanners exposes file contents to third-party servers. Malaz analyzes everything locally on your machine — network access never occurs during standard scans, and optional signature/feed updates or DNS checks run **only** when explicitly enabled by the user ([docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md)).
 
-![Malaz v1.1.0 Desktop Triage Interface](docs/assets/malaz-ui.png)
+![Malaz Desktop Triage Interface](docs/assets/malaz-ui.png)
 
-> **UI Language Note:** In `v1.1.0`, the desktop GUI ("Klare Fläche v2" with Dark, Light, and System themes) and generated HTML/PDF triage reports use German labels and plain-language explanations; English UI localization is planned for an upcoming release. All CLI flags, JSON/CSV schema keys, source code, and repository documentation are in English.
+> **Languages (DE / EN / TR):** The desktop GUI ("Klare Fläche v2" with Dark, Light, and System themes) and generated HTML/PDF triage reports support **English**, **German (`Deutsch`)**, and **Turkish (`Türkçe`)** — auto-detected from your Windows display language (`System`) or switchable live in **Options → Language** and via `--lang {system,de,en,tr}`. JSON/CSV exports remain 100% machine-invariant across UI languages.
 
 ---
 
-## See Malaz in Action (`v1.1.0`)
+## See Malaz in Action
 
-![Malaz v1.1.0 Walkthrough: Folder Overview, Phishing Email, Office Macro, Honest Unchecked ZIP, Offline Options, and Light Theme](docs/assets/malaz-demo.gif)
+![Malaz Walkthrough: Folder Overview, Dangerous File, Technical Details, Honest Unchecked ZIP, Light Theme, and Offline Options](docs/assets/malaz-demo.gif)
 
 | Folder Overview & Action List | Light Theme (Dark / Light / System) | Offline-by-Default Options |
 | :---: | :---: | :---: |
 | ![Malaz Folder Overview](docs/assets/malaz-overview.png) | ![Malaz Light Theme](docs/assets/malaz-light.png) | ![Malaz Offline Options](docs/assets/malaz-options.png) |
-| *Batch summary with 4 clear status KPIs (`Gefährlich`, `Verdächtig`, `Ungeprüft`, `Unauffällig`)* | *Token-driven Light & Dark themes with automatic High-DPI & screen scaling* | *Every network feature is opt-in and OFF by default (`Standardmäßig komplett offline`)* |
+| *Batch summary with 4 clear status KPIs (`Dangerous`, `Suspicious`, `Unchecked`, `Clean`)* | *Token-driven Light & Dark themes with automatic High-DPI & screen scaling* | *Every network feature is opt-in and OFF by default (`Completely offline by default`)* |
 
 ---
 
@@ -108,7 +108,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 | [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) | Windows Authenticode signing policy, team roles, artifact scope (`Malaz.exe`), and privacy declaration (SignPath Foundation) |
 | [docs/RELEASING.md](docs/RELEASING.md) | Maintainer release pipeline: locked GitHub Actions tag builds, tag-tree parity gates, and OpenPGP signing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and security hardening summary starting at `v1.0.0` |
-| [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 33/33 mutations, and fuzzing |
+| [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 36/36 mutations, and fuzzing |
 
 ---
 
