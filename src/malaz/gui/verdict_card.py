@@ -51,7 +51,7 @@ def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
                 pick(
                     "Ungeprüft — Passwortgeschützt",
                     "Unchecked — Password-protected",
-                    "Denetlenmedi — Parola korumalı",
+                    "Taranamadı — Parola korumalı",
                     lang=lang,
                 ),
                 pick(
@@ -77,7 +77,7 @@ def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
             pick(
                 "Ungeprüft — Prüfung unvollständig",
                 "Unchecked — Incomplete scan",
-                "Denetlenmedi — Eksik tarama",
+                "Taranamadı — Eksik tarama",
                 lang=lang,
             ),
             clip_text(
@@ -118,7 +118,7 @@ def _build_verdict_copy(result: ScanResult, state: str) -> tuple[str, str]:
                 pick(
                     "Aktive Makros oder schädliche Inhalte erkannt · Nicht öffnen.",
                     "Active macros or malicious content detected · Do not open.",
-                    "Aktif makro veya zararlı içerik tespit edildi · Açmayın.",
+                    "Etkin makro veya zararlı içerik algılandı · Açmayın.",
                     lang=lang,
                 ),
             )

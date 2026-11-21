@@ -198,7 +198,7 @@ def _av_card_tuple(
     if verdict is None:
         return (
             label,
-            pick("Nicht geprüft", "Unchecked", "Denetlenmedi", lang=lang),
+            pick("Nicht geprüft", "Unchecked", "Taranamadı", lang=lang),
             pick("Kein Status", "No status", "Durum yok", lang=lang),
             "warn",
             True,
@@ -211,7 +211,7 @@ def _av_card_tuple(
         return (
             label,
             val,
-            pick("Bedrohung erkannt", "Threat detected", "Tehdit tespit edildi", lang=lang),
+            pick("Bedrohung erkannt", "Threat detected", "Tehdit algılandı", lang=lang),
             "bad",
             False,
             pick(
@@ -224,7 +224,7 @@ def _av_card_tuple(
     if st == "clean":
         return (
             label,
-            pick("Kein Treffer", "No threat", "Tehdit yok", lang=lang),
+            pick("Kein Treffer", "No threat", "Tehdit bulunmadı", lang=lang),
             pick("Sauber", "Clean", "Temiz", lang=lang),
             "ok",
             False,
@@ -340,7 +340,7 @@ def _cards_for_leaf(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     elif result_is_incomplete(result):
         deep = (
             deep_name,
-            pick("Unvollständig", "Unchecked", "Denetlenmedi", lang=lang),
+            pick("Unvollständig", "Unchecked", "Taranamadı", lang=lang),
             pick("Stufe ausgelassen", "Stage skipped", "Aşama atlandı", lang=lang),
             "warn",
             True,
@@ -520,7 +520,7 @@ def _cards_for_archive(result: ScanResult) -> list[tuple[str, str, str, str, boo
         inc_arch = result_is_incomplete(result)
         c3 = (
             c3_hdr,
-            pick("Unvollständig", "Unchecked", "Denetlenmedi", lang=lang)
+            pick("Unvollständig", "Unchecked", "Taranamadı", lang=lang)
             if inc_arch
             else pick("Kein Befund", "No findings", "Bulgu yok", lang=lang),
             pick("Prüfung lückenhaft", "Incomplete scan", "Eksik tarama", lang=lang)
@@ -551,7 +551,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     auth_unbacked = "MAIL_AUTH_CLAIM_UNBACKED" in rids
     incomplete = result_is_incomplete(result)
 
-    c1_sender = pick("Absender", "Sender", "Gönderici", lang=lang)
+    c1_sender = pick("Absender", "Sender", "Gönderen", lang=lang)
     if av_threat is not None:
         c1 = (
             pick(
@@ -575,23 +575,23 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
             sub = pick(
                 "Anzeigename täuscht Absender vor",
                 "Display name spoofs sender",
-                "Görünen ad göndericiyi taklit ediyor",
+                "Sahte görünen ad (kimlik avı belirtisi)",
                 lang=lang,
             )
         else:
-            sub = pick("Absender weicht ab", "Sender mismatch", "Gönderici uyumsuz", lang=lang)
+            sub = pick("Absender weicht ab", "Sender mismatch", "Gönderen uyumsuz", lang=lang)
         c1 = (c1_sender, pick("Gefälscht", "Spoofed", "Sahte", lang=lang), sub, "bad", False, sub)
     elif reply_mismatch:
         c1 = (
             c1_sender,
             pick("Antwort weicht ab", "Reply differs", "Yanıt adresi farklı", lang=lang),
-            pick("Reply-To != Absender", "Reply-To != From", "Yanıtla != Gönderici", lang=lang),
+            pick("Reply-To != Absender", "Reply-To != From", "Yanıt adresi farklı", lang=lang),
             "warn",
             False,
             pick(
                 "Antwortadresse (Reply-To) weicht vom Absender ab",
                 "Reply-To address differs from sender",
-                "Yanıtla (Reply-To) adresi göndericiden farklı",
+                "Yanıt adresi (Reply-To) gönderenden farklı",
                 lang=lang,
             ),
         )
@@ -620,7 +620,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
                 f"Antivirüs ({gap_names})",
                 lang=lang,
             ),
-            pick("Unvollständig", "Unchecked", "Denetlenmedi", lang=lang),
+            pick("Unvollständig", "Unchecked", "Taranamadı", lang=lang),
             pick(
                 "Prüfstufe ausgelassen/Fehler",
                 "Stage skipped or failed",
@@ -643,7 +643,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
             pick("Keine Abweichung", "No mismatch", "Uyumsuzluk yok", lang=lang),
             "ok",
             False,
-            pick("Absender konsistent", "Sender consistent", "Gönderici tutarlı", lang=lang),
+            pick("Absender konsistent", "Sender consistent", "Gönderen tutarlı", lang=lang),
         )
     else:
         c1 = (
@@ -704,7 +704,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     elif incomplete:
         c2 = (
             c2_hdr,
-            pick("Unvollständig", "Unchecked", "Denetlenmedi", lang=lang),
+            pick("Unvollständig", "Unchecked", "Taranamadı", lang=lang),
             pick("Prüfung lückenhaft", "Incomplete scan", "Eksik tarama", lang=lang),
             "warn",
             True,
@@ -766,7 +766,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     elif incomplete:
         c3 = (
             c3_hdr,
-            pick("Unvollständig", "Unchecked", "Denetlenmedi", lang=lang),
+            pick("Unvollständig", "Unchecked", "Taranamadı", lang=lang),
             pick("Prüfung lückenhaft", "Incomplete scan", "Eksik tarama", lang=lang),
             "warn",
             True,
@@ -790,7 +790,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
     if incomplete and all(card[3] == "ok" for card in (c1, c2, c3)):
         c1 = (
             pick("Prüfung", "Inspection", "Tarama", lang=lang),
-            pick("Unvollständig", "Unchecked", "Denetlenmedi", lang=lang),
+            pick("Unvollständig", "Unchecked", "Taranamadı", lang=lang),
             pick(
                 "Mindestens eine Stufe fehlte",
                 "At least one stage skipped",
@@ -802,7 +802,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
             pick(
                 "E-Mail wurde nicht vollständig geprüft",
                 "Email was not fully inspected",
-                "E-posta tam olarak denetlenmedi",
+                "E-posta tam olarak taranamadı",
                 lang=lang,
             ),
         )

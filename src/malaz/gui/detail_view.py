@@ -140,7 +140,7 @@ def _severity_badge(ind: Indicator) -> tuple[str, str]:
     if indicator_weight(ind) >= 40 or ind.severity >= Severity.CRITICAL:
         return ("bad", pick("Kritisch", "Critical", "Kritik"))
     if ind.rule_id in ENCRYPTED_RULES or ind.rule_id in _INCOMPLETE_RULES:
-        return ("warn", pick("Ungeprüft", "Unchecked", "Denetlenmedi"))
+        return ("warn", pick("Ungeprüft", "Unchecked", "Taranamadı"))
     if indicator_weight(ind) >= 15 or ind.severity >= Severity.MEDIUM:
         return ("warn", pick("Warnung", "Warning", "Uyarı"))
     return ("ok", pick("Hinweis", "Info", "Bilgi"))
@@ -151,11 +151,11 @@ def _signal_category_label(ind: Indicator) -> str:
     if cat in (CAT_AV, CAT_SIGNATURE, CAT_HASHLIST):
         return pick("Schadsoftware", "Malware", "Zararlı Yazılım")
     if cat == CAT_FORMAT:
-        return pick("Datei-Tarnung", "File Spoofing", "Tür Gizleme")
+        return pick("Datei-Tarnung", "File Spoofing", "Uzantı Yanıltması")
     if cat in (CAT_SCRIPT, CAT_MACRO):
-        return pick("Aktive Inhalte", "Active Content", "Aktif İçerik")
+        return pick("Aktive Inhalte", "Active Content", "Etkin İçerik")
     if cat in (CAT_MAIL, CAT_IOC):
-        return pick("Absender & Links", "Sender & Links", "Gönderici ve Bağlantılar")
+        return pick("Absender & Links", "Sender & Links", "Gönderen ve Bağlantılar")
     if cat in (CAT_ARCHIVE, CAT_ENTROPY):
         return pick("Archiv & Tarnung", "Archive & Obfuscation", "Arşiv ve Şifreleme")
     return pick("Struktur & Inhalt", "Structure & Content", "Yapı ve İçerik")
@@ -219,12 +219,12 @@ def build_footer_summary(result: ScanResult) -> str:
     encrypted = is_encrypted(result)
 
     if state == "ok":
-        check_word = pick("Vollständig", "Complete", "Tam", lang=lang)
+        check_word = pick("Vollständig", "Complete", "Tamamlandı", lang=lang)
     elif state in ("bad", "warn"):
         check_word = (
             pick("Teilweise", "Partial", "Kısmi", lang=lang)
             if result_is_incomplete(result)
-            else pick("Vollständig", "Complete", "Tam", lang=lang)
+            else pick("Vollständig", "Complete", "Tamamlandı", lang=lang)
         )
     else:
         check_word = (
@@ -295,13 +295,11 @@ def build_footer_summary(result: ScanResult) -> str:
             for i in result.indicators
         )
         if has_script:
-            parts.append(pick("Skripte: Gefunden", "Scripts: Found", "Betikler: Var", lang=lang))
+            parts.append(pick("Skripte: Gefunden", "Scripts: Found", "Betik: Var", lang=lang))
         elif result_is_incomplete(result):
-            parts.append(
-                pick("Skripte: Nicht prüfbar", "Scripts: Unchecked", "Betikler: Denetlenmedi", lang=lang)
-            )
+            parts.append(pick("Skripte: Nicht prüfbar", "Scripts: Unchecked", "Betik: Taranamadı", lang=lang))
         else:
-            parts.append(pick("Skripte: Keine", "Scripts: None", "Betikler: Yok", lang=lang))
+            parts.append(pick("Skripte: Keine", "Scripts: None", "Betik: Yok", lang=lang))
 
     parts.append(f"{pick('Prüfung', 'Inspection', 'Tarama', lang=lang)}: {check_word}")
     return " · ".join(parts)
@@ -522,8 +520,10 @@ class FileDetailView(QWidget):
     def _apply_static_texts(self) -> None:
         self._btn_tab_overview.setText(pick("Einschätzung", "Overview", "Özet"))
         if self._current is None:
-            self._btn_tab_details.setText(pick("Technische Details", "Technical Details", "Teknik Detaylar"))
-            self._btn_tab_capa.setText(pick("Fähigkeiten", "Capabilities", "Yetenekler"))
+            self._btn_tab_details.setText(
+                pick("Technische Details", "Technical Details", "Teknik Ayrıntılar")
+            )
+            self._btn_tab_capa.setText(pick("Fähigkeiten", "Capabilities", "Davranışlar"))
         self._btn_tab_mail.setText(pick("E-Mail-Text", "Email Body", "E-posta Metni"))
         self.btn_report.setText(t("btn.export"))
         self._btn_mail_viewer.setText(
@@ -606,7 +606,7 @@ class FileDetailView(QWidget):
             pick(
                 f"Technische Details  {len(tech_items)}",
                 f"Technical Details  {len(tech_items)}",
-                f"Teknik Detaylar  {len(tech_items)}",
+                f"Teknik Ayrıntılar  {len(tech_items)}",
                 lang=lang,
             )
         )
@@ -626,7 +626,7 @@ class FileDetailView(QWidget):
                 pick(
                     f"Fähigkeiten ({len(result.capa_capabilities)})",
                     f"Capabilities ({len(result.capa_capabilities)})",
-                    f"Yetenekler ({len(result.capa_capabilities)})",
+                    f"Davranışlar ({len(result.capa_capabilities)})",
                     lang=lang,
                 )
             )
@@ -728,7 +728,7 @@ class FileDetailView(QWidget):
                                 "Şifreli",
                                 "Parola koruması içerik incelemesini engelliyor",
                                 "warn",
-                                "Denetlenmedi",
+                                "Taranamadı",
                             ),
                             (
                                 "warn",
@@ -801,7 +801,7 @@ class FileDetailView(QWidget):
                             lang=lang,
                         ),
                         "warn",
-                        pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang),
+                        pick("Ungeprüft", "Unchecked", "Taranamadı", lang=lang),
                     )
                 )
         elif not rows_spec and not result.children:
@@ -812,7 +812,7 @@ class FileDetailView(QWidget):
                         "ok",
                         False,
                         "İçerik",
-                        "Zararlı betik, makro veya gizli eylem tespit edilmedi",
+                        "Zararlı betik, makro veya gizli eylem bulunmadı",
                         "ok",
                         "Temiz",
                     ),
@@ -1032,7 +1032,7 @@ class FileDetailView(QWidget):
                     pick("Nicht gelaufen", "Skipped Stages", "Atlanan Aşamalar", lang=lang),
                     stages or pick("Unvollständig", "Incomplete", "Eksik", lang=lang),
                     "warn",
-                    ("warn", pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang)),
+                    ("warn", pick("Ungeprüft", "Unchecked", "Taranamadı", lang=lang)),
                     None,
                     False,
                 )

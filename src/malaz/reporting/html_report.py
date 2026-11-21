@@ -111,7 +111,7 @@ def _risk_badge(result: ScanResult, *, lang: str) -> str:
     if result.is_incomplete:
         if lang == "tr":
             if result.risk_level == RiskLevel.GREEN:
-                label = "Denetlenmedi (eksik)"
+                label = "Taranamadı (eksik)"
                 color = "#8a5a00"
             else:
                 label = f"{escape_html(result.risk_level.short_for('tr'))} (eksik)"
@@ -227,7 +227,7 @@ def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "d
     th_sev = pick("Schwere", "Severity", "Önem", lang=lang)
     th_rule = pick("Regel", "Rule", "Kural", lang=lang)
     th_find = pick("Befund", "Finding", "Bulgu", lang=lang)
-    th_detail = pick("Detail", "Detail", "Detay", lang=lang)
+    th_detail = pick("Detail", "Detail", "Ayrıntı", lang=lang)
     table = (
         "<table><thead><tr>"
         f"<th style='width:90px'>{th_sev}</th><th style='width:200px'>{th_rule}</th>"
@@ -258,7 +258,7 @@ def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "d
         )
         if lang == "tr":
             incomplete = (
-                '<div class="incomplete"><b>Denetlenmedi:</b> '
+                '<div class="incomplete"><b>Taranamadı:</b> '
                 f"{titles}. Yukarıdaki karar bu aşamaları KAPSAMAZ.</div>"
             )
         elif lang == "en":
@@ -316,7 +316,7 @@ def generate_report(
                 f'<div class="card red"><div class="num">{counts[RiskLevel.RED]}</div>'
                 f'<div class="lbl">{escape_html(RiskLevel.RED.short_for("tr"))} (Kırmızı)</div></div>'
                 f'<div class="card"><div class="num">{incomplete_count}</div>'
-                '<div class="lbl">Eksik / denetlenmedi</div></div>'
+                '<div class="lbl">Eksik / taranamadı</div></div>'
                 "</div>"
                 '<div class="legend"><b>Değerlendirme:</b> Temiz = teknik tehdit işareti yok · '
                 "Şüpheli = yalnızca göndericiye güveniyorsanız açın · "

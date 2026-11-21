@@ -325,7 +325,7 @@ def _render_result(
     name_font = _font(10.5 if depth == 0 else 9, bold=True)
     chip_x = r.x + indent + width - 115
     anchor_lbl = pick(" · Anker", " · Anchor", " · Kritik eşik", lang=r.lang)
-    score_word = "Skor" if is_tr else "Score"
+    score_word = "Puan" if is_tr else "Score"
     score_text = f"{score_word} {result.score}/100" + (anchor_lbl if result.anchored else "")
     if result.av_discount:
         score_text += pick(
@@ -354,7 +354,7 @@ def _render_result(
     short_lbl = result.risk_level.short_for(r.lang)
     if result.is_incomplete:
         if (is_en or is_tr) and result.risk_level == RiskLevel.GREEN:
-            chip_lbl = "Denetlenmedi" if is_tr else "Unchecked"
+            chip_lbl = "Taranamadı" if is_tr else "Unchecked"
         else:
             inc_tag = pick("unvollständig", "incomplete", "eksik", lang=r.lang)
             chip_lbl = f"{short_lbl} ({inc_tag})"
@@ -381,7 +381,7 @@ def _render_result(
         inc_line = pick(
             f"Nicht geprüft: {stage_names} — das Urteil oben deckt diese Stufen NICHT ab.",
             f"Unchecked: {stage_names} — the verdict above does NOT cover these stages.",
-            f"Denetlenmedi: {stage_names} — yukarıdaki karar bu aşamaları KAPSAMAZ.",
+            f"Taranamadı: {stage_names} — yukarıdaki karar bu aşamaları KAPSAMAZ.",
             lang=r.lang,
         )
         fehlt_lines = r.wrap_lines(inc_line, width - 110, fehlt_font)

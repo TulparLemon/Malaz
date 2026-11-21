@@ -3,7 +3,7 @@
 Contains all real Malaz opt-in network switches (clam_auto, feeds_auto,
 dns_auth), manual update triggers (ClamAV, YARA, FeedsDialog), local analysis
 switches (capa, session-only static_only, auto_open), theme switcher
-(Dark / Light / System), language switcher (System / Deutsch / English),
+(Dark / Light / System), language switcher (System / Deutsch / English / Türkçe),
 and live local engine status rows.
 """
 
@@ -296,8 +296,8 @@ class OptionsView(QWidget):
                 "ALGILANAN YEREL TARAMA MOTORLARI",
             )
         )
-        self._btn_ref.setText(pick("Neu prüfen", "Re-check", "Yeniden Kontrol Et"))
-        self.btn_feeds_now.setText(pick("Sperrlisten…", "Blocklists…", "Listeler…"))
+        self._btn_ref.setText(pick("Neu prüfen", "Re-check", "Durumu Yenile"))
+        self.btn_feeds_now.setText(pick("Sperrlisten…", "Blocklists…", "Tehdit Listeleri…"))
         self._manual_key_lbl.setText(t("options.manual_update.title"))
 
         row_map = {
@@ -314,7 +314,7 @@ class OptionsView(QWidget):
                 ),
             ),
             "capa": (
-                pick("Fähigkeits-Analyse", "Capability Analysis", "Yetenek Analizi (capa)"),
+                pick("Fähigkeits-Analyse", "Capability Analysis", "Davranış Analizi (capa)"),
                 pick(
                     "Tiefe Verhaltensprüfung (capa) für Programme aktivieren (langsamer)",
                     "Enable deep behavioral analysis (capa) for executables (slower)",
@@ -322,13 +322,13 @@ class OptionsView(QWidget):
                 ),
             ),
             "static_only": (
-                pick("Nur-Statik-Modus", "Static-Only Mode", "Yalnızca Statik Mod"),
+                pick("Nur-Statik-Modus", "Static-Only Mode", "Sadece Statik Analiz"),
                 pick(
                     "Pausiert Defender & ClamAV für diese Sitzung "
                     "(verhindert Quarantäne bei Forensik-Proben)",
                     "Pauses Defender & ClamAV for this session (prevents quarantine on forensic samples)",
-                    "Bu oturum için Defender ve ClamAV taramasını duraklatır "
-                    "(örneklerin karantinaya alınmasını önler)",
+                    "Bu oturumda Defender ve ClamAV'ı duraklatır "
+                    "(adli analiz örneklerinin karantinaya alınmasını önler)",
                 ),
             ),
             "auto_open": (
@@ -336,7 +336,7 @@ class OptionsView(QWidget):
                 pick(
                     "Exportierten HTML-/PDF-Bericht direkt nach dem Speichern anzeigen",
                     "Open exported HTML/PDF report automatically right after saving",
-                    "Kaydedilen HTML/PDF raporunu kaydetme sonrasında hemen aç",
+                    "Dışa aktarılan HTML/PDF raporunu varsayılan uygulamada hemen aç",
                 ),
             ),
             "theme": (t("options.theme.title"), t("options.theme.desc")),
@@ -398,7 +398,7 @@ class OptionsView(QWidget):
                 sub = pick(
                     "Pausiert durch Nur-Statik-Modus",
                     "Paused by static-only mode",
-                    "Yalnızca statik mod nedeniyle duraklatıldı",
+                    "Sadece statik analiz nedeniyle duraklatıldı",
                     lang=lang,
                 )
             else:

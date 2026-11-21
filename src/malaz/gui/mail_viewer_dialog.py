@@ -218,7 +218,7 @@ class MailViewerDialog(QDialog):
         farbe = RISK_COLORS[score.color]
         mark = RISK_MARKS[score.color]
 
-        self._add(pick("Absender", "Sender", "Gönderici"), heading=True)
+        self._add(pick("Absender", "Sender", "Gönderen"), heading=True)
         zeile = QLabel(mask_invisible(f"{mark}  {localize_mail_score_label(score.label)}"))
         zeile.setStyleSheet(
             f"color: {farbe}; font-size: {FONT_SUBTITLE}; font-weight: 700;"

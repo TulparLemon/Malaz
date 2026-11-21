@@ -66,7 +66,7 @@ _ACTIVE_LANG_PREF: str | None = None
 
 
 def saved_language_preference() -> str:
-    """Return persisted UI language preference (``system | de | en``)."""
+    """Return persisted UI language preference (``system | de | en | tr``)."""
     val = str(app_settings().value(_LANGUAGE_KEY, "system", str) or "system").strip().lower()
     return val if val in ("system", "de", "en", "tr") else "system"
 
@@ -79,7 +79,7 @@ def active_language_preference() -> str:
 
 
 def apply_language(pref: str, *, persist: bool = True) -> str:
-    """Apply ``system | de | en`` language preference and optionally persist it."""
+    """Apply ``system | de | en | tr`` language preference and optionally persist it."""
     from ..i18n import resolve_language, set_language
 
     global _ACTIVE_LANG_PREF

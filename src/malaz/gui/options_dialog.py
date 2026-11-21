@@ -211,7 +211,7 @@ class OptionsDialog(QDialog):
                 "Capability analysis inspects WHAT an executable could do "
                 "(encryption, networking, process launch). It is the slowest stage; "
                 "when disabled, reports note that it did not run.",
-                "Yetenek analizi bir programın NELER yapabileceğini inceler "
+                "Davranış analizi bir programın NELER yapabileceğini inceler "
                 "(şifreleme, ağ erişimi, işlem başlatma). En yavaş aşamadır; "
                 "kapalıyken rapor bu adımın çalışmadığını belirtir.",
             )
@@ -251,11 +251,11 @@ class OptionsDialog(QDialog):
             (pick("Datei-Hashes", "File hashes", "Dosya özetleri"), Path(config.USER_HASH_BLOCKLIST_FILE)),
             (pick("Schad-URLs", "Malicious URLs", "Zararlı URL'ler"), Path(config.URL_BLOCKLIST_FILE)),
             (
-                pick("Absender-Domains", "Sender domains", "Gönderici alan adları"),
+                pick("Absender-Domains", "Sender domains", "Gönderen alan adları"),
                 Path(config.DOMAIN_BLOCKLIST_FILE),
             ),
             (
-                pick("Absender-Netze", "Sender networks", "Gönderici IP ağları"),
+                pick("Absender-Netze", "Sender networks", "Gönderen IP ağları"),
                 Path(config.IP_BLOCKLIST_FILE),
             ),
         ):

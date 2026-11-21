@@ -373,7 +373,7 @@ def localized_incomplete_reason(reason: str, *, lang: str | None = None) -> str:
     if "nicht geprüft" in clean:
         prefix = clean.split("nicht geprüft", 1)[0].strip(" :—-")
         if eff == "tr":
-            return f"{prefix}: denetlenmedi" if prefix else "Aşama denetlenmedi"
+            return f"{prefix}: taranamadı" if prefix else "Aşama taranamadı"
         return f"{prefix}: not checked" if prefix else "Stage not checked"
     if "Stufe nicht gelaufen:" in clean:
         rest = clean.split("Stufe nicht gelaufen:", 1)[1].strip()
@@ -451,7 +451,7 @@ def _dynamic_rule_title(rule_id: str, raw_title: str, eff: str) -> str | None:
     if rule_id.startswith("EXT_"):
         labels = (
             (
-                ("_THREAT", "tehdit tespit edildi"),
+                ("_THREAT", "tehdit algılandı"),
                 ("_CLEAN", "tehdit bulunmadı"),
                 ("_SKIPPED", "tarama atlandı"),
                 ("_ERROR", "tarama hatası"),
