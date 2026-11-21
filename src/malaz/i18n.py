@@ -85,7 +85,7 @@ _STATIC_LABEL_RE = re.compile(
     r"^(Unauffällig|Verdächtig|Gefährlich)\s*·\s*(\d+/100)(\s*\(unvollständig\))?$"
 )
 _STUFEN_NOTE_RE = re.compile(
-    r"^(\d+)\s+Stufe\(n\)\s+nicht\s+gelaufen:\s*(.+?)\s*(?:—|--)\s*das Ergebnis.*$"
+    r"^(\d+)\s+Stufe\(n\)\s+nicht\s+gelaufen:\s*([^—\n]{1,500}?)(?:—|--)\s*das Ergebnis.*$"
 )
 _THREAT_PAREN_RE = re.compile(r"\(([^()]{2,120})\)\s*$")
 _COLON_PAYLOAD_RE = re.compile(r":\s*([^\n]{2,160})$")
@@ -356,7 +356,7 @@ def localized_incomplete_reason(reason: str, *, lang: str | None = None) -> str:
     reason_map = INCOMPLETE_REASON_TR if eff == "tr" else INCOMPLETE_REASON_EN
     if clean in reason_map:
         return reason_map[clean]
-    m_note = _STUFEN_NOTE_RE.match(clean)
+    m_note = _STUFEN_NOTE_RE.match(clean[:600])
     if m_note:
         count = int(m_note.group(1))
         raw_parts = [p.strip() for p in m_note.group(2).split("|") if p.strip()]

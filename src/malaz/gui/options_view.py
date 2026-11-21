@@ -403,7 +403,7 @@ class OptionsView(QWidget):
                 )
             else:
                 sub_raw = clip_text(masked_widget_text(detail), 90)
-                sub = _localize_engine_status_line(sub_raw, lang) if lang != "de" else sub_raw
+                sub = _localize_engine_status_line(sub_raw, lang, avail=avail) if lang != "de" else sub_raw
             v_lbl = QLabel(sub, row)
             v_lbl.setObjectName("mutedLabel")
             v_lbl.setTextFormat(Qt.TextFormat.PlainText)
@@ -463,13 +463,26 @@ class OptionsView(QWidget):
             btn.setEnabled(not scanning)
 
 
-def _localize_engine_status_line(text: str, lang: str = "en") -> str:
+def _localize_engine_status_line(text: str, lang: str = "en", *, avail: bool = True) -> str:
     low = text.lower()
     is_tr = lang == "tr"
+    # Always handle negative/disabled/error states FIRST — never flip unavailable to active!
     if "nicht verfügbar" in low or "nicht verfuegbar" in low:
         return "Kullanılamıyor" if is_tr else "Unavailable"
     if "nicht installiert" in low or "nicht gefunden" in low or "fehlt" in low:
         return "Bu sistemde kurulu değil" if is_tr else "Not installed on this system"
+    if "deaktiviert" in low or "inaktiv" in low or "nicht aktiv" in low:
+        return "Devre dışı" if is_tr else "Disabled"
+    if (
+        "läuft nicht" in low
+        or "laeuft nicht" in low
+        or "nicht erreichbar" in low
+        or "gestoppt" in low
+        or "fehler" in low
+    ):
+        return "Hizmet çalışmıyor veya hata" if is_tr else "Service unavailable or error"
+    if not avail:
+        return "Kullanılamıyor" if is_tr else "Unavailable"
     if low == "verfügbar":
         return "Kullanılabilir" if is_tr else "Available"
     if "aktiv" in low and "defender" in low:
@@ -488,10 +501,10 @@ def _localize_engine_status_line(text: str, lang: str = "en") -> str:
 def _localize_feed_badge(badge: str, lang: str = "en") -> str:
     low = badge.lower()
     is_tr = lang == "tr"
-    if "aktuell" in low:
-        return "Listeler güncel" if is_tr else "Blocklists up to date"
-    if "veraltet" in low or "alt" in low:
-        return "Listeler güncellenmeli" if is_tr else "Blocklists aging"
     if "fehlt" in low or "leer" in low or "keine" in low:
         return "Listeler boş" if is_tr else "Blocklists empty"
+    if "veraltet" in low or "nicht aktuell" in low:
+        return "Listeler güncellenmeli" if is_tr else "Blocklists aging"
+    if "aktuell" in low:
+        return "Listeler güncel" if is_tr else "Blocklists up to date"
     return badge

@@ -530,8 +530,9 @@ def test_score_ring_footer_and_engine_capsule_trilingual(qapp) -> None:
 
 
 def test_localize_engine_status_line_never_flips_unavailable_to_available() -> None:
-    """B1 regression: multi-word 'nicht verfügbar' must NEVER become 'Available locally'."""
-    from malaz.gui.options_view import _localize_engine_status_line
+    """B1 & r2-M1 regression: disabled/inactive/failing engines must NEVER flip to active/ready."""
+    from malaz.gui.options_view import _localize_engine_status_line, _localize_feed_badge
+    from malaz.reporting.mail_section import localize_mail_score_label
 
     for phrase in (
         "Nicht verfügbar",
@@ -539,11 +540,35 @@ def test_localize_engine_status_line_never_flips_unavailable_to_available() -> N
         "7-Zip nicht verfügbar",
         "MpCmdRun nicht verfuegbar",
     ):
-        assert _localize_engine_status_line(phrase, "en") == "Unavailable"
-        assert _localize_engine_status_line(phrase, "tr") == "Kullanılamıyor"
+        assert _localize_engine_status_line(phrase, "en", avail=False) == "Unavailable"
+        assert _localize_engine_status_line(phrase, "tr", avail=False) == "Kullanılamıyor"
 
-    assert _localize_engine_status_line("Verfügbar", "en") == "Available"
-    assert _localize_engine_status_line("Verfügbar", "tr") == "Kullanılabilir"
+    for disabled_phrase in ("Defender deaktiviert", "Windows Defender inaktiv", "Defender nicht aktiv"):
+        en_out = _localize_engine_status_line(disabled_phrase, "en", avail=False)
+        tr_out = _localize_engine_status_line(disabled_phrase, "tr", avail=False)
+        assert "active" not in en_out.lower() and "available" not in en_out.lower(), en_out
+        assert "aktif" not in tr_out.lower() and "hazır" not in tr_out.lower(), tr_out
+
+    for err_phrase in ("clamd nicht erreichbar", "clamd Fehler", "Dienst läuft nicht"):
+        en_err = _localize_engine_status_line(err_phrase, "en", avail=False)
+        tr_err = _localize_engine_status_line(err_phrase, "tr", avail=False)
+        assert "ready" not in en_err.lower(), en_err
+        assert "hazır" not in tr_err.lower(), tr_err
+
+    assert _localize_engine_status_line("Verfügbar", "en", avail=True) == "Available"
+    assert _localize_engine_status_line("Verfügbar", "tr", avail=True) == "Kullanılabilir"
+
+    # r2-N2: feed badge negations and non-aging words
+    assert _localize_feed_badge("nicht aktuell", "en") == "Blocklists aging"
+    assert _localize_feed_badge("enthalten", "en") == "enthalten"
+
+    # r2-M2: 'unauffaellig' and 'nicht prüfbar' must NOT be shadowed by 'auffaellig'/'prüf'
+    assert localize_mail_score_label("unauffaellig", lang="en") == "Unremarkable"
+    assert localize_mail_score_label("unauffaellig", lang="tr") == "Normal"
+    assert localize_mail_score_label("nicht prüfbar", lang="en") == "Unverifiable"
+    assert localize_mail_score_label("nicht prüfbar", lang="tr") == "Doğrulanamadı"
+    assert localize_mail_score_label("auffaellig", lang="en") == "Needs review"
+    assert localize_mail_score_label("auffaellig", lang="tr") == "İnceleme gerekli"
 
 
 def test_engine_strip_routes_non_archive_with_children_to_child_cards(qapp) -> None:
@@ -586,7 +611,7 @@ def test_engine_strip_routes_non_archive_with_children_to_child_cards(qapp) -> N
 def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp_path) -> None:
     """M1 regression: incomplete GREEN results in EN/TR HTML & PDF must say Unchecked/Denetlenmedi."""
     from malaz.reporting.html_report import generate_report
-    from malaz.reporting.pdf_report import _render_result, save_pdf_report
+    from malaz.reporting.pdf_report import save_pdf_report
 
     inc_green = _sample_result(
         name="mystery.bin",
@@ -614,22 +639,7 @@ def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp
     assert "Puan:" in html_tr
     assert "<th>Detay</th>" in html_tr
 
-    # Verify PDF chip text via save_pdf_report + rendered chip capture
     chips_seen: list[str] = []
-
-    class _SpyRenderer:
-        def __init__(self, lang: str) -> None:
-            self.lang = lang
-            self.x = 0.0
-            self.y = 0.0
-            self.width = 500.0
-
-        def chip(self, text: str, *_args, **_kwargs) -> None:
-            chips_seen.append(f"{self.lang}:{text}")
-
-        def __getattr__(self, _name: str):
-            return lambda *a, **k: 0
-
     for lang in ("en", "tr"):
         pdf_out = tmp_path / f"inc_{lang}.pdf"
         save_pdf_report([inc_green], pdf_out, lang=lang)
@@ -655,7 +665,6 @@ def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp
     assert not any(c.startswith("en:Clean") for c in chips_seen), chips_seen
     assert "tr:Denetlenmedi" in chips_seen
     assert not any(c.startswith("tr:Temiz") for c in chips_seen), chips_seen
-    _ = _render_result
 
 
 def test_cli_lang_ephemeral_and_options_language_persistence(qapp, monkeypatch, tmp_path) -> None:

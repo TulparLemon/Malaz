@@ -141,13 +141,26 @@ def localize_mail_score_label(label: str, *, lang: str | None = None) -> str:
         return (
             "Gönderici bilgileri çelişkili veya eksik" if is_tr else "Sender details conflicting or missing"
         )
+    if "unauffällig" in low or "unauffaellig" in low:
+        return "Normal" if is_tr else "Unremarkable"
+    if (
+        "nicht beurteilbar" in low
+        or "nicht prüfbar" in low
+        or "nicht pruefbar" in low
+        or "unbekannt" in low
+    ):
+        return "Doğrulanamadı" if is_tr else "Unverifiable"
     if "gefährlich" in low or "gefaehrlich" in low or "hoch" in low or "betrug" in low:
         return "Şüpheli" if is_tr else "Suspicious"
-    if "verdächtig" in low or "verdaechtig" in low or "auffaellig" in low or "prüf" in low:
+    if (
+        "verdächtig" in low
+        or "verdaechtig" in low
+        or "auffällig" in low
+        or "auffaellig" in low
+        or "prüf" in low
+    ):
         return "İnceleme gerekli" if is_tr else "Needs review"
-    if "nicht beurteilbar" in low or "unbekannt" in low:
-        return "Doğrulanamadı" if is_tr else "Unverifiable"
-    if "unauffällig" in low or "unauffaellig" in low or "ok" in low:
+    if low == "ok":
         return "Normal" if is_tr else "Unremarkable"
     return label
 

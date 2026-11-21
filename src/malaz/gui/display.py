@@ -170,7 +170,10 @@ def show_message_box(
         res = static_fn(parent, title, text)
         return int(res) if isinstance(res, int) else 0
 
+    from PySide6.QtCore import Qt
+
     box = QMessageBox(parent)
+    box.setTextFormat(Qt.TextFormat.PlainText)
     box.setWindowTitle(title)
     box.setText(text)
     box.setIcon(icon if icon is not None else QMessageBox.Icon.Information)

@@ -1066,6 +1066,7 @@ class MainWindow(QMainWindow):
             )
             self.summary_bar.show()
         else:
+            self._summary_count_lbl.setText(pick("0 Dateien →", "0 files →", "0 dosya →"))
             self.summary_bar.hide()
 
     # -- Scan Lifecycle ---------------------------------------------------- #
@@ -1602,6 +1603,7 @@ class MainWindow(QMainWindow):
 
         # Populated child views
         self._refresh_sidebar_actions()
+        self._update_filter_counts()
         self.table.retranslate()
         self.summary.retranslate()
         self.detail_view.retranslate()
