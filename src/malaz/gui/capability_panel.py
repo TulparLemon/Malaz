@@ -175,7 +175,7 @@ class CapabilityPanel(QScrollArea):
                     "unbekannte Formate nicht.",
                     "No capabilities were detected for this file. That does not mean "
                     "it is harmless: capa cannot analyze packed binaries or unknown formats.",
-                    "Bu dosya için davranışsal yetenek tespit edilmedi. Bu dosyanın güvenli olduğu "
+                    "Bu dosya için davranış kaydı algılanmadı. Bu, dosyanın güvenli olduğu "
                     "anlamına gelmez: capa paketlenmiş programları ve bilinmeyen biçimleri çözümleyemez.",
                     lang=lang,
                 ),
@@ -184,14 +184,14 @@ class CapabilityPanel(QScrollArea):
             self._layout.addStretch(1)
             return
 
-        if get_language() == "tr":
+        if lang == "tr":
             self._add(
-                f"Bu programın teknik olarak yapabildikleri — {len(faehigkeiten)} yetenek tespit edildi.",
+                f"Bu programın gerçekleştirebileceği işlemler — {len(faehigkeiten)} davranış algılandı.",
                 object_name="panelHeading",
             )
             self._add(
                 "Bu bir zararlılık kararı değil, teknik bağlamdır: sıradan birçok program "
-                "benzer yeteneklere sahiptir. Genel karar için yukarıdaki sonuca bakın.",
+                "benzer davranışlara sahiptir. Genel değerlendirme için yukarıdaki sonuca bakın.",
                 object_name="panelValue",
             )
         elif is_en:

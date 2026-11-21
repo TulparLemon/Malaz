@@ -332,7 +332,7 @@ def test_listener_dedup_and_exception_isolation() -> None:
 
 
 def test_en_and_tr_completeness_invariant_gui_and_html(qapp) -> None:
-    """Encrypted/incomplete file must render Unchecked / Denetlenmedi — NEVER Clean / Temiz."""
+    """Encrypted/incomplete file must render Unchecked / Turkish unchecked — NEVER Clean / Temiz."""
     from malaz.gui.verdict_card import VerdictCard
 
     enc_res = _sample_result(
@@ -375,17 +375,17 @@ def test_en_and_tr_completeness_invariant_gui_and_html(qapp) -> None:
     assert "Passwortgeschützte" not in html_en
 
     # Turkish check
-    assert state_label("unk", lang="tr") == "Denetlenmedi"
+    assert state_label("unk", lang="tr") == "Taranamadı"
     assert state_label("unk", lang="tr") != "Temiz"
     i18n.set_language("tr")
     card.retranslate()
-    assert "Denetlenmedi" in card.headline.text()
+    assert "Taranamadı" in card.headline.text()
     assert "Temiz" not in card.headline.text()
     assert "Ungeprüft" not in card.headline.text()
 
     html_tr = generate_report([enc_res], lang="tr")
     assert '<html lang="tr">' in html_tr
-    assert "Denetlenmedi:" in html_tr
+    assert "Taranamadı:" in html_tr
     assert "Nicht geprüft:" not in html_tr
 
 
@@ -495,7 +495,7 @@ def test_score_ring_footer_and_engine_capsule_trilingual(qapp) -> None:
     assert ring._cap_lbl.text() == "Risk"
     assert ring._level_lbl.text() == "Yüksek"
     ring.set_score(0, "unk")
-    assert ring._level_lbl.text() == "Denetlenmedi"
+    assert ring._level_lbl.text() == "Taranamadı"
     ring.set_score(0, "ok")
     assert ring._level_lbl.text() == "Düşük"
 
@@ -508,7 +508,7 @@ def test_score_ring_footer_and_engine_capsule_trilingual(qapp) -> None:
     pe_footer_tr = build_footer_summary(pe_res)
     pdf_footer_tr = build_footer_summary(pdf_res)
     assert "İmza: Yok" in pe_footer_tr and "Signatur" not in pe_footer_tr
-    assert "Betikler: Yok" in pdf_footer_tr and "Skripte" not in pdf_footer_tr
+    assert "Betik: Yok" in pdf_footer_tr and "Skripte" not in pdf_footer_tr
 
     win = MainWindow(fixed_size=(1060, 740))
     win.show()
@@ -609,7 +609,7 @@ def test_engine_strip_routes_non_archive_with_children_to_child_cards(qapp) -> N
 
 
 def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp_path) -> None:
-    """M1 regression: incomplete GREEN results in EN/TR HTML & PDF must say Unchecked/Denetlenmedi."""
+    """M1 regression: incomplete GREEN results in EN/TR HTML & PDF must show unchecked badge."""
     from malaz.reporting.html_report import generate_report
     from malaz.reporting.pdf_report import save_pdf_report
 
@@ -634,10 +634,11 @@ def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp
     assert "Clean (Unchecked" not in html_en
 
     html_tr = generate_report([inc_green], lang="tr")
-    assert "Denetlenmedi (eksik)" in html_tr
-    assert "Temiz (Denetlenmedi" not in html_tr
+    assert "Taranamadı (eksik)" in html_tr
+    assert "Temiz (eksik)" not in html_tr
+    assert "Temiz (Taranamadı" not in html_tr
     assert "Puan:" in html_tr
-    assert "<th>Detay</th>" in html_tr
+    assert "<th>Ayrıntı</th>" in html_tr
 
     chips_seen: list[str] = []
     for lang in ("en", "tr"):
@@ -663,7 +664,7 @@ def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp
 
     assert "en:Unchecked" in chips_seen
     assert not any(c.startswith("en:Clean") for c in chips_seen), chips_seen
-    assert "tr:Denetlenmedi" in chips_seen
+    assert "tr:Taranamadı" in chips_seen
     assert not any(c.startswith("tr:Temiz") for c in chips_seen), chips_seen
 
 

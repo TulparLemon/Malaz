@@ -97,7 +97,7 @@ _MAIL_REASON_MAP: dict[str, tuple[str, str]] = {
     "Der sichtbare Linktext nennt eine andere Adresse als das Ziel — das ist "
     "die haeufigste Phishing-Bauform": (
         "Visible link text displays a different destination than the actual target (phishing)",
-        "Görünen bağlantı metni gerçek hedeften farklı bir adres gösteriyor (oltalama)",
+        "Görünen bağlantı metni gerçek hedeften farklı bir adres gösteriyor (kimlik avı)",
     ),
     "Der Name enthaelt Unicode-Zeichen und kann wie eine bekannte Marke aussehen, ohne es zu sein": (
         "Domain uses Unicode/Punycode characters that can imitate a known brand",
@@ -117,7 +117,7 @@ _MAIL_REASON_MAP: dict[str, tuple[str, str]] = {
     ),
     "Die Endung der Domain gilt als haeufig missbraucht": (
         "Domain uses a top-level domain frequently abused for phishing",
-        "Alan adı oltalama için sıkça kötüye kullanılan bir uzantıya sahip",
+        "Alan adı kimlik avı için sıkça kötüye kullanılan bir uzantıya sahip",
     ),
     "Ein Kurzlink verbirgt das Ziel": (
         "URL shortener hides the final destination",
@@ -134,12 +134,12 @@ def localize_mail_score_label(label: str, *, lang: str | None = None) -> str:
     low = (label or "").lower()
     is_tr = eff == "tr"
     if "teilweise stimmig" in low:
-        return "Gönderici bilgileri kısmen tutarlı" if is_tr else "Sender details partially consistent"
+        return "Gönderen bilgileri kısmen tutarlı" if is_tr else "Sender details partially consistent"
     if "stimmig" in low:
-        return "Gönderici bilgileri tutarlı" if is_tr else "Sender details consistent"
+        return "Gönderen bilgileri tutarlı" if is_tr else "Sender details consistent"
     if "widerspr" in low or "fehlend" in low:
         return (
-            "Gönderici bilgileri çelişkili veya eksik" if is_tr else "Sender details conflicting or missing"
+            "Gönderen bilgileri çelişkili veya eksik" if is_tr else "Sender details conflicting or missing"
         )
     if "unauffällig" in low or "unauffaellig" in low:
         return "Normal" if is_tr else "Unremarkable"
@@ -318,7 +318,7 @@ def mail_lines(result: ScanResult, *, lang: str | None = None) -> list[tuple[str
             else (_en_mail_score_label(bewertung.label) if is_en else bewertung.label)
         )
         if is_tr:
-            lines.append(("Gönderici", f"{bewertung.score}/100 — {score_lbl}"))
+            lines.append(("Gönderen", f"{bewertung.score}/100 — {score_lbl}"))
         elif is_en:
             lines.append(("Sender Score", f"{bewertung.score}/100 — {score_lbl}"))
         else:
@@ -354,7 +354,7 @@ def mail_lines(result: ScanResult, *, lang: str | None = None) -> list[tuple[str
                     (
                         "Not",
                         (
-                            "Uyumsuz görünen ad en yaygın oltalama yöntemidir: "
+                            "Uyumsuz görünen ad en yaygın kimlik avı yöntemidir: "
                             "isim tanıdık görünür ama gerçek adres farklıdır"
                         ),
                     )

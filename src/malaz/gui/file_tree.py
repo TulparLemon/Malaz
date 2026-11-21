@@ -196,7 +196,7 @@ class FileTreeWidget(QTreeWidget):
                         pick(
                             "Prüfung abgebrochen — nicht geprüft",
                             "Scan cancelled — unchecked",
-                            "Tarama durduruldu — denetlenmedi",
+                            "Tarama durduruldu — taranamadı",
                         )
                     ),
                 )
@@ -330,7 +330,7 @@ class FileTreeWidget(QTreeWidget):
                         pick(
                             "Prüfung abgebrochen — nicht geprüft",
                             "Scan cancelled — unchecked",
-                            "Tarama durduruldu — denetlenmedi",
+                            "Tarama durduruldu — taranamadı",
                         )
                     ),
                 )

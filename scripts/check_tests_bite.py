@@ -413,7 +413,7 @@ MUTATIONS: tuple[Mutation, ...] = (
             "                pick(\n"
             '                    f"Fähigkeiten ({len(result.capa_capabilities)})",\n'
             '                    f"Capabilities ({len(result.capa_capabilities)})",\n'
-            '                    f"Yetenekler ({len(result.capa_capabilities)})",\n'
+            '                    f"Davranışlar ({len(result.capa_capabilities)})",\n'
             "                    lang=lang,\n"
             "                )\n"
             "            )\n"

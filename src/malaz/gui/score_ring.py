@@ -211,11 +211,11 @@ class ScoreRingWidget(QFrame):
         word_map = {
             "bad": (pick("Hoch", "High", "Yüksek", lang=lang), "bad"),
             "warn": (pick("Mittel", "Medium", "Orta", lang=lang), "warn"),
-            "unk": (pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang), "warn"),
+            "unk": (pick("Ungeprüft", "Unchecked", "Taranamadı", lang=lang), "warn"),
             "ok": (pick("Niedrig", "Low", "Düşük", lang=lang), "ok"),
         }
         word, tone = word_map.get(
-            state, (pick("Ungeprüft", "Unchecked", "Denetlenmedi", lang=lang), "warn")
+            state, (pick("Ungeprüft", "Unchecked", "Taranamadı", lang=lang), "warn")
         )
         self._level_lbl.setText(word)
         self._level_lbl.setProperty("tone", tone)

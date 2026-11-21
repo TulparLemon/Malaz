@@ -306,8 +306,8 @@ class BatchSummary(QWidget):
         if lang == "tr":
             self._kpi_bad.set_labels("Tehlikeli", "Hemen izole edin")
             self._kpi_warn.set_labels("Şüpheli", "İnceleme gerekli")
-            self._kpi_unk.set_labels("Denetlenmedi", "Eksik / parola korumalı")
-            self._kpi_ok.set_labels("Temiz", "Tehdit yok")
+            self._kpi_unk.set_labels("Taranamadı", "Eksik / parola korumalı")
+            self._kpi_ok.set_labels("Temiz", "Tehdit bulunmadı")
             self._sec_lbl.setText("DİKKAT GEREKTİRENLER")
         elif lang == "en":
             self._kpi_bad.set_labels("Dangerous", "Isolate immediately")
@@ -370,7 +370,7 @@ class BatchSummary(QWidget):
             if ok:
                 parts_h.append(f"{len(ok)} temiz")
             if inc_total:
-                parts_h.append(f"{inc_total} denetlenmedi")
+                parts_h.append(f"{inc_total} taranamadı")
         elif is_en:
             parts_h = [
                 f"{len(results)} file scanned" if len(results) == 1 else f"{len(results)} files scanned"
@@ -419,7 +419,7 @@ class BatchSummary(QWidget):
                     f"Batch limit reached (max {config.MAX_BATCH_FILES} files) — "
                     "additional files were not queued and remain unchecked.",
                     f"Toplu tarama sınırına ulaşıldı (en fazla {config.MAX_BATCH_FILES} dosya) — "
-                    "kalan dosyalar kuyruğa alınmadı ve denetlenmedi.",
+                    "kalan dosyalar kuyruğa alınmadı ve taranamadı.",
                     lang=lang,
                 )
             )
@@ -480,7 +480,7 @@ class BatchSummary(QWidget):
                     pick(
                         "Keine auffälligen oder ungeprüften Dateien gefunden.",
                         "No suspicious or unchecked files found.",
-                        "Şüpheli veya denetlenmeyen dosya bulunmadı.",
+                        "Şüpheli veya taranamayan dosya bulunmadı.",
                         lang=lang,
                     )
                 ),

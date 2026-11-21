@@ -1383,7 +1383,7 @@ class MainWindow(QMainWindow):
             folder_name = (
                 (Path(cdir).name or cdir)
                 if cdir
-                else pick("Aktuelle Prüfung", "Current scan", "Geçerli tarama", lang=lang)
+                else pick("Aktuelle Prüfung", "Current scan", "Mevcut tarama", lang=lang)
             )
             clipped_dir = clip_text(masked_widget_text(folder_name), 40)
             if lang == "tr":
@@ -1518,16 +1518,16 @@ class MainWindow(QMainWindow):
             pick("Alle Dateien anzeigen", "Show all files", "Tüm dosyaları göster", lang=lang)
         )
         self._chip_bad.setToolTip(
-            pick("Nur Gefährliche", "Dangerous only", "Yalnızca tehlikeliler", lang=lang)
+            pick("Nur Gefährliche", "Dangerous only", "Sadece tehlikeliler", lang=lang)
         )
         self._chip_warn.setToolTip(
-            pick("Nur Verdächtige", "Suspicious only", "Yalnızca şüpheliler", lang=lang)
+            pick("Nur Verdächtige", "Suspicious only", "Sadece şüpheliler", lang=lang)
         )
         self._chip_unk.setToolTip(
-            pick("Nur Ungeprüfte", "Unchecked only", "Yalnızca denetlenmeyenler", lang=lang)
+            pick("Nur Ungeprüfte", "Unchecked only", "Sadece taranamayanlar", lang=lang)
         )
         self._chip_ok.set_count_text("OK")
-        self._chip_ok.setToolTip(pick("Nur Unauffällige", "Clean only", "Yalnızca temizler", lang=lang))
+        self._chip_ok.setToolTip(pick("Nur Unauffällige", "Clean only", "Sadece temizler", lang=lang))
 
         self._lbl_sum.setText(pick("Ordner-Übersicht", "Folder Overview", "Klasör Özeti", lang=lang))
         self.btn_add_folder.setText(pick("+ Ordner", "+ Folder", "+ Klasör", lang=lang))
@@ -1582,7 +1582,7 @@ class MainWindow(QMainWindow):
             )
         )
         if lang == "tr":
-            tab_titles = ("Özet", "Teknik Detaylar", "E-posta Metni", "Yetenekler")
+            tab_titles = ("Özet", "Teknik Ayrıntılar", "E-posta Metni", "Davranışlar")
         elif lang == "en":
             tab_titles = ("Overview", "Technical Details", "Email Body", "Capabilities")
         else:
@@ -1670,13 +1670,13 @@ class MainWindow(QMainWindow):
             pick(
                 "Nur-Statik-Modus aktiv (Defender & ClamAV für diese Sitzung pausiert).",
                 "Static-only mode active (Defender & ClamAV paused for this session).",
-                "Yalnızca statik mod etkin (Defender ve ClamAV bu oturum için duraklatıldı).",
+                "Sadece statik analiz etkin (Defender ve ClamAV bu oturumda duraklatıldı).",
             )
             if checked
             else pick(
                 "Nur-Statik-Modus beendet (Defender & ClamAV wieder aktiv).",
                 "Static-only mode disabled (Defender & ClamAV active again).",
-                "Yalnızca statik mod kapatıldı (Defender ve ClamAV yeniden etkin).",
+                "Sadece statik analiz kapatıldı (Defender ve ClamAV yeniden etkin).",
             )
         )
 

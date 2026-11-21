@@ -218,7 +218,7 @@ class MailPanel(QScrollArea):
             has_from=_has_from(security),
         )
 
-        self._layout.addWidget(_heading(pick("Absender", "Sender", "Gönderici")))
+        self._layout.addWidget(_heading(pick("Absender", "Sender", "Gönderen")))
         color = RISK_COLORS[score.color]
         mark = RISK_MARKS[score.color]
 
