@@ -13,7 +13,7 @@ from malaz.analysis.clamav import ClamAVScanner
 from malaz.analysis.windows_av import WindowsDefenderScanner
 from malaz.core.dispatcher import Dispatcher
 from malaz.core.url_reputation import url_hash
-from malaz.models import RiskLevel
+from malaz.models import AnalysisContext, RiskLevel
 from malaz.pipelines.pdf_pipeline import PdfPipeline, _decode_pdf_uri
 from malaz.reporting.html_report import generate_report
 
@@ -279,3 +279,120 @@ def test_green_advice_reaches_html_report(tmp_path: Path, isolated_blocklists: P
     html = generate_report([res])
     assert RiskLevel.GREEN.advice in html
     assert "bedenkenlos" not in html.lower()
+
+
+def test_integer_and_array_uri_do_not_oom_and_warn(tmp_path: Path, isolated_blocklists: Path):
+    """F1: /URI 500000000 must NEVER allocate 500 MB via bytes(int); reports PDF_PARSE_WARN."""
+    assert _decode_pdf_uri(500_000_000) is None
+    assert _decode_pdf_uri(True) is None
+    assert _decode_pdf_uri([104, 116, 116, 112]) is None
+
+    pdf = pikepdf.new()
+    annot = pdf.make_indirect(
+        pikepdf.Dictionary(
+            Type=pikepdf.Name.Annot,
+            Subtype=pikepdf.Name.Link,
+            Rect=[0, 0, 100, 20],
+            A=pikepdf.Dictionary(
+                Type=pikepdf.Name.Action,
+                S=pikepdf.Name.URI,
+                URI=500_000_000,
+            ),
+        )
+    )
+    pdf.pages.append(
+        pikepdf.Page(
+            pikepdf.Dictionary(
+                Type=pikepdf.Name.Page,
+                MediaBox=[0, 0, 612, 792],
+                Annots=pikepdf.Array([annot]),
+            )
+        )
+    )
+    buf = io.BytesIO()
+    pdf.save(buf, deterministic_id=True)
+    res = _scan_bytes(tmp_path, buf.getvalue(), "int_uri.pdf")
+    assert any(i.rule_id == "PDF_PARSE_WARN" for i in res.indicators)
+    assert res.risk_level >= RiskLevel.YELLOW
+
+
+def test_oversized_uri_is_capped_before_decode():
+    """F1/N3: oversized /URI strings are capped to MAX_STRING_CAPTURE cleanly."""
+    huge = ("https://example.org/" + "a" * (config.MAX_STRING_CAPTURE * 6)).encode("ascii")
+    decoded = _decode_pdf_uri(huge)
+    assert decoded is not None
+    assert len(decoded) == config.MAX_STRING_CAPTURE
+
+
+def test_utf16_with_bom_and_le_decoded():
+    """N3: UTF-16BE with BOM and UTF-16LE without BOM decode cleanly."""
+    with_bom = b"\xfe\xff" + "https://bom.example/a".encode("utf-16-be")
+    assert _decode_pdf_uri(with_bom) == "https://bom.example/a"
+    le_no_bom = "https://le.example/b".encode("utf-16-le")
+    assert _decode_pdf_uri(le_no_bom) == "https://le.example/b"
+
+
+def test_catalog_uri_base_dictionary_stays_green(tmp_path: Path, isolated_blocklists: Path):
+    """F2: ISO 32000-1 Catalog /URI << /Base (...) >> must NOT trigger PDF_PARSE_WARN."""
+    pdf = pikepdf.new()
+    pdf.Root[pikepdf.Name.URI] = pikepdf.Dictionary(
+        Base=pikepdf.String("https://www.bundesfinanzministerium.de/")
+    )
+    pdf.pages.append(
+        pikepdf.Page(pikepdf.Dictionary(Type=pikepdf.Name.Page, MediaBox=[0, 0, 612, 792]))
+    )
+    buf = io.BytesIO()
+    pdf.save(buf, deterministic_id=True)
+    res = _scan_bytes(tmp_path, buf.getvalue(), "catalog_uri.pdf")
+    assert not any(i.rule_id == "PDF_PARSE_WARN" for i in res.indicators)
+    assert any(i.rule_id == "PDF_LINK" for i in res.indicators)
+    assert res.risk_level == RiskLevel.GREEN
+    assert res.score == 0
+
+
+def test_userinfo_and_trailing_dot_cannot_bypass_blocklist(
+    tmp_path: Path, isolated_blocklists: Path
+):
+    """F3: https://w3.org:1@evil-phish.invalid/login and trailing dot must hit blocklist."""
+    (isolated_blocklists / "domains.txt").write_text("evil-phish.invalid\n", encoding="utf-8")
+    for uri in (
+        "https://w3.org:1@evil-phish.invalid/login",
+        "https://user@evil-phish.invalid/login",
+        "https://evil-phish.invalid./login",
+    ):
+        data = _make_uri_pdf([uri], object_stream=True)
+        res = _scan_bytes(tmp_path, data, "bypass.pdf")
+        assert any(i.rule_id == "BINARY_IOC_BLOCKED" for i in res.indicators), uri
+        assert res.risk_level == RiskLevel.YELLOW, uri
+
+
+def test_structure_scan_emits_parse_warn_on_walk_incomplete():
+    """N3: end-to-end check that walk.incomplete produces PDF_PARSE_WARN in _structure_scan."""
+
+    class _EmptyPdf:
+        def __init__(self) -> None:
+            self.objects: list = []
+            self.attachments: dict = {}
+
+        @property
+        def pages(self):
+            raise RuntimeError("corrupt pages")
+
+        @property
+        def Root(self):
+            raise RuntimeError("corrupt root")
+
+    pipe = PdfPipeline()
+    ctx = AnalysisContext(path=Path("broken.pdf"), data=b"%PDF-1.7\n%%EOF", size=15, detected_type="pdf")
+    indicators = pipe._structure_scan(ctx, _EmptyPdf())
+    assert any(
+        i.rule_id == "PDF_PARSE_WARN" and i.weight == 20 and "Seitenbaum/Root" in i.title
+        for i in indicators
+    )
+
+
+def test_uri_get_exception_emits_parse_warn():
+    """F4: exception on obj.get(/URI) appends None sentinel -> PDF_PARSE_WARN (never silent)."""
+    pipe = PdfPipeline()
+    indicators = pipe._link_indicators([None])
+    assert any(i.rule_id == "PDF_PARSE_WARN" and i.weight == 20 for i in indicators)

@@ -537,32 +537,52 @@ class _GraphWalk:
 def _decode_pdf_uri(raw: Any) -> str | None:
     """Decode a PDF ``/URI`` string safely (UTF-16BE/LE with or without BOM).
 
-    Never raises: malformed values return ``None`` so the caller can count
-    them as unreadable instead of silently dropping them. C0 control
-    characters (including ``\n`` and NUL) are stripped because ``defang_url``
-    does not remove them and they would inject lines in reports/GUI.
+    Only accepts ``str``, ``bytes``, ``bytearray``, or ``pikepdf.String`` —
+    never coerces PDF integers (``bytes(500_000_000)`` OOM DoS) or arrays.
+    Caps raw input BEFORE decoding/scanning to bound memory and CPU.
     """
+    max_chars = config.MAX_STRING_CAPTURE
+    max_raw_bytes = max_chars * 4  # generous bound for UTF-16 + BOM + stripped C0s
+
     if isinstance(raw, str):
-        decoded = raw
+        decoded = raw[:max_raw_bytes]
+    elif isinstance(raw, (bytes, bytearray)):
+        raw_bytes = bytes(raw[:max_raw_bytes])
+        decoded = ""
     else:
         try:
-            raw_bytes = bytes(raw)
+            import pikepdf
+
+            if not isinstance(raw, pikepdf.String):
+                return None
+            raw_bytes = bytes(raw)[:max_raw_bytes]
+            decoded = ""
         except Exception:
             return None
+
+    if not isinstance(raw, str):
         if not raw_bytes:
             return None
         if raw_bytes.startswith(b"\xfe\xff"):
-            decoded = raw_bytes[2:].decode("utf-16-be", errors="replace")
+            body = raw_bytes[2:]
+            if len(body) % 2:
+                body = body[:-1]
+            decoded = body.decode("utf-16-be", errors="replace")
         elif raw_bytes.startswith(b"\xff\xfe"):
-            decoded = raw_bytes[2:].decode("utf-16-le", errors="replace")
-        elif len(raw_bytes) >= 4 and len(raw_bytes) % 2 == 0:
-            half = len(raw_bytes) // 2
-            even_nul = sum(1 for b in raw_bytes[0::2] if b == 0) / half
-            odd_nul = sum(1 for b in raw_bytes[1::2] if b == 0) / half
+            body = raw_bytes[2:]
+            if len(body) % 2:
+                body = body[:-1]
+            decoded = body.decode("utf-16-le", errors="replace")
+        elif len(raw_bytes) >= 4:
+            even_len = len(raw_bytes) - (len(raw_bytes) % 2)
+            sample = raw_bytes[:even_len]
+            half = even_len // 2
+            even_nul = sample[0::2].count(0) / half
+            odd_nul = sample[1::2].count(0) / half
             if even_nul > 0.40 and odd_nul < 0.05:
-                decoded = raw_bytes.decode("utf-16-be", errors="replace")
+                decoded = sample.decode("utf-16-be", errors="replace")
             elif odd_nul > 0.40 and even_nul < 0.05:
-                decoded = raw_bytes.decode("utf-16-le", errors="replace")
+                decoded = sample.decode("utf-16-le", errors="replace")
             else:
                 decoded = raw_bytes.decode("latin-1")
         else:
@@ -571,8 +591,8 @@ def _decode_pdf_uri(raw: Any) -> str | None:
     cleaned = "".join(ch for ch in decoded if ord(ch) >= 0x20 and ord(ch) != 0x7F).strip()
     if not cleaned:
         return None
-    if len(cleaned) > config.MAX_STRING_CAPTURE:
-        cleaned = cleaned[: config.MAX_STRING_CAPTURE]
+    if len(cleaned) > max_chars:
+        cleaned = cleaned[:max_chars]
     return cleaned
 
 
@@ -1166,16 +1186,20 @@ class PdfPipeline(Pipeline):
     ) -> _GraphWalk:
         """Walk dictionaries/arrays reachable from the document action anchors.
 
-        Returns ``(js_values, launch_hits, truncated, visited)``:
+        Returns a :class:`_GraphWalk` dataclass:
 
         * ``js_values``: value of every ``/JS``/``/JavaScript`` key found
           (direct or indirect; stream-/string-/array-shaped);
+        * ``uri_values``: ``/URI`` targets (plus Catalog ``/URI << /Base ... >>``
+          base strings when present; ``None`` sentinel on read error);
         * ``launch_hits``: number of Launch actions (``/S /Launch`` or a
           ``/Launch`` key) in the graph;
         * ``truncated``: the depth/node bound was hit, i.e. the graph was NOT
           fully inspected;
         * ``visited``: object ids already walked, so an indirect payload that
-          is reachable twice is only collected/analysed once.
+          is reachable twice is only collected/analysed once;
+        * ``incomplete``: ``True`` when URIs were requested and neither the
+          page tree nor the document root could be walked.
 
         Starting points are the page tree and the document root; the root
         walk reaches /OpenAction, /AA, /Names (JavaScript name tree) and
@@ -1251,8 +1275,25 @@ class PdfPipeline(Pipeline):
                         with suppress(Exception):
                             js_values.append(obj.get(js_key))
             if collect_uris and pikepdf.Name.URI in keys:
-                with suppress(Exception):
-                    uri_values.append(obj.get(pikepdf.Name.URI))
+                try:
+                    uri_obj = obj.get(pikepdf.Name.URI)
+                except Exception:
+                    # Broken indirect /URI reference must never vanish silently:
+                    # append None sentinel so _link_indicators emits PDF_PARSE_WARN.
+                    uri_values.append(None)
+                else:
+                    if isinstance(uri_obj, pikepdf.Dictionary):
+                        # ISO 32000-1 §12.6.4.7: Document Catalog /URI << /Base (...) >>
+                        # is a standard dictionary, not a malformed URI string.
+                        if pikepdf.Name.Base in uri_obj:
+                            try:
+                                base_val = uri_obj.get(pikepdf.Name.Base)
+                            except Exception:
+                                uri_values.append(None)
+                            else:
+                                uri_values.append(base_val)
+                    else:
+                        uri_values.append(uri_obj)
             for key in keys:
                 try:
                     value = obj.get(key)
@@ -1314,7 +1355,7 @@ class PdfPipeline(Pipeline):
                 continue
             if cap > 0 and len(urls) >= cap:
                 capped = True
-                continue
+                break
             seen.add(key)
             urls.append(url)
 

@@ -165,12 +165,15 @@ _TRAILING_PUNCTUATION = ".,;:"
 
 
 def host_of_url(value: str) -> str:
-    """Der Host einer URL (ohne Schema, Port, Pfad, Query, Fragment)."""
+    """Der Host einer URL (ohne Schema, Userinfo, Port, Pfad, Query, Fragment)."""
     rest = value.split("://", 1)[1] if "://" in value else value
-    host = rest.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    authority = rest.split("/", 1)[0].split("\\", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    # Strip attacker-controlled userinfo (e.g. https://w3.org:1@evil.tld/login)
+    # BEFORE splitting on ':' so a fake namespace prefix cannot spoof the host.
+    host = authority.rsplit("@", 1)[-1]
     if host.startswith("["):  # IPv6-Literal: [::1]:8080
-        return host[1:].split("]", 1)[0].lower()
-    return host.split(":", 1)[0].strip().lower()
+        return host[1:].split("]", 1)[0].lower().rstrip(".")
+    return host.split(":", 1)[0].strip().lower().rstrip(".")
 
 
 def is_namespace_host(value: str) -> bool:
