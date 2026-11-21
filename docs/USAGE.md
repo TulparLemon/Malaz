@@ -25,6 +25,16 @@ All opt-in switches live behind the **Optionen…** button in the bottom status 
 
 ---
 
+### What Malaz Can and Cannot Verify (and the `.eml` Path)
+
+| Question | What Malaz Checks | Recommended Workflow |
+| :--- | :--- | :--- |
+| **"Does this file contain malware, scripts, or hidden actions?"** | Static pipelines (`PDF`, Office macros/DDE/XLM, archives, executables, images) + local Defender/ClamAV/YARA + structural `/URI` link extraction against local blocklists | Scan the file directly in GUI or `--cli` |
+| **"Is this email sender genuine or is it phishing?"** | Header authentication (`SPF`/`DKIM`/`DMARC`), display-name & `Reply-To` spoofing, defanged body links, and recursive attachment triage | **Save and scan the full `.eml` or `.msg` email**, not just the extracted PDF attachment |
+| **"Is this brand-new invoice domain trustworthy?"** | Local blocklists match known malicious URLs/domains/IPs offline; unknown domains remain `GREEN` with a visible defanged `PDF_LINK` note | Verify unexpected payment requests or links via a second channel (phone/known portal) |
+
+---
+
 ## 2. Command-Line Interface (`--cli` & Diagnostics)
 
 ```bat

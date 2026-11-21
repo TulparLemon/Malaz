@@ -91,7 +91,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 
 ## Scope & Operational Notes
 
-- **Static Triage, Not a Behavioral Sandbox:** Malaz inspects files statically without executing them and without cloud telemetry. Treat `GREEN` as *"no static or local-AV indicators found"* rather than a guarantee of safety, and escalate high-risk unknowns to an isolated VM.
+- **Static Triage, Not a Behavioral Sandbox:** Malaz inspects files statically without executing them and without cloud telemetry. Treat `GREEN` as *"no malicious code or known blocklist hits found"* — not as proof that the sender or invoice content is genuine (to check sender spoofing, scan the full `.eml`/`.msg` email; escalate high-risk unknowns to an isolated VM).
 - **Active Remediation by Windows Defender in Default Mode:** Standard GUI and `--cli` runs invoke `MpCmdRun.exe` with active remediation enabled (`config.AV_DISABLE_REMEDIATION = False`) so detected threats on end-user PCs are quarantined immediately (OS-level Real-Time Protection also acts independently). **To preserve samples untouched for forensic analysis**, use an isolated VM and pass `--cli --static-only` (or set `AV_DISABLE_REMEDIATION = True` in `src/malaz/config.py`).
 
 ---
@@ -108,7 +108,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 | [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) | Windows Authenticode signing policy, team roles, artifact scope (`Malaz.exe`), and privacy declaration (SignPath Foundation) |
 | [docs/RELEASING.md](docs/RELEASING.md) | Maintainer release pipeline: locked GitHub Actions tag builds, tag-tree parity gates, and OpenPGP signing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and security hardening summary starting at `v1.0.0` |
-| [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 30/30 mutations, and fuzzing |
+| [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 33/33 mutations, and fuzzing |
 
 ---
 

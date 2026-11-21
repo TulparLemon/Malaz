@@ -33,6 +33,7 @@ When a stage cannot inspect file bytes, Malaz never silently emits `GREEN`:
 | **Optional external tool absent (no bytes hidden)** | `AV_SKIPPED`, `CLAMAV_SKIPPED`, `CAPA_SKIPPED`, `DIE_SKIPPED`, `MAIL_REPUTATION_WARN`, `OFFICE_LIB_MISSING` (general) | `0` | Visible in Engine Strip, detail pane, and report |
 | **XLM macro parser missing on Excel macro formats** | `OFFICE_LIB_MISSING` (on `.xls`, `.xlsm`, `.xlsb`) | **`25`** | Forces at least **`YELLOW`** (`> SCORE_GREEN_MAX = 19`) |
 | **PDF structure / action-graph parse warning** | `PDF_PARSE_WARN` | **`20`** | Forces at least **`YELLOW`** |
+| **PDF structural link cap reached** | `PDF_LINK_CAPPED` | **`0`** | Marks result *incomplete* (`_INCOMPLETE_RULES` in `src/malaz/models.py`, GUI `Ungeprüft`, CLI exit code `3`) |
 | **Unchecked content due to missing parser, error, or size cap** | `PDF_LIB_MISSING`, `PDF_JS_PARSE_WARN`, `YARA_SCAN_ERROR`, `YARA_LOAD_ERROR`, `CLAMAV_SIZE_LIMIT`, `ARCH_7Z_MISSING` (`20`), `CORE_READ_TRUNCATED` (`20`), `CORE_LIMIT`, `CORE_ERROR` | **`20–25`** | Forces at least **`YELLOW`** + marks result *incomplete* (`_INCOMPLETE_RULES` in `src/malaz/models.py`, CLI exit code `3`) |
 
 ---

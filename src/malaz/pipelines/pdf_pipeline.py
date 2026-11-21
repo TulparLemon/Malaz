@@ -28,12 +28,24 @@ from __future__ import annotations
 import io
 import re
 from contextlib import suppress
+from dataclasses import dataclass, field
 from pathlib import PurePosixPath
+from typing import Any
 
 from .. import config
+from ..core.binary_iocs import (
+    BINARY_IOC_BLOCKED_TITLE,
+    BLOCKLIST_UNAVAILABLE_TITLE,
+    IOC_URL,
+    host_of_url,
+    is_namespace_host,
+    split_blocked_iocs,
+)
 from ..core.js_deobf import deobfuscate_js
 from ..core.risky_types import RISKY_SUFFIXES
+from ..core.url_view import defang_url
 from ..models import (
+    CAT_IOC,
     CAT_SCRIPT,
     CAT_STEGO,
     CAT_STRUCTURE,
@@ -510,6 +522,60 @@ def _count_obfuscated_names(data: bytes, keyword: bytes) -> int:
     return sum(1 for _ in pattern.finditer(data))
 
 
+@dataclass
+class _GraphWalk:
+    """Structured result of :meth:`PdfPipeline._walk_action_graph`."""
+
+    js_values: list = field(default_factory=list)
+    uri_values: list = field(default_factory=list)
+    launch_hits: int = 0
+    truncated: bool = False
+    visited: set[tuple[int, int]] = field(default_factory=set)
+    incomplete: bool = False
+
+
+def _decode_pdf_uri(raw: Any) -> str | None:
+    """Decode a PDF ``/URI`` string safely (UTF-16BE/LE with or without BOM).
+
+    Never raises: malformed values return ``None`` so the caller can count
+    them as unreadable instead of silently dropping them. C0 control
+    characters (including ``\n`` and NUL) are stripped because ``defang_url``
+    does not remove them and they would inject lines in reports/GUI.
+    """
+    if isinstance(raw, str):
+        decoded = raw
+    else:
+        try:
+            raw_bytes = bytes(raw)
+        except Exception:
+            return None
+        if not raw_bytes:
+            return None
+        if raw_bytes.startswith(b"\xfe\xff"):
+            decoded = raw_bytes[2:].decode("utf-16-be", errors="replace")
+        elif raw_bytes.startswith(b"\xff\xfe"):
+            decoded = raw_bytes[2:].decode("utf-16-le", errors="replace")
+        elif len(raw_bytes) >= 4 and len(raw_bytes) % 2 == 0:
+            half = len(raw_bytes) // 2
+            even_nul = sum(1 for b in raw_bytes[0::2] if b == 0) / half
+            odd_nul = sum(1 for b in raw_bytes[1::2] if b == 0) / half
+            if even_nul > 0.40 and odd_nul < 0.05:
+                decoded = raw_bytes.decode("utf-16-be", errors="replace")
+            elif odd_nul > 0.40 and even_nul < 0.05:
+                decoded = raw_bytes.decode("utf-16-le", errors="replace")
+            else:
+                decoded = raw_bytes.decode("latin-1")
+        else:
+            decoded = raw_bytes.decode("latin-1")
+
+    cleaned = "".join(ch for ch in decoded if ord(ch) >= 0x20 and ord(ch) != 0x7F).strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > config.MAX_STRING_CAPTURE:
+        cleaned = cleaned[: config.MAX_STRING_CAPTURE]
+    return cleaned
+
+
 class PdfPipeline(Pipeline):
     name = "pdf"
 
@@ -878,9 +944,9 @@ class PdfPipeline(Pipeline):
             # The rule id is deliberately PDF_KW_Launch: scoring keeps the
             # HIGHEST value per rule id, so an action that the raw bytes also
             # contain is still counted exactly once.
-            _js_values, launch_hits, graph_truncated, _visited = (
-                self._walk_action_graph(pdf, collect_js=False)
-            )
+            walk = self._walk_action_graph(pdf, collect_js=False, collect_uris=True)
+            launch_hits = walk.launch_hits
+            graph_truncated = walk.truncated
             if launch_hits:
                 out.append(
                     self._indicator(
@@ -926,6 +992,23 @@ class PdfPipeline(Pipeline):
                         weight=20,
                     )
                 )
+            if walk.incomplete:
+                out.append(
+                    self._indicator(
+                        "PDF_PARSE_WARN",
+                        "PDF-Struktur-Scan unvollständig — Seitenbaum/Root nicht lesbar",
+                        detail=(
+                            "Weder Seitenbaum noch Dokument-Root ließen sich "
+                            "durchlaufen; Links (/URI) und Aktionen wurden NICHT "
+                            "geprüft. Das Ergebnis ist nicht als 'sauber' zu werten."
+                        ),
+                        severity=Severity.MEDIUM,
+                        category=CAT_STRUCTURE,
+                        weight=20,
+                    )
+                )
+            if walk.uri_values:
+                out.extend(self._link_indicators(walk.uri_values))
         except Exception as exc:
             out.append(
                 self._indicator(
@@ -1078,7 +1161,9 @@ class PdfPipeline(Pipeline):
     _GRAPH_MAX_DEPTH = 16
     _GRAPH_MAX_NODES = 200_000
 
-    def _walk_action_graph(self, pdf, *, collect_js: bool):
+    def _walk_action_graph(
+        self, pdf, *, collect_js: bool, collect_uris: bool = False
+    ) -> _GraphWalk:
         """Walk dictionaries/arrays reachable from the document action anchors.
 
         Returns ``(js_values, launch_hits, truncated, visited)``:
@@ -1101,6 +1186,7 @@ class PdfPipeline(Pipeline):
         import pikepdf
 
         js_values: list = []
+        uri_values: list = []
         visited: set[tuple[int, int]] = set()
         state = {"nodes": 0, "launch": 0, "truncated": False}
 
@@ -1164,6 +1250,9 @@ class PdfPipeline(Pipeline):
                     if js_key in keys:
                         with suppress(Exception):
                             js_values.append(obj.get(js_key))
+            if collect_uris and pikepdf.Name.URI in keys:
+                with suppress(Exception):
+                    uri_values.append(obj.get(pikepdf.Name.URI))
             for key in keys:
                 try:
                     value = obj.get(key)
@@ -1195,7 +1284,131 @@ class PdfPipeline(Pipeline):
                 root = None
             if root is not None:
                 _walk(root, 0)
-        return js_values, state["launch"], state["truncated"], visited
+        graph_incomplete = bool(collect_uris and not visited and not state["truncated"])
+        return _GraphWalk(
+            js_values=js_values,
+            uri_values=uri_values,
+            launch_hits=state["launch"],
+            truncated=bool(state["truncated"]),
+            visited=visited,
+            incomplete=graph_incomplete,
+        )
+
+    def _link_indicators(self, uri_values: list) -> list[Indicator]:
+        """Decode structural PDF ``/URI`` values and check them against local blocklists."""
+        cap = config.BINARY_IOC_MAX_HITS
+        urls: list[str] = []
+        seen: set[str] = set()
+        capped = False
+        unreadable = 0
+
+        for raw in uri_values:
+            url = _decode_pdf_uri(raw)
+            if url is None:
+                unreadable += 1
+                continue
+            if is_namespace_host(url):
+                continue
+            key = url.lower()
+            if key in seen:
+                continue
+            if cap > 0 and len(urls) >= cap:
+                capped = True
+                continue
+            seen.add(key)
+            urls.append(url)
+
+        out: list[Indicator] = []
+        if unreadable:
+            out.append(
+                self._indicator(
+                    "PDF_PARSE_WARN",
+                    f"Nicht lesbare PDF-Links (/URI) ({unreadable})",
+                    detail=(
+                        f"{unreadable} /URI-Eintrag/-Einträge im PDF ließen sich "
+                        "nicht dekodieren und wurden daher NICHT geprüft."
+                    ),
+                    severity=Severity.MEDIUM,
+                    category=CAT_STRUCTURE,
+                    weight=20,
+                )
+            )
+        if capped:
+            out.append(
+                self._indicator(
+                    "PDF_LINK_CAPPED",
+                    "PDF-Link-Prüfung durch Trefferdeckel begrenzt",
+                    detail=(
+                        f"Das PDF enthält mehr als {cap} eindeutige Links (/URI). "
+                        "Weitere Links wurden nicht geprüft — das Ergebnis ist "
+                        "daher nicht vollständig."
+                    ),
+                    severity=Severity.INFO,
+                    category=CAT_IOC,
+                    weight=0,
+                )
+            )
+        if not urls:
+            return out
+
+        hits = [(IOC_URL, url) for url in urls]
+        blocked, plain, unavailable = split_blocked_iocs(hits)
+
+        for rule_id, detail in unavailable:
+            out.append(
+                self._indicator(
+                    rule_id,
+                    BLOCKLIST_UNAVAILABLE_TITLE,
+                    detail=detail + " Das Ergebnis ist an dieser Stelle unvollständig.",
+                    severity=Severity.INFO,
+                    category=CAT_IOC,
+                    weight=0,
+                )
+            )
+
+        if blocked:
+            shown = ", ".join(
+                f"{defang_url(url)} ({host_of_url(url) or 'Host unbekannt'})"
+                for _kind, url in blocked[:10]
+            )
+            extra = f" (+{len(blocked) - 10} weitere)" if len(blocked) > 10 else ""
+            out.append(
+                self._indicator(
+                    "BINARY_IOC_BLOCKED",
+                    f"{BINARY_IOC_BLOCKED_TITLE} ({len(blocked)})",
+                    detail=(
+                        "Link in der PDF-Struktur (/Annots -> /A -> /URI) steht "
+                        f"auf der lokalen Blocklist: {shown}{extra}"
+                    ),
+                    severity=Severity.HIGH,
+                    category=CAT_IOC,
+                    weight=30,
+                )
+            )
+
+        if plain:
+            shown = ", ".join(defang_url(url) for _kind, url in plain[:10])
+            extra = f" (+{len(plain) - 10} weitere)" if len(plain) > 10 else ""
+            qualifier = (
+                "Ein Teil der lokalen Blocklisten war nicht lesbar; dieser "
+                "Hinweis ist daher nicht vollständig."
+                if unavailable
+                else "Kein Eintrag auf einer lokalen Blocklist — Hinweis ohne Einfluss auf die Bewertung."
+            )
+            out.append(
+                self._indicator(
+                    "PDF_LINK",
+                    f"Links im PDF ({len(plain)})",
+                    detail=(
+                        f"Strukturelle Links in der PDF-Struktur (/URI): {shown}{extra}. "
+                        f"{qualifier}"
+                    ),
+                    severity=Severity.INFO,
+                    category=CAT_IOC,
+                    weight=0,
+                )
+            )
+        return out
 
     # -- stage 2b: embedded JavaScript ------------------------------------- #
 
@@ -1222,9 +1435,9 @@ class PdfPipeline(Pipeline):
         chunks: list[str] = []
         warnings: list[str] = []
         total_ref = [0]
-        js_values, _launch_hits, _truncated, visited = self._walk_action_graph(
-            pdf, collect_js=True
-        )
+        walk = self._walk_action_graph(pdf, collect_js=True)
+        js_values = walk.js_values
+        visited = walk.visited
         for value in js_values:
             if total_ref[0] >= _MAX_STREAM_BYTES:
                 break

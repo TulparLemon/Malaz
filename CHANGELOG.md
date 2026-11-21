@@ -3,6 +3,15 @@
 All notable changes to **Malaz** are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Security-relevant changes are marked with **SECURITY**.
 
+## [Unreleased]
+
+### Added
+- **PDF structural link analysis (`PDF-001`):** Extracts `/URI` targets structurally via the bounded action-graph walk (including compressed `/ObjStm` streams and UTF-16BE/LE strings without BOM), strips C0 control characters, filters format namespaces, and checks links offline against local URL/domain/IP blocklists (`PDF_LINK`, `BINARY_IOC_BLOCKED`, `PDF_LINK_CAPPED`).
+- Documented the `.eml`/`.msg` workflow for sender/phishing verification in `docs/USAGE.md`.
+
+### Changed
+- Tightened `RiskLevel.GREEN.advice` so clean static results never promise safety ("bedenkenlos") and explicitly remind users that sender authenticity and business content still require verification.
+
 ## [1.1.0] - 2026-11-18
 
 ### Changed

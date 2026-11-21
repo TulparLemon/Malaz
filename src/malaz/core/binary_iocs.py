@@ -60,6 +60,11 @@ IOC_DOMAIN = "domain"
 # ``split_blocked_iocs``-Treffern: der Marker ist keine Adresse.
 IOC_CAP = "capped"
 
+# Shared finding titles used by both generic_pipeline and pdf_pipeline
+# (single source of truth for check_duplicate_logic.py).
+BINARY_IOC_BLOCKED_TITLE = "Adresse im Binärinhalt steht auf der Blocklist"
+BLOCKLIST_UNAVAILABLE_TITLE = "Lokale Blockliste nicht verfügbar"
+
 # TLD-Auswahl für Domain-Treffer — bewusst DIESELBE Liste wie im Textpfad
 # (pipelines/generic_pipeline.py baut sein Muster daraus auf). Zwei getrennte
 # Listen liefen auseinander, und dieselbe Adresse bekäme je nach erkanntem
@@ -159,7 +164,7 @@ _DOMAIN_RE = re.compile(
 _TRAILING_PUNCTUATION = ".,;:"
 
 
-def _host_of_url(value: str) -> str:
+def host_of_url(value: str) -> str:
     """Der Host einer URL (ohne Schema, Port, Pfad, Query, Fragment)."""
     rest = value.split("://", 1)[1] if "://" in value else value
     host = rest.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
@@ -168,12 +173,17 @@ def _host_of_url(value: str) -> str:
     return host.split(":", 1)[0].strip().lower()
 
 
-def _is_namespace(value: str) -> bool:
+def is_namespace_host(value: str) -> bool:
     """True für Format-Namespaces und Herstellerhosts (siehe NAMESPACE_HOSTS)."""
-    host = _host_of_url(value) if "://" in value else value.strip(".").lower()
+    host = host_of_url(value) if "://" in value else value.strip(".").lower()
     return host in NAMESPACE_HOSTS or any(
         host.endswith("." + listed) for listed in NAMESPACE_HOSTS
     )
+
+
+# Backward-compatible private aliases for internal callers/tests.
+_host_of_url = host_of_url
+_is_namespace = is_namespace_host
 
 
 def _valid_ipv6(candidate: bytes) -> str | None:
@@ -229,9 +239,9 @@ def extract_binary_iocs(data: bytes) -> list[tuple[str, str]]:
 
     for match in _URL_RE.finditer(scan):
         value = match.group().decode("ascii", "replace").rstrip(_TRAILING_PUNCTUATION)
-        if _is_namespace(value):
+        if is_namespace_host(value):
             continue
-        url_hosts.add(_host_of_url(value))
+        url_hosts.add(host_of_url(value))
         add(IOC_URL, value)
 
     for match in _IPV4_RE.finditer(scan):
@@ -244,7 +254,7 @@ def extract_binary_iocs(data: bytes) -> list[tuple[str, str]]:
 
     for match in _DOMAIN_RE.finditer(scan):
         value = match.group().decode("ascii", "replace")
-        if value.lower() in url_hosts or _is_namespace(value):
+        if value.lower() in url_hosts or is_namespace_host(value):
             continue
         add(IOC_DOMAIN, value)
 
@@ -280,7 +290,7 @@ def _is_blocked(
         # Ein Link ist auch dann ein Treffer, wenn nur sein HOST auf einer
         # Liste steht: die Domain-Liste führt die Absender-/C2-Hosts, und eine
         # gemeldete URL trägt genau diesen Host.
-        return _host_is_blocked(_host_of_url(value), domains, nets)
+        return _host_is_blocked(host_of_url(value), domains, nets)
     if kind == IOC_DOMAIN:
         return _host_is_blocked(value, domains, nets)
     if kind in (IOC_IPV4, IOC_IPV6):
