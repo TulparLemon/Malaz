@@ -1354,6 +1354,7 @@ class PdfPipeline(Pipeline):
         urls: list[str] = []
         seen: set[str] = set()
         capped = False
+        raw_capped = False
         unreadable = 0
 
         # Hard ceiling on raw /URI decodings even when all entries are direct
@@ -1361,7 +1362,7 @@ class PdfPipeline(Pipeline):
         max_raw_entries = max(cap * 20, 4_000)
         for idx, raw in enumerate(uri_values):
             if idx >= max_raw_entries:
-                capped = True
+                raw_capped = True
                 break
             url = _decode_pdf_uri(raw)
             if url is None:
@@ -1393,15 +1394,19 @@ class PdfPipeline(Pipeline):
                     weight=20,
                 )
             )
-        if capped:
+        if capped or raw_capped:
+            cap_reason = (
+                f"Das PDF enthält mehr als {max_raw_entries} rohe /URI-Einträge."
+                if raw_capped and not capped
+                else f"Das PDF enthält mehr als {cap} eindeutige Links (/URI)."
+            )
             out.append(
                 self._indicator(
                     "PDF_LINK_CAPPED",
                     "PDF-Link-Prüfung durch Trefferdeckel begrenzt",
                     detail=(
-                        f"Das PDF enthält mehr als {cap} eindeutige Links (/URI). "
-                        "Weitere Links wurden nicht geprüft — das Ergebnis ist "
-                        "daher nicht vollständig."
+                        f"{cap_reason} Weitere Links wurden nicht geprüft — "
+                        "das Ergebnis ist daher nicht vollständig."
                     ),
                     severity=Severity.INFO,
                     category=CAT_IOC,

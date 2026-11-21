@@ -457,3 +457,37 @@ def test_walker_appends_none_sentinel_on_uri_get_error(monkeypatch: pytest.Monke
     walk = pipe._walk_action_graph(_StubPdf(), collect_js=False, collect_uris=True)
     assert None in walk.uri_values
     assert any(i.rule_id == "PDF_PARSE_WARN" for i in pipe._link_indicators(walk.uri_values))
+
+
+def test_schemeless_query_and_protocol_relative_cannot_bypass(
+    tmp_path: Path, isolated_blocklists: Path
+):
+    """M1 (r3): schemeless ?r=http://w3.org, //host, and javascript:/mailto: cannot bypass."""
+    (isolated_blocklists / "domains.txt").write_text("evil-phish.invalid\n", encoding="utf-8")
+    for uri in (
+        "www.evil-phish.invalid/login?r=http://w3.org",
+        "www.evil-phish.invalid/login?r=http://benign.example",
+        "//evil-phish.invalid/login",
+    ):
+        data = _make_uri_pdf([uri], object_stream=True)
+        res = _scan_bytes(tmp_path, data, "r3_bypass.pdf")
+        assert any(i.rule_id == "BINARY_IOC_BLOCKED" for i in res.indicators), uri
+        assert res.risk_level == RiskLevel.YELLOW, uri
+
+    for non_ns in (
+        "javascript:void(0)//http://w3.org",
+        "mailto:user@w3.org",
+    ):
+        data = _make_uri_pdf([non_ns], object_stream=True)
+        res = _scan_bytes(tmp_path, data, "r3_non_ns.pdf")
+        assert any(i.rule_id == "PDF_LINK" for i in res.indicators), non_ns
+
+
+def test_raw_uri_entry_cap_emits_pdf_link_capped(isolated_blocklists: Path):
+    """N1 (r3): >max_raw_entries direct duplicates emit PDF_LINK_CAPPED with raw-cap wording."""
+    pipe = PdfPipeline()
+    raw_entries = ["https://dup.example/a"] * 4_005
+    indicators = pipe._link_indicators(raw_entries)
+    capped = [i for i in indicators if i.rule_id == "PDF_LINK_CAPPED"]
+    assert len(capped) == 1
+    assert "rohe /URI-Einträge" in capped[0].detail

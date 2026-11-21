@@ -164,9 +164,20 @@ _DOMAIN_RE = re.compile(
 _TRAILING_PUNCTUATION = ".,;:"
 
 
+# Bounded RFC-3986 leading scheme prefix (only matches at start of string so
+# '://'' inside a query parameter cannot spoof the host or namespace filter).
+_LEADING_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]{0,31}://")
+
+
 def host_of_url(value: str) -> str:
     """Der Host einer URL (ohne Schema, Userinfo, Port, Pfad, Query, Fragment)."""
-    rest = value.split("://", 1)[1] if "://" in value else value
+    m = _LEADING_SCHEME_RE.match(value)
+    if m:
+        rest = value[m.end() :]
+    elif value.startswith("//"):
+        rest = value[2:]
+    else:
+        rest = value
     authority = rest.split("/", 1)[0].split("\\", 1)[0].split("?", 1)[0].split("#", 1)[0]
     # Strip attacker-controlled userinfo (e.g. https://w3.org:1@evil.tld/login)
     # BEFORE splitting on ':' so a fake namespace prefix cannot spoof the host.
@@ -178,7 +189,14 @@ def host_of_url(value: str) -> str:
 
 def is_namespace_host(value: str) -> bool:
     """True für Format-Namespaces und Herstellerhosts (siehe NAMESPACE_HOSTS)."""
-    host = host_of_url(value) if "://" in value else value.strip(".").lower()
+    if _LEADING_SCHEME_RE.match(value) or value.startswith("//"):
+        host = host_of_url(value)
+    elif ":" in value.split("/", 1)[0]:
+        # Non-hierarchical schemes such as javascript: or mailto: are never
+        # benign XML/document format namespaces.
+        return False
+    else:
+        host = host_of_url(value)
     return host in NAMESPACE_HOSTS or any(
         host.endswith("." + listed) for listed in NAMESPACE_HOSTS
     )
