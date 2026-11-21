@@ -59,3 +59,34 @@ def apply_saved_opt_ins() -> None:
     s = app_settings()
     config.CAPA_ENABLED = s.value("capa_enabled", config.CAPA_ENABLED, bool)
     config.DNS_AUTH_ENABLED = s.value("dns_auth_enabled", config.DNS_AUTH_ENABLED, bool)
+
+
+_LANGUAGE_KEY = "ui/language"
+_ACTIVE_LANG_PREF: str | None = None
+
+
+def saved_language_preference() -> str:
+    """Return persisted UI language preference (``system | de | en``)."""
+    val = str(app_settings().value(_LANGUAGE_KEY, "system", str) or "system").strip().lower()
+    return val if val in ("system", "de", "en", "tr") else "system"
+
+
+def active_language_preference() -> str:
+    """Return active session language preference (ephemeral CLI override or saved)."""
+    if _ACTIVE_LANG_PREF in ("system", "de", "en", "tr"):
+        return _ACTIVE_LANG_PREF
+    return saved_language_preference()
+
+
+def apply_language(pref: str, *, persist: bool = True) -> str:
+    """Apply ``system | de | en`` language preference and optionally persist it."""
+    from ..i18n import resolve_language, set_language
+
+    global _ACTIVE_LANG_PREF
+    clean = (pref or "system").strip().lower()
+    if clean not in ("system", "de", "en", "tr"):
+        clean = "system"
+    _ACTIVE_LANG_PREF = clean
+    if persist:
+        app_settings().setValue(_LANGUAGE_KEY, clean)
+    return set_language(resolve_language(clean))

@@ -52,7 +52,8 @@ from PySide6.QtWidgets import (
 from .. import config
 from ..core.feed_import import refresh_feed
 from ..core.feeds import FEEDS, Feed, FeedError
-from .display import clamp_dialog_to_screen
+from ..i18n import get_language, pick, t
+from .display import clamp_dialog_to_screen, show_message_box
 from .theme import FONT_SUBTITLE
 
 
@@ -67,7 +68,7 @@ class FeedsDialog(QDialog):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Datenbanken nachladen")
+        self.setWindowTitle(t("feeds.title"))
         clamp_dialog_to_screen(self, preferred_w=760, preferred_h=560)
 
         outer = QVBoxLayout(self)
@@ -147,7 +148,7 @@ class FeedsDialog(QDialog):
         status = QLabel("")
         status.setObjectName("panelKey")
         status.setWordWrap(True)
-        knopf = QPushButton("Herunterladen")
+        knopf = QPushButton(pick("Herunterladen", "Download", "İndir"))
         knopf.clicked.connect(lambda _=False, f=feed, s=status, b=knopf: self._laden(f, s, b))
         zeile.addWidget(status, 1)
         zeile.addWidget(knopf)
@@ -191,7 +192,7 @@ class FeedsDialog(QDialog):
         zweiter Klick nicht zwei Downloads startet.
         """
         knopf.setEnabled(False)
-        status.setText("Laedt …")
+        status.setText(pick("Lädt …", "Downloading …", "İndiriliyor …"))
         self.repaint()
         # Ein Aufruf fuer beide Schritte — dieselbe Funktion nutzt die
         # automatische Auffrischung beim Start, damit die Reihenfolge
@@ -216,10 +217,21 @@ class FeedsDialog(QDialog):
         if still:
             return
         hinweis = f"\n\n{ergebnis.note}" if ergebnis.note else ""
-        QMessageBox.information(
+        lang = get_language()
+        show_message_box(
             self,
-            "Uebernommen",
-            f"{feed.title}\n\n{ergebnis.summary}\n"
-            f"Ablage: {ergebnis.target}{hinweis}\n\n"
-            "Die Eintraege werden beim naechsten Scan mitgelesen.",
+            pick("Übernommen", "Imported", "İçe aktarıldı", lang=lang),
+            pick(
+                f"{feed.title}\n\n{ergebnis.summary}\n"
+                f"Ablage: {ergebnis.target}{hinweis}\n\n"
+                "Die Einträge werden beim nächsten Scan mitgelesen.",
+                f"{feed.title}\n\n{ergebnis.summary}\n"
+                f"Saved to: {ergebnis.target}{hinweis}\n\n"
+                "Entries will be used on the next scan.",
+                f"{feed.title}\n\n{ergebnis.summary}\n"
+                f"Kayıt yeri: {ergebnis.target}{hinweis}\n\n"
+                "Yeni kayıtlar bir sonraki taramada otomatik olarak kullanılacaktır.",
+                lang=lang,
+            ),
+            icon=QMessageBox.Icon.Information,
         )

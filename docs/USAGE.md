@@ -47,6 +47,11 @@ python -m malaz --cli C:\DropFolder C:\Samples\archive.zip --report batch.html
 :: Purely static scan (disables Windows Defender & ClamAV; preserves forensic samples)
 python -m malaz --cli C:\Samples\suspect.docm --static-only --report static.html
 
+:: Choose report/UI language explicitly (system, de, en, tr)
+python -m malaz --cli C:\Samples\invoice.pdf --lang en --report report_en.html
+python -m malaz --cli C:\Samples\invoice.pdf --lang tr --report report_tr.pdf
+python -m malaz --lang tr
+
 :: Show local engine, Defender, and privilege status (offline)
 python -m malaz --status
 

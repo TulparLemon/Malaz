@@ -14,6 +14,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout
 
 from .. import config
+from ..i18n import get_language, pick, t
 from ..models import ScanResult
 from ..reporting.html_report import save_report
 from .display import clamp_dialog_to_screen
@@ -526,12 +527,21 @@ class _ExportJob(QRunnable):
     minutes — doing it in the GUI thread froze the window ("Not Responding").
     """
 
-    def __init__(self, results: list[ScanResult], path: str, as_pdf: bool, signals: _ExportSignals):
+    def __init__(
+        self,
+        results: list[ScanResult],
+        path: str,
+        as_pdf: bool,
+        signals: _ExportSignals,
+        *,
+        lang: str | None = None,
+    ):
         super().__init__()
         self.results = results
         self.path = path
         self.as_pdf = as_pdf
         self.signals = signals
+        self.lang = lang or get_language()
         self.setAutoDelete(True)
 
     def run(self) -> None:  # pool thread
@@ -540,7 +550,7 @@ class _ExportJob(QRunnable):
             if self.as_pdf or low.endswith(".pdf"):
                 from ..reporting.pdf_report import save_pdf_report
 
-                save_pdf_report(self.results, self.path)
+                save_pdf_report(self.results, self.path, lang=self.lang)
             elif low.endswith(".csv"):
                 from ..reporting.export import write_csv
 
@@ -550,7 +560,7 @@ class _ExportJob(QRunnable):
 
                 write_json(self.results, self.path)
             else:
-                save_report(self.results, self.path)
+                save_report(self.results, self.path, lang=self.lang)
         except Exception as exc:
             with suppress(RuntimeError):
                 self.signals.failed.emit(f"{type(exc).__name__}: {exc}")
@@ -619,9 +629,9 @@ class _StreamUpdateDialog(QDialog):
         self.output.setReadOnly(True)
         layout.addWidget(self.output)
         buttons = QHBoxLayout()
-        self.btn_start = QPushButton("Jetzt aktualisieren")
+        self.btn_start = QPushButton(pick("Jetzt aktualisieren", "Update now", "Şimdi güncelle"))
         self.btn_start.clicked.connect(self._start)
-        btn_close = QPushButton("Schließen")
+        btn_close = QPushButton(t("btn.close"))
         btn_close.clicked.connect(self.close)
         buttons.addStretch(1)
         buttons.addWidget(self.btn_start)

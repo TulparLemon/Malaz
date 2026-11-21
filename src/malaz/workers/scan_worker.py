@@ -23,6 +23,7 @@ from PySide6.QtCore import QObject, QRunnable, Signal
 from .. import config
 from ..core.dispatcher import Dispatcher
 from ..core.scoring import compute_score
+from ..i18n import pick, t
 from ..models import CAT_STRUCTURE, Indicator, ScanResult, Severity
 
 
@@ -62,7 +63,7 @@ class ScanWorker(QRunnable):
         if self._cancelled.is_set():
             return None  # queued but not started yet — skip quietly
         name = Path(path).name
-        self.signals.status.emit(f"Analysiere: {name}")
+        self.signals.status.emit(pick(f"Analysiere: {name}", f"Scanning: {name}", f"Taranıyor: {name}"))
         return self.dispatcher.scan_path(path)
 
     def run(self) -> None:  # executed on a pool thread
@@ -71,7 +72,7 @@ class ScanWorker(QRunnable):
             self.signals.finished.emit(False)
             return
         if self._cancelled.is_set():
-            self.signals.status.emit("Abgebrochen")
+            self.signals.status.emit(t("state.cancelled"))
             self.signals.finished.emit(True)
             return
 
@@ -129,5 +130,5 @@ class ScanWorker(QRunnable):
                     self.signals.result.emit(result)
         finally:
             if self._cancelled.is_set():
-                self.signals.status.emit("Abgebrochen")
+                self.signals.status.emit(t("state.cancelled"))
             self.signals.finished.emit(self._cancelled.is_set())

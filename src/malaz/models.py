@@ -22,21 +22,16 @@ class Severity(enum.IntEnum):
     HIGH = 3
     CRITICAL = 4
 
+    def label_for(self, lang: str | None = None) -> str:
+        """Localized display label for this severity level."""
+        from .i18n import localized_severity_label
+
+        return localized_severity_label(self, lang=lang)
+
     @property
     def label(self) -> str:
-        """Deutsches Wort fuer die Anzeige.
-
-        Vorher ``self.name.capitalize()`` — also "High", "Critical" in einer
-        sonst durchgehend deutschen Oberflaeche, im Bericht und in der
-        CSV-Ausgabe. Fuenf Anzeigestellen zeigten das englische Wort.
-        """
-        return {
-            Severity.INFO: "Hinweis",
-            Severity.LOW: "Gering",
-            Severity.MEDIUM: "Mittel",
-            Severity.HIGH: "Hoch",
-            Severity.CRITICAL: "Kritisch",
-        }[self]
+        """Localized word for display (defaults to active language; ``de`` at import)."""
+        return self.label_for()
 
 
 class RiskLevel(enum.IntEnum):
@@ -46,41 +41,34 @@ class RiskLevel(enum.IntEnum):
     YELLOW = 1  # 20..49
     RED = 2     # 50..100
 
+    def label_for(self, lang: str | None = None) -> str:
+        from .i18n import localized_risk_label
+
+        return localized_risk_label(self, lang=lang)
+
+    def short_for(self, lang: str | None = None) -> str:
+        from .i18n import localized_risk_short
+
+        return localized_risk_short(self, lang=lang)
+
+    def advice_for(self, lang: str | None = None) -> str:
+        from .i18n import localized_risk_advice
+
+        return localized_risk_advice(self, lang=lang)
+
     @property
     def label(self) -> str:
-        return {
-            RiskLevel.GREEN: "Grün (unauffällig)",
-            RiskLevel.YELLOW: "Gelb (prüfen)",
-            RiskLevel.RED: "Rot (blockieren)",
-        }[self]
+        return self.label_for()
 
     @property
     def short(self) -> str:
         """One-word verdict for laymen (used in GUI table and report badges)."""
-        return {
-            RiskLevel.GREEN: "Unauffällig",
-            RiskLevel.YELLOW: "Verdächtig",
-            RiskLevel.RED: "Gefährlich",
-        }[self]
+        return self.short_for()
 
     @property
     def advice(self) -> str:
         """Plain-language recommendation what the user should do."""
-        return {
-            RiskLevel.GREEN: (
-                "Keine technischen Auffälligkeiten oder bekannter Schadcode gefunden. "
-                "Das prüft jedoch nicht, ob Absender oder Inhalt echt sind — "
-                "bei unerwarteten Dateien kurz rückfragen."
-            ),
-            RiskLevel.YELLOW: (
-                "Die Datei zeigt Auffälligkeiten. Öffnen Sie sie nur, wenn Sie "
-                "dem Absender wirklich vertrauen – und fragen Sie im Zweifel nach."
-            ),
-            RiskLevel.RED: (
-                "Diese Datei ist wahrscheinlich gefährlich. Nicht öffnen, nicht "
-                "weiterleiten – am besten löschen und Ihre IT-Abteilung informieren."
-            ),
-        }[self]
+        return self.advice_for()
 
     @property
     def color(self) -> str:
@@ -389,15 +377,30 @@ class ScanResult:
         """Ist an dieser Datei etwas NICHT geprüft worden?"""
         return bool(self.incomplete_stages)
 
-    def incompleteness_note(self) -> str:
+    def incompleteness_note(self, lang: str | None = None) -> str:
         """Ein Satz für die Anzeige — oder leer, wenn alles lief."""
         stufen = self.incomplete_stages
         if not stufen:
             return ""
+        from .i18n import get_language, localized_indicator_title, resolve_language, t
+
+        eff = resolve_language(lang) if lang is not None else get_language()
+        if eff in ("en", "tr"):
+            names = " | ".join(
+                localized_indicator_title(i, lang=eff) for i in stufen
+            )
+            return t(
+                "report.incomplete_note",
+                lang=eff,
+                count=len(stufen),
+                names=names,
+            )
         namen = " | ".join(i.title for i in stufen)
-        return (
-            f"{len(stufen)} Stufe(n) nicht gelaufen: {namen} — "
-            "das Ergebnis ist deshalb UNVOLLSTÄNDIG, nicht sauber."
+        return t(
+            "report.incomplete_note",
+            lang="de",
+            count=len(stufen),
+            names=namen,
         )
 
 
@@ -515,16 +518,30 @@ TYPE_LABELS: dict[str, str] = {
 }
 
 
-def type_label(detected_type: str) -> str:
+def type_label(detected_type: str, *, lang: str | None = None) -> str:
     """Human-readable name for a detected type (falls back to the raw value).
 
     Unknown values are passed through unchanged rather than hidden: a new
     format must stay visible instead of silently reading "Unbekannt".
     """
+    from .i18n import get_language, localized_type_label, resolve_language
+
+    eff = resolve_language(lang) if lang is not None else get_language()
+    if eff in ("en", "tr"):
+        return localized_type_label(detected_type, lang=eff)
     return TYPE_LABELS.get((detected_type or "").lower(), detected_type or "—")
 
 
-def type_description(detected_type: str, mime_hint: str = "") -> str:
+def type_description(
+    detected_type: str, mime_hint: str = "", *, lang: str | None = None
+) -> str:
     """``Label (mime)`` for detail views; the MIME part is optional."""
-    label = type_label(detected_type)
+    label = type_label(detected_type, lang=lang)
     return f"{label} ({mime_hint})" if mime_hint else label
+
+
+def category_explanation(category: str, *, lang: str | None = None) -> str:
+    """Localized plain-language explanation for an indicator category."""
+    from .i18n import localized_category_explanation
+
+    return localized_category_explanation(category, CATEGORY_EXPLANATIONS, lang=lang)

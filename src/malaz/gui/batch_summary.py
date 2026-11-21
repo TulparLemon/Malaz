@@ -1,12 +1,13 @@
 """Folder Overview (Ordner-Übersicht) dashboard for Malaz v11.
 
-Displays 4 clickable KPI cards (Gefährlich, Verdächtig, Ungeprüft, Unauffällig)
-with circular status dots + a clickable Handlungsbedarf list of all non-clean
+Displays 4 clickable KPI cards (Dangerous, Suspicious, Unchecked, Clean)
+with circular status dots + a clickable Action Required list of all non-clean
 top-level scanned files.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -22,7 +23,8 @@ from PySide6.QtWidgets import (
 )
 
 from .. import config
-from ..design_tokens import format_size_de, format_tag_code, visual_state
+from ..design_tokens import format_size, format_tag_code, state_label, visual_state
+from ..i18n import get_language, localized_indicator_title, pick, t
 from ..models import ScanResult
 from .file_tree import is_spoofed_result
 from .sanitize import (
@@ -40,7 +42,13 @@ class _KpiCard(QFrame):
     clicked = Signal(str)
 
     def __init__(
-        self, state_key: str, title: str, subtitle: str, *, ring: bool = False, parent: QWidget | None = None
+        self,
+        state_key: str,
+        title: str,
+        subtitle: str,
+        *,
+        ring: bool = False,
+        parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._state_key = state_key
@@ -56,7 +64,11 @@ class _KpiCard(QFrame):
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
         top.setSpacing(8)
-        top.addWidget(StatusDotWidget(state_key, ring=ring, parent=self), 0, Qt.AlignmentFlag.AlignVCenter)
+        top.addWidget(
+            StatusDotWidget(state_key, ring=ring, parent=self),
+            0,
+            Qt.AlignmentFlag.AlignVCenter,
+        )
 
         self._count = QLabel("0", self)
         self._count.setObjectName("engineVal")
@@ -65,16 +77,20 @@ class _KpiCard(QFrame):
         top.addWidget(self._count, 1)
         lay.addLayout(top)
 
-        lbl_title = QLabel(title, self)
-        lbl_title.setObjectName("panelHeading")
-        lbl_title.setTextFormat(Qt.TextFormat.PlainText)
-        lay.addWidget(lbl_title)
+        self._title_lbl = QLabel(title, self)
+        self._title_lbl.setObjectName("panelHeading")
+        self._title_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        lay.addWidget(self._title_lbl)
 
-        lbl_sub = QLabel(subtitle, self)
-        lbl_sub.setObjectName("captionLabel")
-        lbl_sub.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        lbl_sub.setTextFormat(Qt.TextFormat.PlainText)
-        lay.addWidget(lbl_sub)
+        self._sub_lbl = QLabel(subtitle, self)
+        self._sub_lbl.setObjectName("captionLabel")
+        self._sub_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self._sub_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        lay.addWidget(self._sub_lbl)
+
+    def set_labels(self, title: str, subtitle: str) -> None:
+        self._title_lbl.setText(title)
+        self._sub_lbl.setText(subtitle)
 
     def set_count(self, n: int) -> None:
         self._count.setText(str(n))
@@ -88,9 +104,16 @@ class _KpiCard(QFrame):
 class _ActionRow(QFrame):
     clicked = Signal(object)
 
-    def __init__(self, result: ScanResult, *, is_last: bool = False, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        result: ScanResult,
+        *,
+        is_last: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._result = result
+        lang = get_language()
         state = visual_state(result.risk_level, result_is_incomplete(result))
         self.setObjectName("listRow")
         self.setProperty("clickable", "true")
@@ -135,7 +158,8 @@ class _ActionRow(QFrame):
             (
                 i
                 for i in sorted(
-                    result.all_indicators(), key=lambda x: (-indicator_weight(x), -int(x.severity))
+                    result.all_indicators(),
+                    key=lambda x: (-indicator_weight(x), -int(x.severity)),
                 )
                 if indicator_weight(i) > 0
             ),
@@ -143,14 +167,19 @@ class _ActionRow(QFrame):
         )
         if state == "unk":
             desc_txt = (
-                masked_widget_text(result.incomplete_stages[0].title)
+                masked_widget_text(localized_indicator_title(result.incomplete_stages[0], lang=lang))
                 if result.incomplete_stages
-                else "Inhalt konnte nicht vollständig geprüft werden"
+                else pick(
+                    "Inhalt konnte nicht vollständig geprüft werden",
+                    "Contents could not be fully inspected",
+                    "İçerik tam olarak incelenemedi",
+                    lang=lang,
+                )
             )
         elif top_ind is not None:
-            desc_txt = masked_widget_text(top_ind.title)
+            desc_txt = masked_widget_text(localized_indicator_title(top_ind, lang=lang))
         else:
-            desc_txt = "Auffällige Datei"
+            desc_txt = pick("Auffällige Datei", "Suspicious file", "Şüpheli dosya", lang=lang)
 
         desc_lbl = QLabel(clip_text(desc_txt, 90), self)
         desc_lbl.setObjectName("mutedLabel")
@@ -158,7 +187,7 @@ class _ActionRow(QFrame):
         desc_lbl.setTextFormat(Qt.TextFormat.PlainText)
         lay.addWidget(desc_lbl, 1)
 
-        badge_text = {"bad": "Gefährlich", "warn": "Verdächtig", "unk": "Ungeprüft"}.get(state, "Sauber")
+        badge_text = state_label(state, lang=lang)
         badge_tone = "warn" if state == "unk" else state
         badge = QLabel(badge_text, self)
         badge.setObjectName("badgeRight")
@@ -183,6 +212,9 @@ class BatchSummary(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("batchSummary")
+        self._last_results: list[ScanResult] = []
+        self._last_source_paths: list[str] | None = None
+        self._last_truncated: bool = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -203,10 +235,10 @@ class BatchSummary(QWidget):
 
         hdr = QHBoxLayout()
         hdr.setContentsMargins(0, 0, 0, 0)
-        title = QLabel("Ordner-Übersicht", self)
-        title.setObjectName("fileTitle")
-        title.setTextFormat(Qt.TextFormat.PlainText)
-        hdr.addWidget(title, 1)
+        self._title_lbl = QLabel("", self)
+        self._title_lbl.setObjectName("fileTitle")
+        self._title_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        hdr.addWidget(self._title_lbl, 1)
         self.headline = QLabel("", self)
         self.headline.setObjectName("mutedLabel")
         self.headline.setWordWrap(True)
@@ -216,7 +248,7 @@ class BatchSummary(QWidget):
         self.detail.setWordWrap(True)
         self.detail.setTextFormat(Qt.TextFormat.PlainText)
 
-        self._btn_export = QPushButton("Bericht speichern", self)
+        self._btn_export = QPushButton("", self)
         self._btn_export.clicked.connect(self.export_requested.emit)
         hdr.addWidget(self._btn_export)
         root.addLayout(hdr)
@@ -224,10 +256,10 @@ class BatchSummary(QWidget):
         kpis = QHBoxLayout()
         kpis.setContentsMargins(0, 0, 0, 0)
         kpis.setSpacing(12)
-        self._kpi_bad = _KpiCard("bad", "Gefährlich", "Sofort isolieren", parent=self)
-        self._kpi_warn = _KpiCard("warn", "Verdächtig", "Prüfung nötig", parent=self)
-        self._kpi_unk = _KpiCard("unk", "Ungeprüft", "Unvollständig / Schutz", ring=True, parent=self)
-        self._kpi_ok = _KpiCard("ok", "Unauffällig", "Sauber", parent=self)
+        self._kpi_bad = _KpiCard("bad", "", "", parent=self)
+        self._kpi_warn = _KpiCard("warn", "", "", parent=self)
+        self._kpi_unk = _KpiCard("unk", "", "", ring=True, parent=self)
+        self._kpi_ok = _KpiCard("ok", "", "", parent=self)
         for card in (self._kpi_bad, self._kpi_warn, self._kpi_unk, self._kpi_ok):
             card.clicked.connect(self.filter_requested.emit)
             kpis.addWidget(card, 1)
@@ -249,10 +281,10 @@ class BatchSummary(QWidget):
         root.addWidget(self.headline)
         root.addWidget(self.detail)
 
-        sec_lbl = QLabel("HANDLUNGSBEDARF", self)
-        sec_lbl.setObjectName("sectionTitle")
-        sec_lbl.setTextFormat(Qt.TextFormat.PlainText)
-        root.addWidget(sec_lbl)
+        self._sec_lbl = QLabel("", self)
+        self._sec_lbl.setObjectName("sectionTitle")
+        self._sec_lbl.setTextFormat(Qt.TextFormat.PlainText)
+        root.addWidget(self._sec_lbl)
 
         self._list_card = QFrame(self)
         self._list_card.setObjectName("card")
@@ -265,6 +297,39 @@ class BatchSummary(QWidget):
         root.addStretch(1)
 
         self._common_dir: str | None = None
+        self._apply_static_texts()
+
+    def _apply_static_texts(self) -> None:
+        lang = get_language()
+        self._title_lbl.setText(pick("Ordner-Übersicht", "Folder Overview", "Klasör Özeti", lang=lang))
+        self._btn_export.setText(t("btn.export"))
+        if lang == "tr":
+            self._kpi_bad.set_labels("Tehlikeli", "Hemen izole edin")
+            self._kpi_warn.set_labels("Şüpheli", "İnceleme gerekli")
+            self._kpi_unk.set_labels("Denetlenmedi", "Eksik / parola korumalı")
+            self._kpi_ok.set_labels("Temiz", "Tehdit yok")
+            self._sec_lbl.setText("DİKKAT GEREKTİRENLER")
+        elif lang == "en":
+            self._kpi_bad.set_labels("Dangerous", "Isolate immediately")
+            self._kpi_warn.set_labels("Suspicious", "Review needed")
+            self._kpi_unk.set_labels("Unchecked", "Incomplete / encrypted")
+            self._kpi_ok.set_labels("Clean", "No threats")
+            self._sec_lbl.setText("ACTION REQUIRED")
+        else:
+            self._kpi_bad.set_labels("Gefährlich", "Sofort isolieren")
+            self._kpi_warn.set_labels("Verdächtig", "Prüfung nötig")
+            self._kpi_unk.set_labels("Ungeprüft", "Unvollständig / Schutz")
+            self._kpi_ok.set_labels("Unauffällig", "Sauber")
+            self._sec_lbl.setText("HANDLUNGSBEDARF")
+
+    def retranslate(self) -> None:
+        self._apply_static_texts()
+        if self._last_results or self._last_truncated:
+            self.update_results(
+                self._last_results,
+                source_paths=self._last_source_paths,
+                truncated=self._last_truncated,
+            )
 
     @property
     def common_directory(self) -> str | None:
@@ -277,6 +342,14 @@ class BatchSummary(QWidget):
         source_paths: list[str] | None = None,
         truncated: bool = False,
     ) -> None:
+        self._last_results = list(results)
+        self._last_source_paths = list(source_paths) if source_paths is not None else None
+        self._last_truncated = bool(truncated)
+        self._apply_static_texts()
+
+        lang = get_language()
+        is_en = lang == "en"
+
         bad = [r for r in results if visual_state(r.risk_level, result_is_incomplete(r)) == "bad"]
         warn = [r for r in results if visual_state(r.risk_level, result_is_incomplete(r)) == "warn"]
         unk = [r for r in results if visual_state(r.risk_level, result_is_incomplete(r)) == "unk"]
@@ -287,18 +360,40 @@ class BatchSummary(QWidget):
         self._kpi_unk.set_count(len(unk))
         self._kpi_ok.set_count(len(ok))
         inc_total = sum(1 for r in results if result_is_incomplete(r))
-        parts_h = [f"{len(results)} Dateien geprüft"]
-        if bad:
-            parts_h.append(f"{len(bad)} gefährlich")
-        if warn:
-            parts_h.append(f"{len(warn)} verdächtig")
-        if ok:
-            parts_h.append(f"{len(ok)} unauffällig")
-        if inc_total:
-            parts_h.append(f"{inc_total} unvollständig")
-        self.headline.setText(" · ".join(parts_h))
 
-        from collections import Counter
+        if lang == "tr":
+            parts_h = [f"{len(results)} dosya tarandı"]
+            if bad:
+                parts_h.append(f"{len(bad)} tehlikeli")
+            if warn:
+                parts_h.append(f"{len(warn)} şüpheli")
+            if ok:
+                parts_h.append(f"{len(ok)} temiz")
+            if inc_total:
+                parts_h.append(f"{inc_total} denetlenmedi")
+        elif is_en:
+            parts_h = [
+                f"{len(results)} file scanned" if len(results) == 1 else f"{len(results)} files scanned"
+            ]
+            if bad:
+                parts_h.append(f"{len(bad)} dangerous")
+            if warn:
+                parts_h.append(f"{len(warn)} suspicious")
+            if ok:
+                parts_h.append(f"{len(ok)} clean")
+            if inc_total:
+                parts_h.append(f"{inc_total} unchecked")
+        else:
+            parts_h = [f"{len(results)} Dateien geprüft"]
+            if bad:
+                parts_h.append(f"{len(bad)} gefährlich")
+            if warn:
+                parts_h.append(f"{len(warn)} verdächtig")
+            if ok:
+                parts_h.append(f"{len(ok)} unauffällig")
+            if inc_total:
+                parts_h.append(f"{inc_total} unvollständig")
+        self.headline.setText(" · ".join(parts_h))
 
         rule_counts: Counter[str] = Counter()
         for r in results:
@@ -306,16 +401,27 @@ class BatchSummary(QWidget):
                 if indicator_weight(ind) > 0:
                     rule_counts[ind.rule_id] += 1
         top_rules = ", ".join(f"{rid} ({cnt})" for rid, cnt in rule_counts.most_common(5))
-        self.detail.setText(f"Top-Regeln: {top_rules}" if top_rules else "")
+        prefix = pick("Top-Regeln: ", "Top rules: ", "Öne çıkan kurallar: ", lang=lang)
+        self.detail.setText(f"{prefix}{top_rules}" if top_rules else "")
         self.detail.setVisible(bool(top_rules))
 
         total_bytes = sum(max(0, r.size) for r in results)
-        self._size_lbl.setText(f"{len(results)} Dateien · {format_size_de(total_bytes)}")
+        files_word = (
+            "dosya" if lang == "tr" else (("file" if len(results) == 1 else "files") if is_en else "Dateien")
+        )
+        self._size_lbl.setText(f"{len(results)} {files_word} · {format_size(total_bytes, lang=lang)}")
 
         if truncated:
             self._trunc_lbl.setText(
-                f"Batch-Limit erreicht (max. {config.MAX_BATCH_FILES} Dateien) — "
-                "weitere Dateien wurden nicht aufgenommen und nicht geprüft."
+                pick(
+                    f"Batch-Limit erreicht (max. {config.MAX_BATCH_FILES} Dateien) — "
+                    "weitere Dateien wurden nicht aufgenommen und nicht geprüft.",
+                    f"Batch limit reached (max {config.MAX_BATCH_FILES} files) — "
+                    "additional files were not queued and remain unchecked.",
+                    f"Toplu tarama sınırına ulaşıldı (en fazla {config.MAX_BATCH_FILES} dosya) — "
+                    "kalan dosyalar kuyruğa alınmadı ve denetlenmedi.",
+                    lang=lang,
+                )
             )
             self._trunc_banner.show()
         else:
@@ -342,7 +448,17 @@ class BatchSummary(QWidget):
             self._origin_lbl.setText(clip_text(masked_widget_text(only), 90))
         else:
             self._common_dir = None
-            self._origin_lbl.setText(f"{len(parents)} Ordner" if parents else "")
+            if parents:
+                self._origin_lbl.setText(
+                    pick(
+                        f"{len(parents)} Ordner",
+                        f"{len(parents)} folders",
+                        f"{len(parents)} klasör",
+                        lang=lang,
+                    )
+                )
+            else:
+                self._origin_lbl.setText("")
 
         while self._list_lay.count():
             child = self._list_lay.takeAt(0)
@@ -359,7 +475,17 @@ class BatchSummary(QWidget):
             row.setProperty("last", "true")
             rl = QHBoxLayout(row)
             rl.setContentsMargins(16, 12, 16, 12)
-            lbl = QLabel("Keine auffälligen oder ungeprüften Dateien gefunden.", row)
+            lbl = QLabel(
+                (
+                    pick(
+                        "Keine auffälligen oder ungeprüften Dateien gefunden.",
+                        "No suspicious or unchecked files found.",
+                        "Şüpheli veya denetlenmeyen dosya bulunmadı.",
+                        lang=lang,
+                    )
+                ),
+                row,
+            )
             lbl.setObjectName("mutedLabel")
             lbl.setTextFormat(Qt.TextFormat.PlainText)
             rl.addWidget(lbl)
@@ -371,7 +497,17 @@ class BatchSummary(QWidget):
                 row.clicked.connect(self.result_selected.emit)
                 self._list_lay.addWidget(row)
             if len(flagged) > 100:
-                more = QLabel(f"+ {len(flagged) - 100} weitere Einträge in der Seitenleiste", self._list_card)
+                more = QLabel(
+                    (
+                        pick(
+                            f"+ {len(flagged) - 100} weitere Einträge in der Seitenleiste",
+                            f"+ {len(flagged) - 100} more entries in the sidebar",
+                            f"+ yan menüde {len(flagged) - 100} kayıt daha",
+                            lang=lang,
+                        )
+                    ),
+                    self._list_card,
+                )
                 more.setObjectName("captionLabel")
                 more.setContentsMargins(16, 8, 16, 10)
                 self._list_lay.addWidget(more)

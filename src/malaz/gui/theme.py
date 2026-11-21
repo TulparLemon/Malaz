@@ -285,7 +285,7 @@ QFrame#filterChip {{
     color: {p["ink_2"]};
     border: 1px solid {p["border_subtle"]};
     border-radius: 5px;
-    padding: 2px 4px;
+    padding: 2px 2px;
     min-height: 20px;
     font-size: 11px;
     font-weight: 500;

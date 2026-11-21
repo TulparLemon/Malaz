@@ -46,6 +46,7 @@ from PySide6.QtWidgets import (
 
 from ..core.mail_score import link_scores, mechanism_label, sender_score
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip
+from ..i18n import pick
 from ..models import ScanResult
 from ..security.escaping import mask_invisible
 from .theme import FONT_SUBTITLE, RISK_COLORS, RISK_MARKS
@@ -65,8 +66,6 @@ _LINK_DISPLAY_LIMIT = 25
 # daher eine Abschnittsueberschrift sein.
 _BODY_HEADING = "Textinhalt"
 _BODY_ENDINGS = ("Enthaltene Links", "Anhänge", "Hinweis:")
-
-
 
 
 def is_mail(result: ScanResult) -> bool:
@@ -160,6 +159,7 @@ class MailPanel(QScrollArea):
 
     def __init__(self) -> None:
         super().__init__()
+        self._last_result: ScanResult | None = None
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.NoFrame)
         self._body = QWidget()
@@ -169,18 +169,28 @@ class MailPanel(QScrollArea):
         self.setWidget(self._body)
 
     def clear(self) -> None:
+        self._last_result = None
         _clear_layout(self._layout)
+
+    def retranslate(self) -> None:
+        if self._last_result is not None:
+            self.show_result(self._last_result)
 
     def show_result(self, result: ScanResult) -> None:
         """Panel fuer ein Ergebnis aufbauen."""
         self.clear()
+        self._last_result = result
 
-        # Die OBERSTE Mail im Baum: bei einer .eml im ZIP ist das Kind die
-        # Mail, und das Panel soll sie zeigen, nicht den Container.
         mail = _find_mail(result)
         if mail is None:
             self._layout.addWidget(
-                _plain_label("Dieses Ergebnis enthaelt keine E-Mail.")
+                _plain_label(
+                    pick(
+                        "Dieses Ergebnis enthält keine E-Mail.",
+                        "This result does not contain an email.",
+                        "Bu sonuç bir e-posta içermiyor.",
+                    )
+                )
             )
             self._layout.addStretch(1)
             return
@@ -203,15 +213,13 @@ class MailPanel(QScrollArea):
             has_from=_has_from(security),
         )
 
-        self._layout.addWidget(_heading("Absender"))
+        self._layout.addWidget(_heading(pick("Absender", "Sender", "Gönderici")))
         color = RISK_COLORS[score.color]
         mark = RISK_MARKS[score.color]
 
         # EIN Urteil, gross und mit Zeichen — nicht drei Kuerzel.
         verdict = _plain_label(f"{mark}  {score.label}")
-        verdict.setStyleSheet(
-            f"color: {color}; font-size: {FONT_SUBTITLE}; font-weight: 700;"
-        )
+        verdict.setStyleSheet(f"color: {color}; font-size: {FONT_SUBTITLE}; font-weight: 700;")
         verdict.setWordWrap(True)
         self._layout.addWidget(verdict)
 
@@ -227,9 +235,15 @@ class MailPanel(QScrollArea):
 
         self._layout.addWidget(
             _kv(
-                "Quelle",
-                "Kopfzeilen der Datei — NICHT nachgeprueft. In einer Datei "
-                "kann der Absender diese Angaben selbst geschrieben haben.",
+                pick("Quelle", "Source", "Kaynak"),
+                pick(
+                    "Kopfzeilen der Datei — NICHT nachgeprüft. In einer Datei "
+                    "kann der Absender diese Angaben selbst geschrieben haben.",
+                    "File headers — NOT verified against live DNS. A sender can "
+                    "forge header fields inside a raw .eml file.",
+                    "Dosya başlıkları — canlı DNS ile DOĞRULANMADI. Ham bir .eml dosyasında "
+                    "gönderici bu alanları kendisi yazmış olabilir.",
+                ),
             )
         )
 
@@ -246,7 +260,7 @@ class MailPanel(QScrollArea):
         # (BUG-061).
         if not body:
             return
-        self._layout.addWidget(_heading("Inhalt"))
+        self._layout.addWidget(_heading(pick("Inhalt", "Body", "İçerik")))
         text = _plain_label(body)
         text.setObjectName("panelValue")
         text.setWordWrap(True)
@@ -262,16 +276,20 @@ class MailPanel(QScrollArea):
         # ERST alle bewerten und filtern, DANN begrenzen. Die Begrenzung in
         # ``link_scores`` schnitt vorher zuerst ab; bei 30 auffaelligen Links
         # fehlten fuenf, ohne dass es dastand (BUG-062).
-        scored = [
-            entry
-            for entry in link_scores(links, limit=len(links))
-            if entry.score >= _LINK_MIN_SCORE
-        ]
+        scored = [entry for entry in link_scores(links, limit=len(links)) if entry.score >= _LINK_MIN_SCORE]
         if not scored:
             return
 
         sichtbar = scored[:_LINK_DISPLAY_LIMIT]
-        self._layout.addWidget(_heading(f"Links ({len(scored)} auffaellig)"))
+        self._layout.addWidget(
+            _heading(
+                pick(
+                    f"Links ({len(scored)} auffaellig)",
+                    f"Links ({len(scored)} suspicious)",
+                    f"Bağlantılar ({len(scored)} şüpheli)",
+                )
+            )
+        )
         for entry in sichtbar:
             color = RISK_COLORS[entry.color]
             mark = RISK_MARKS[entry.color]
@@ -286,7 +304,13 @@ class MailPanel(QScrollArea):
         weitere = len(scored) - len(sichtbar)
         if weitere:
             self._layout.addWidget(
-                _plain_label(f"… und {weitere} weitere auffaellige Links")
+                _plain_label(
+                    pick(
+                        f"… und {weitere} weitere auffaellige Links",
+                        f"… and {weitere} more suspicious links",
+                        f"… ve {weitere} şüpheli bağlantı daha",
+                    )
+                )
             )
 
     # -- Abschnitt 4: die Anhaenge ---------------------------------------- #
@@ -295,7 +319,13 @@ class MailPanel(QScrollArea):
         if not result.children:
             return
         self._layout.addWidget(
-            _heading(f"Anhaenge ({len(result.children)}) — einzeln geprueft")
+            _heading(
+                pick(
+                    f"Anhaenge ({len(result.children)}) — einzeln geprueft",
+                    f"Attachments ({len(result.children)}) — scanned individually",
+                    f"Ekler ({len(result.children)}) — ayrı ayrı tarandı",
+                )
+            )
         )
         for child in result.children:
             farbe = RISK_COLORS[child.risk_level.name.lower()]

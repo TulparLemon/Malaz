@@ -44,6 +44,13 @@ from PySide6.QtWidgets import (
 from .. import __version__, config
 from ..core.dispatcher import Dispatcher, expand_scan_paths
 from ..design_tokens import visual_state
+from ..i18n import (
+    get_language,
+    pick,
+    register_language_listener,
+    t,
+    unregister_language_listener,
+)
 from ..models import ScanResult
 from ..workers.scan_worker import ScanWorker
 from .batch_summary import BatchSummary
@@ -52,6 +59,7 @@ from .display import (
     clamp_window_to_screen,
     reclamp_to_current_screen,
     save_window_rect,
+    show_message_box,
 )
 from .file_tree import (
     PARENT_CHAIN_ROLE,
@@ -205,8 +213,8 @@ class _FilterChip(_ClickableFrame):
         self.setToolTip(tooltip)
 
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(5, 2, 5, 2)
-        lay.setSpacing(4)
+        lay.setContentsMargins(3, 2, 3, 2)
+        lay.setSpacing(3)
         lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         if dot_tone is not None:
@@ -271,7 +279,9 @@ class _EngineCapsule(_ClickableFrame):
             bl.addWidget(dot)
             bl.addWidget(lbl)
             self._lay.addWidget(box)
+            box.show()
             self._items.append((dot, lbl))
+        self.updateGeometry()
 
 
 class MainWindow(QMainWindow):
@@ -313,6 +323,8 @@ class MainWindow(QMainWindow):
         self._apply_initial_geometry()
 
         register_theme_listener(self._on_theme_changed)
+        register_language_listener(self._on_language_changed)
+        self.retranslate()
 
         self.statusBar().hide()
         self.statusBar().showMessage("Bereit. Dateien ablegen oder auswählen.")
@@ -524,7 +536,7 @@ class MainWindow(QMainWindow):
         # Flush Full-Width 5-Chip Filter Row (zero right empty space!)
         chip_row = QHBoxLayout()
         chip_row.setContentsMargins(0, 0, 0, 0)
-        chip_row.setSpacing(4)
+        chip_row.setSpacing(3)
         self._chip_all = _FilterChip("all", "Alle", tooltip="Alle Dateien anzeigen", parent=sb_hdr)
         self._chip_bad = _FilterChip("bad", "0", dot_tone="bad", tooltip="Nur Gefährliche", parent=sb_hdr)
         self._chip_warn = _FilterChip("warn", "0", dot_tone="warn", tooltip="Nur Verdächtige", parent=sb_hdr)
@@ -533,9 +545,16 @@ class MainWindow(QMainWindow):
         )
         self._chip_ok = _FilterChip("ok", "OK", dot_tone="ok", tooltip="Nur Unauffällige", parent=sb_hdr)
         self._chip_all.setChecked(True)
-        for chip in (self._chip_all, self._chip_bad, self._chip_warn, self._chip_unk, self._chip_ok):
+        chip_stretches = (
+            (self._chip_all, 3),
+            (self._chip_bad, 2),
+            (self._chip_warn, 2),
+            (self._chip_unk, 2),
+            (self._chip_ok, 3),
+        )
+        for chip, stretch in chip_stretches:
             chip.clicked.connect(lambda _=False, k=chip.key: self._set_status_filter(k))
-            chip_row.addWidget(chip, 1)
+            chip_row.addWidget(chip, stretch)
         sh_lay.addLayout(chip_row)
         sb_lay.addWidget(sb_hdr)
 
@@ -597,7 +616,8 @@ class MainWindow(QMainWindow):
         self.summary_bar.setCursor(Qt.CursorShape.PointingHandCursor)
         sum_lay = QHBoxLayout(self.summary_bar)
         sum_lay.setContentsMargins(10, 0, 10, 0)
-        lbl_sum = QLabel("Ordner-Übersicht", self.summary_bar)
+        self._lbl_sum = QLabel("Ordner-Übersicht", self.summary_bar)
+        lbl_sum = self._lbl_sum
         lbl_sum.setTextFormat(Qt.TextFormat.PlainText)
         lbl_sum.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self._summary_count_lbl = QLabel("0 Dateien →", self.summary_bar)
@@ -696,15 +716,17 @@ class MainWindow(QMainWindow):
         ep_lay = QVBoxLayout(empty_page)
         ep_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ep_lay.setSpacing(10)
-        ep_title = QLabel("Dateien oder Ordner zur Prüfung ablegen", empty_page)
+        self._ep_title = QLabel("Dateien oder Ordner zur Prüfung ablegen", empty_page)
+        ep_title = self._ep_title
         ep_title.setObjectName("fileTitle")
         ep_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ep_lay.addWidget(ep_title)
-        ep_sub = QLabel(
+        self._ep_sub = QLabel(
             "Prüft PDF, Office-Dokumente, E-Mails (.eml/.msg), "
             "Archive und Programme lokal auf diesem Rechner.",
             empty_page,
         )
+        ep_sub = self._ep_sub
         ep_sub.setObjectName("mutedLabel")
         ep_sub.setWordWrap(True)
         ep_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -714,10 +736,12 @@ class MainWindow(QMainWindow):
         ep_btns = QHBoxLayout()
         ep_btns.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ep_btns.setSpacing(10)
-        b_ef = QPushButton("Dateien auswählen…", empty_page)
+        self._btn_empty_files = QPushButton("Dateien auswählen…", empty_page)
+        b_ef = self._btn_empty_files
         b_ef.setObjectName("primaryButton")
         b_ef.clicked.connect(self._on_add_files)
-        b_ed = QPushButton("Ordner prüfen…", empty_page)
+        self._btn_empty_folder = QPushButton("Ordner prüfen…", empty_page)
+        b_ed = self._btn_empty_folder
         b_ed.clicked.connect(self._on_add_folder)
         ep_btns.addWidget(b_ef)
         ep_btns.addWidget(b_ed)
@@ -779,7 +803,8 @@ class MainWindow(QMainWindow):
         self._pending_path_lbl.setTextFormat(Qt.TextFormat.PlainText)
         pp_lay.addWidget(self._pending_path_lbl)
         pp_lay.addSpacing(8)
-        b_go = QPushButton("Jetzt prüfen", pending_page)
+        self._btn_pending_go = QPushButton("Jetzt prüfen", pending_page)
+        b_go = self._btn_pending_go
         b_go.setObjectName("primaryButton")
         b_go.setMaximumWidth(160)
         b_go.clicked.connect(self._on_scan)
@@ -824,66 +849,68 @@ class MainWindow(QMainWindow):
         self._set_page(_PAGE_EMPTY)
 
     def _build_menu(self) -> None:
-        menu = self.menuBar().addMenu("&Datei")
-        act_add = QAction("Dateien hinzufügen…", self)
-        act_add.setShortcut(QKeySequence("Ctrl+O"))
-        act_add.triggered.connect(self._on_add_files)
-        menu.addAction(act_add)
+        self._menu_file = self.menuBar().addMenu("&Datei")
+        self._act_add = QAction("Dateien hinzufügen…", self)
+        self._act_add.setShortcut(QKeySequence("Ctrl+O"))
+        self._act_add.triggered.connect(self._on_add_files)
+        self._menu_file.addAction(self._act_add)
 
-        act_dir = QAction("Ordner hinzufügen…", self)
-        act_dir.setShortcut(QKeySequence("Ctrl+Shift+O"))
-        act_dir.triggered.connect(self._on_add_folder)
-        menu.addAction(act_dir)
+        self._act_dir = QAction("Ordner hinzufügen…", self)
+        self._act_dir.setShortcut(QKeySequence("Ctrl+Shift+O"))
+        self._act_dir.triggered.connect(self._on_add_folder)
+        self._menu_file.addAction(self._act_dir)
 
-        act_scan = QAction("Prüfung starten", self)
-        act_scan.setShortcut(QKeySequence("Ctrl+R"))
-        act_scan.triggered.connect(self._on_scan)
-        menu.addAction(act_scan)
+        self._act_scan = QAction("Prüfung starten", self)
+        self._act_scan.setShortcut(QKeySequence("Ctrl+R"))
+        self._act_scan.triggered.connect(self._on_scan)
+        self._menu_file.addAction(self._act_scan)
 
         self._act_report = QAction("Bericht speichern…", self)
         self._act_report.setShortcut(QKeySequence("Ctrl+E"))
         self._act_report.triggered.connect(self._on_export_report)
         self._act_report.setEnabled(False)
-        menu.addAction(self._act_report)
+        self._menu_file.addAction(self._act_report)
 
-        menu.addSeparator()
-        act_quit = QAction("Beenden", self)
-        act_quit.setShortcut(QKeySequence.StandardKey.Quit)
-        act_quit.triggered.connect(self.close)
-        menu.addAction(act_quit)
+        self._menu_file.addSeparator()
+        self._act_quit = QAction("Beenden", self)
+        self._act_quit.setShortcut(QKeySequence.StandardKey.Quit)
+        self._act_quit.triggered.connect(self.close)
+        self._menu_file.addAction(self._act_quit)
 
-        view_menu = self.menuBar().addMenu("&Ansicht")
-        act_search = QAction("Suche fokussieren", self)
-        act_search.setShortcut(QKeySequence("Ctrl+F"))
-        act_search.triggered.connect(lambda: self.search_box.setFocus())
-        view_menu.addAction(act_search)
+        self._menu_view = self.menuBar().addMenu("&Ansicht")
+        self._act_search = QAction("Suche fokussieren", self)
+        self._act_search.setShortcut(QKeySequence("Ctrl+F"))
+        self._act_search.triggered.connect(lambda: self.search_box.setFocus())
+        self._menu_view.addAction(self._act_search)
 
-        act_opt = QAction("Optionen & Auto-Update", self)
-        act_opt.setShortcut(QKeySequence("Ctrl+,"))
-        act_opt.triggered.connect(self._toggle_options_view)
-        view_menu.addAction(act_opt)
+        self._act_opt = QAction("Optionen & Auto-Update", self)
+        self._act_opt.setShortcut(QKeySequence("Ctrl+,"))
+        self._act_opt.triggered.connect(self._toggle_options_view)
+        self._menu_view.addAction(self._act_opt)
 
-        act_theme = QAction("Design umschalten (Dunkel/Hell)", self)
-        act_theme.setShortcut(QKeySequence("Ctrl+Shift+T"))
-        act_theme.triggered.connect(self._toggle_dark_light)
-        view_menu.addAction(act_theme)
+        self._act_theme = QAction("Design umschalten (Dunkel/Hell)", self)
+        self._act_theme.setShortcut(QKeySequence("Ctrl+Shift+T"))
+        self._act_theme.triggered.connect(self._toggle_dark_light)
+        self._menu_view.addAction(self._act_theme)
 
+        self._tab_actions: list[QAction] = []
         for idx, title in enumerate(("Einschätzung", "Technische Details", "E-Mail-Text", "Fähigkeiten")):
             act_t = QAction(f"Tab: {title}", self)
             act_t.setShortcut(QKeySequence(f"Ctrl+{idx + 1}"))
             act_t.triggered.connect(lambda _=False, i=idx: self.detail_view.select_tab(i))
-            view_menu.addAction(act_t)
+            self._menu_view.addAction(act_t)
+            self._tab_actions.append(act_t)
 
-        act_esc = QAction("Abbrechen / Schließen", self)
-        act_esc.setShortcut(QKeySequence("Escape"))
-        act_esc.triggered.connect(self._on_escape)
-        view_menu.addAction(act_esc)
+        self._act_esc = QAction("Abbrechen / Schließen", self)
+        self._act_esc.setShortcut(QKeySequence("Escape"))
+        self._act_esc.triggered.connect(self._on_escape)
+        self._menu_view.addAction(self._act_esc)
 
-        help_menu = self.menuBar().addMenu("&Hilfe")
-        act_about = QAction(f"Über {config.APP_NAME}", self)
-        act_about.setShortcut(QKeySequence("F1"))
-        act_about.triggered.connect(self._on_about)
-        help_menu.addAction(act_about)
+        self._menu_help = self.menuBar().addMenu("&Hilfe")
+        self._act_about = QAction(f"Über {config.APP_NAME}", self)
+        self._act_about.setShortcut(QKeySequence("F1"))
+        self._act_about.triggered.connect(self._on_about)
+        self._menu_help.addAction(self._act_about)
 
     def _schedule_once(self, delay_ms: int, slot) -> None:
         timer = QTimer(self)
@@ -957,21 +984,23 @@ class MainWindow(QMainWindow):
     def _on_add_files(self) -> None:
         if self._scan_active:
             return
-        paths, _ = QFileDialog.getOpenFileNames(self, "Dateien zur Prüfung auswählen")
+        paths, _ = QFileDialog.getOpenFileNames(self, t("dialog.select_files"))
         if paths:
             self.add_paths(paths)
 
     def _on_add_folder(self) -> None:
         if self._scan_active:
             return
-        folder = QFileDialog.getExistingDirectory(self, "Ordner zur Prüfung auswählen")
+        folder = QFileDialog.getExistingDirectory(self, t("dialog.select_folder"))
         if folder:
             files, truncated = expand_scan_paths([folder])
             if files:
                 self.add_paths([str(f) for f in files], truncated=truncated)
             else:
-                QMessageBox.information(
-                    self, "Leerer Ordner", "Im gewählten Ordner wurden keine Dateien gefunden."
+                show_message_box(
+                    self,
+                    pick("Leerer Ordner", "Empty folder", "Boş klasör"),
+                    t("dialog.no_files_body"),
                 )
 
     def _refresh_sidebar_actions(self) -> None:
@@ -987,7 +1016,9 @@ class MainWindow(QMainWindow):
 
         self.btn_cancel.hide()
         if pending:
-            self.btn_scan.setText(f"{len(pending)} prüfen")
+            self.btn_scan.setText(
+                pick(f"{len(pending)} prüfen", f"Scan {len(pending)}", f"{len(pending)} dosyayı tara")
+            )
             self.btn_scan.show()
             self.btn_add.setText("+")
             self.btn_add.setObjectName("")
@@ -998,7 +1029,7 @@ class MainWindow(QMainWindow):
             self.btn_clear.show()
         else:
             self.btn_scan.hide()
-            self.btn_add.setText("+ Dateien")
+            self.btn_add.setText(pick("+ Dateien", "+ Files", "+ Dosya"))
             self.btn_add.setObjectName("primaryButton")
             self.btn_add.style().unpolish(self.btn_add)
             self.btn_add.style().polish(self.btn_add)
@@ -1018,16 +1049,21 @@ class MainWindow(QMainWindow):
             if self.table.topLevelItem(i) is not None
             and self.table.topLevelItem(i).data(0, STATE_ROLE) == "cancelled"
         )
-        unk = (
-            sum(1 for r in real if visual_state(r.risk_level, result_is_incomplete(r)) == "unk")
-            + cancelled
-        )
+        unk = sum(1 for r in real if visual_state(r.risk_level, result_is_incomplete(r)) == "unk") + cancelled
         self._chip_bad.set_count_text(str(bad))
         self._chip_warn.set_count_text(str(warn))
         self._chip_unk.set_count_text(str(unk))
 
         if self._results:
-            self._summary_count_lbl.setText(f"{len(self._results)} Dateien →")
+            self._summary_count_lbl.setText(
+                pick(
+                    f"{len(self._results)} Dateien →",
+                    f"{len(self._results)} file →"
+                    if len(self._results) == 1
+                    else f"{len(self._results)} files →",
+                    f"{len(self._results)} dosya →",
+                )
+            )
             self.summary_bar.show()
         else:
             self.summary_bar.hide()
@@ -1051,14 +1087,18 @@ class MainWindow(QMainWindow):
 
     def _on_scan(self) -> None:
         if self._worker is not None:
-            QMessageBox.information(self, "Läuft", "Ein Scan läuft bereits.")
+            show_message_box(self, t("dialog.running_title"), t("dialog.running_body"))
             return
         paths = self.table.pending_paths() or self.table.all_top_level_paths()
         if not paths:
-            QMessageBox.information(
+            show_message_box(
                 self,
-                "Keine Dateien",
-                "Bitte zuerst Dateien oder einen Ordner hinzufügen.",
+                t("dialog.no_files_title"),
+                pick(
+                    "Bitte zuerst Dateien oder einen Ordner hinzufügen.",
+                    "Please add files or a folder first.",
+                    "Lütfen önce dosya veya klasör ekleyin.",
+                ),
             )
             return
 
@@ -1073,9 +1113,13 @@ class MainWindow(QMainWindow):
         self.table.mark_pending_as_scanning()
         self.progress.setRange(0, len(paths))
         self.progress.setValue(0)
-        self._scan_count_lbl.setText(f"Prüfe 0 / {len(paths)}")
+        self._scan_count_lbl.setText(
+            pick(f"Prüfe 0 / {len(paths)}", f"Scanning 0 / {len(paths)}", f"Taranıyor 0 / {len(paths)}")
+        )
         self._scan_pct_lbl.setText("0 %")
-        self._scan_file_lbl.setText("Starte lokale Prüfung…")
+        self._scan_file_lbl.setText(
+            pick("Starte lokale Prüfung…", "Starting local scan…", "Yerel tarama başlatılıyor…")
+        )
         self.scan_banner.show()
 
         self._worker = ScanWorker(paths, dispatcher=self._effective_dispatcher())
@@ -1092,7 +1136,13 @@ class MainWindow(QMainWindow):
         self.progress.setMaximum(max(1, total))
         self.progress.setValue(current)
         pct = int((current / max(1, total)) * 100)
-        self._scan_count_lbl.setText(f"Prüfe {current} / {total}")
+        self._scan_count_lbl.setText(
+            pick(
+                f"Prüfe {current} / {total}",
+                f"Scanning {current} / {total}",
+                f"Taranıyor {current} / {total}",
+            )
+        )
         self._scan_pct_lbl.setText(f"{pct} %")
 
     def _on_status(self, message: str) -> None:
@@ -1261,12 +1311,23 @@ class MainWindow(QMainWindow):
             self.detail_view.clear()
             raw = str(current.data(0, PENDING_PATH_ROLE) or root_path)
             state = str(current.data(0, STATE_ROLE) or "pending")
+            lang = get_language()
             self._pending_title.setText(
-                "Prüfung abgebrochen" if state == "cancelled" else "Bereit zur Prüfung"
+                pick("Prüfung abgebrochen", "Scan cancelled", "Tarama durduruldu", lang=lang)
+                if state == "cancelled"
+                else pick("Bereit zur Prüfung", "Ready to scan", "Taramaya hazır", lang=lang)
             )
             self._pending_path_lbl.setText(clip_text(masked_widget_text(raw), 180))
             self._current_reveal_path = raw
-            self._set_page(_PAGE_PENDING, footer_text="Noch nicht geprüft · Klicken Sie auf ‚Prüfen‘")
+            self._set_page(
+                _PAGE_PENDING,
+                footer_text=pick(
+                    "Noch nicht geprüft · Klicken Sie auf ‚Prüfen‘",
+                    "Not yet scanned · Click 'Scan'",
+                    "Henüz taranmadı · ‚Tara‘ düğmesine tıklayın",
+                    lang=lang,
+                ),
+            )
 
     def _set_page(self, page_idx: int, *, footer_text: str | None = None) -> None:
         self._pages.setCurrentIndex(page_idx)
@@ -1286,22 +1347,51 @@ class MainWindow(QMainWindow):
         self.status_capsule.style().polish(self.status_capsule)
 
         if page_idx == _PAGE_EMPTY:
-            self.right_footer_lbl.setText("Bereit · Ziehen Sie Dateien per Drag & Drop in das Fenster")
+            self.right_footer_lbl.setText(
+                pick(
+                    "Bereit · Ziehen Sie Dateien per Drag & Drop in das Fenster",
+                    "Ready · Drag and drop files into this window",
+                    "Hazır · Dosyaları sürükleyip pencereye bırakın",
+                )
+            )
             self.btn_reveal.hide()
             self._btn_opts_done.hide()
         elif page_idx == _PAGE_OPTIONS:
-            self.right_footer_lbl.setText("Einstellungen werden lokal auf diesem Gerät gespeichert")
+            self.right_footer_lbl.setText(
+                pick(
+                    "Einstellungen werden lokal auf diesem Gerät gespeichert",
+                    "Settings are stored locally on this device",
+                    "Ayarlar yalnızca bu cihazda yerel olarak saklanır",
+                )
+            )
             self.btn_reveal.hide()
             self._btn_opts_done.show()
         elif page_idx == _PAGE_BATCH:
             total_ms = sum(max(0, r.duration_ms) for r in self._results)
-            dur = f"{total_ms / 1000:.1f} s".replace(".", ",")
-            cdir = self.summary.common_directory
-            folder_name = (Path(cdir).name or cdir) if cdir else "Aktuelle Prüfung"
-            self.right_footer_lbl.setText(
-                f"Ordner: {clip_text(masked_widget_text(folder_name), 40)} "
-                f"· {len(self._results)} Dateien · {dur}"
+            lang = get_language()
+            dur = (
+                f"{total_ms / 1000:.1f} s"
+                if lang == "en"
+                else (
+                    f"{total_ms / 1000:.1f} sn".replace(".", ",")
+                    if lang == "tr"
+                    else f"{total_ms / 1000:.1f} s".replace(".", ",")
+                )
             )
+            cdir = self.summary.common_directory
+            folder_name = (
+                (Path(cdir).name or cdir)
+                if cdir
+                else pick("Aktuelle Prüfung", "Current scan", "Geçerli tarama", lang=lang)
+            )
+            clipped_dir = clip_text(masked_widget_text(folder_name), 40)
+            if lang == "tr":
+                self.right_footer_lbl.setText(f"Klasör: {clipped_dir} · {len(self._results)} dosya · {dur}")
+            elif lang == "en":
+                fword = "file" if len(self._results) == 1 else "files"
+                self.right_footer_lbl.setText(f"Folder: {clipped_dir} · {len(self._results)} {fword} · {dur}")
+            else:
+                self.right_footer_lbl.setText(f"Ordner: {clipped_dir} · {len(self._results)} Dateien · {dur}")
             self._current_reveal_path = cdir
             can_open = bool(cdir and not is_unc_or_device_path(cdir) and Path(cdir).is_dir())
             self.btn_reveal.setEnabled(can_open)
@@ -1318,7 +1408,11 @@ class MainWindow(QMainWindow):
                 with suppress(OSError, ValueError):
                     can_open = Path(self._current_reveal_path).exists()
             self.btn_reveal.setEnabled(can_open)
-            self.btn_reveal.setToolTip("" if can_open else "Lokale Datei nicht gefunden")
+            self.btn_reveal.setToolTip(
+                ""
+                if can_open
+                else pick("Lokale Datei nicht gefunden", "Local file not found", "Yerel dosya bulunamadı")
+            )
             self.btn_reveal.show()
             self._btn_opts_done.hide()
 
@@ -1376,6 +1470,152 @@ class MainWindow(QMainWindow):
         self.table.viewport().update()
         self.update()
 
+    def _on_language_changed(self, _lang: str) -> None:
+        self.retranslate()
+
+    def retranslate(self) -> None:
+        """Retranslate every visible label, menu, chip, and populated view live."""
+        lang = get_language()
+        self.setWindowTitle(
+            pick(
+                f"{config.APP_NAME} — Dateien sicher prüfen",
+                f"{config.APP_NAME} — Local Offline File Scanner",
+                f"{config.APP_NAME} — Çevrimdışı Dosya Tarayıcı",
+                lang=lang,
+            )
+        )
+        self.btn_options.setText(t("btn.options"))
+        self.btn_options.setAccessibleName(pick("Optionen öffnen", "Open options", "Ayarları aç", lang=lang))
+        self.status_capsule.setToolTip(
+            pick(
+                "Systemstatus & Optionen öffnen",
+                "Open system status & options",
+                "Sistem durumu ve ayarları aç",
+                lang=lang,
+            )
+        )
+
+        # Sidebar search, type combo, chips, summary bar, footer buttons
+        self.search_box.setPlaceholderText(
+            pick("Name, Endung, Hash…", "Name, extension, hash…", "Ad, uzantı, özet…", lang=lang)
+        )
+        self.search_box.setAccessibleName(
+            pick("Dateien durchsuchen", "Filter files", "Dosyalarda ara", lang=lang)
+        )
+        if lang == "tr":
+            type_labels = ("Tür: Tümü", "E-posta", "Arşiv", "Uygulama", "PDF", "Belge", "Diğer")
+        elif lang == "en":
+            type_labels = ("Type: All", "Email", "Archive", "Executable", "PDF", "Document", "Other")
+        else:
+            type_labels = ("Typ: Alle", "E-Mail", "Archiv", "Programm", "PDF", "Dokument", "Sonstige")
+        for idx, lbl in enumerate(type_labels):
+            if idx < self.type_combo.count():
+                self.type_combo.setItemText(idx, lbl)
+
+        self._chip_all.set_count_text(t("sidebar.filter_all"))
+        self._chip_all.setToolTip(
+            pick("Alle Dateien anzeigen", "Show all files", "Tüm dosyaları göster", lang=lang)
+        )
+        self._chip_bad.setToolTip(
+            pick("Nur Gefährliche", "Dangerous only", "Yalnızca tehlikeliler", lang=lang)
+        )
+        self._chip_warn.setToolTip(
+            pick("Nur Verdächtige", "Suspicious only", "Yalnızca şüpheliler", lang=lang)
+        )
+        self._chip_unk.setToolTip(
+            pick("Nur Ungeprüfte", "Unchecked only", "Yalnızca denetlenmeyenler", lang=lang)
+        )
+        self._chip_ok.set_count_text("OK")
+        self._chip_ok.setToolTip(pick("Nur Unauffällige", "Clean only", "Yalnızca temizler", lang=lang))
+
+        self._lbl_sum.setText(pick("Ordner-Übersicht", "Folder Overview", "Klasör Özeti", lang=lang))
+        self.btn_add_folder.setText(pick("+ Ordner", "+ Folder", "+ Klasör", lang=lang))
+        self.btn_clear.setText(t("btn.clear"))
+        self.btn_cancel.setText(pick("Prüfung abbrechen", "Cancel scan", "Taramayı durdur", lang=lang))
+
+        # Empty & pending pages
+        self._ep_title.setText(
+            pick(
+                "Dateien oder Ordner zur Prüfung ablegen",
+                "Drop files or folders to inspect",
+                "İncelenecek dosya veya klasörleri buraya bırakın",
+                lang=lang,
+            )
+        )
+        self._ep_sub.setText(
+            pick(
+                "Prüft PDF, Office-Dokumente, E-Mails (.eml/.msg), Archive "
+                "und Programme lokal auf diesem Rechner.",
+                "Inspects PDFs, Office documents, emails (.eml/.msg), archives, "
+                "and executables locally on this PC.",
+                "PDF, Office belgeleri, e-postalar (.eml/.msg), arşivler ve "
+                "programları bu bilgisayarda tamamen çevrimdışı tarar.",
+                lang=lang,
+            )
+        )
+        self._btn_empty_files.setText(pick("Dateien auswählen…", "Select files…", "Dosya seç…", lang=lang))
+        self._btn_empty_folder.setText(pick("Ordner prüfen…", "Scan folder…", "Klasör tara…", lang=lang))
+        self._btn_pending_go.setText(pick("Jetzt prüfen", "Scan now", "Şimdi tara", lang=lang))
+
+        # Right footer buttons
+        self.btn_reveal.setText(pick("Im Ordner zeigen", "Show in folder", "Klasörde göster", lang=lang))
+        self._btn_opts_done.setText(pick("Fertig", "Done", "Tamam", lang=lang))
+
+        # Menus
+        self._menu_file.setTitle(t("menu.file"))
+        self._act_add.setText(t("btn.add_files"))
+        self._act_dir.setText(t("btn.add_folder"))
+        self._act_scan.setText(pick("Prüfung starten", "Start scan", "Taramayı başlat", lang=lang))
+        self._act_report.setText(t("menu.file.export_report"))
+        self._act_quit.setText(t("menu.file.quit"))
+
+        self._menu_view.setTitle(t("menu.view"))
+        self._act_search.setText(pick("Suche fokussieren", "Focus search", "Aramaya odaklan", lang=lang))
+        self._act_opt.setText(t("menu.view.options"))
+        self._act_theme.setText(
+            pick(
+                "Design umschalten (Dunkel/Hell)",
+                "Toggle theme (Dark/Light)",
+                "Temayı değiştir (Koyu/Açık)",
+                lang=lang,
+            )
+        )
+        if lang == "tr":
+            tab_titles = ("Özet", "Teknik Detaylar", "E-posta Metni", "Yetenekler")
+        elif lang == "en":
+            tab_titles = ("Overview", "Technical Details", "Email Body", "Capabilities")
+        else:
+            tab_titles = ("Einschätzung", "Technische Details", "E-Mail-Text", "Fähigkeiten")
+        for act_t, title in zip(self._tab_actions, tab_titles, strict=False):
+            act_t.setText(f"{'Sekme' if lang == 'tr' else 'Tab'}: {title}")
+        self._act_esc.setText(pick("Abbrechen / Schließen", "Cancel / Close", "İptal / Kapat", lang=lang))
+
+        self._menu_help.setTitle(t("menu.help"))
+        self._act_about.setText(
+            pick(
+                f"Über {config.APP_NAME}",
+                f"About {config.APP_NAME}",
+                f"{config.APP_NAME} Hakkında",
+                lang=lang,
+            )
+        )
+
+        # Populated child views
+        self._refresh_sidebar_actions()
+        self.table.retranslate()
+        self.summary.retranslate()
+        self.detail_view.retranslate()
+        self.options_view.retranslate()
+        self._render_engine_indicators()
+
+        cur_page = self._pages.currentIndex()
+        if cur_page == _PAGE_DETAIL and self.detail_view._current is not None:
+            self._set_page(_PAGE_DETAIL, footer_text=build_footer_summary(self.detail_view._current))
+        elif cur_page == _PAGE_PENDING:
+            self._on_selection_changed(self.table.currentItem())
+        else:
+            self._set_page(cur_page)
+
     def _open_options(self) -> None:
         """Open Options view (keeps compatibility with tests calling _open_options)."""
         self._toggle_options_view()
@@ -1405,7 +1645,17 @@ class MainWindow(QMainWindow):
                 ("YARA", self.dispatcher.yara.available),
                 ("7-Zip", config.SEVENZIP_ENABLED),
             ]
-            opt_rows = [(n, "Verfügbar" if ok else "Nicht verfügbar", ok) for n, ok in cap_entries]
+            lang = get_language()
+            opt_rows = [
+                (
+                    n,
+                    pick("Verfügbar", "Available", "Kullanılabilir", lang=lang)
+                    if ok
+                    else pick("Nicht verfügbar", "Unavailable", "Kullanılamıyor", lang=lang),
+                    ok,
+                )
+                for n, ok in cap_entries
+            ]
 
         self.status_capsule.set_engines(cap_entries[:4])
         if tooltip_line:
@@ -1415,9 +1665,17 @@ class MainWindow(QMainWindow):
     def _on_static_only_toggled(self, checked: bool) -> None:
         self._render_engine_indicators()
         self.statusBar().showMessage(
-            "Nur-Statik-Modus aktiv (Defender & ClamAV für diese Sitzung pausiert)."
+            pick(
+                "Nur-Statik-Modus aktiv (Defender & ClamAV für diese Sitzung pausiert).",
+                "Static-only mode active (Defender & ClamAV paused for this session).",
+                "Yalnızca statik mod etkin (Defender ve ClamAV bu oturum için duraklatıldı).",
+            )
             if checked
-            else "Nur-Statik-Modus beendet (Defender & ClamAV wieder aktiv)."
+            else pick(
+                "Nur-Statik-Modus beendet (Defender & ClamAV wieder aktiv).",
+                "Static-only mode disabled (Defender & ClamAV active again).",
+                "Yalnızca statik mod kapatıldı (Defender ve ClamAV yeniden etkin).",
+            )
         )
 
     def _on_clam_auto_toggled(self, checked: bool) -> None:
@@ -1467,16 +1725,35 @@ class MainWindow(QMainWindow):
         from ..analysis.clamav_update import find_freshclam
 
         if find_freshclam() is None:
-            QMessageBox.information(
+            lang = get_language()
+            show_message_box(
                 self,
-                "freshclam nicht gefunden",
-                "Das ClamAV-Werkzeug freshclam wurde auf diesem Rechner nicht gefunden. "
-                "Installieren Sie ClamAV oder pruefen Sie docs/INSTALLATION.md.",
+                pick("freshclam nicht gefunden", "freshclam not found", "freshclam bulunamadı", lang=lang),
+                pick(
+                    "Das ClamAV-Werkzeug freshclam wurde auf diesem Rechner nicht gefunden. "
+                    "Installieren Sie ClamAV oder pruefen Sie docs/INSTALLATION.md.",
+                    "The ClamAV tool freshclam was not found on this PC. "
+                    "Install ClamAV or see docs/INSTALLATION.md.",
+                    "Bu bilgisayarda ClamAV aracı freshclam bulunamadı. "
+                    "ClamAV kurun veya docs/INSTALLATION.md kılavuzuna bakın.",
+                    lang=lang,
+                ),
             )
             return
+        lang = get_language()
         dlg = _StreamUpdateDialog(
-            "ClamAV-Signaturen aktualisieren",
-            "Lädt aktuelle Virensignaturen über freshclam (einmalige Online-Verbindung).",
+            pick(
+                "ClamAV-Signaturen aktualisieren",
+                "Update ClamAV signatures",
+                "ClamAV imzalarını güncelle",
+                lang=lang,
+            ),
+            pick(
+                "Lädt aktuelle Virensignaturen über freshclam (einmalige Online-Verbindung).",
+                "Downloads current virus signatures via freshclam (one-time online connection).",
+                "freshclam üzerinden güncel virüs imzalarını indirir (tek seferlik çevrimiçi bağlantı).",
+                lang=lang,
+            ),
             _freshclam_runner,
             self,
         )
@@ -1548,7 +1825,7 @@ class MainWindow(QMainWindow):
             return
         path, selected = QFileDialog.getSaveFileName(
             self,
-            "Bericht speichern",
+            t("dialog.export_title"),
             "malaz_bericht.html",
             "HTML-Bericht (*.html);;PDF-Bericht (*.pdf);;CSV-Tabelle (*.csv);;JSON-Export (*.json)",
         )
@@ -1578,7 +1855,7 @@ class MainWindow(QMainWindow):
         sig = _ExportSignals(self)
         sig.saved.connect(self._on_report_saved)
         sig.failed.connect(self._on_report_failed)
-        self.thread_pool.start(_ExportJob(list(self._results), path, as_pdf, sig))
+        self.thread_pool.start(_ExportJob(list(self._results), path, as_pdf, sig, lang=get_language()))
 
     def _on_report_saved(self, path: str) -> None:
         self._export_running = False
@@ -1591,7 +1868,7 @@ class MainWindow(QMainWindow):
         self._export_running = False
         self._sync_report_enabled()
         self.statusBar().showMessage(f"Bericht fehlgeschlagen: {masked_widget_text(error)}")
-        QMessageBox.critical(self, "Bericht fehlgeschlagen", error)
+        show_message_box(self, t("dialog.export_failed_title"), error, icon=QMessageBox.Icon.Critical)
 
     def _on_view_mail(self) -> None:
         from .mail_viewer_dialog import MailViewerDialog
@@ -1612,12 +1889,22 @@ class MainWindow(QMainWindow):
         MailViewerDialog(resolved_str, self).exec()
 
     def _on_about(self) -> None:
+        lang = get_language()
+        avail_txt = pick("verfügbar", "available", "kullanılabilir", lang=lang)
+        missing_txt = pick("nicht verfügbar", "unavailable", "kullanılamıyor", lang=lang)
         caps = "\n".join(
-            f"  {name}: {'verfügbar' if ok else 'nicht verfügbar'}"
+            f"  {name}: {avail_txt if ok else missing_txt}"
             for name, ok in sorted(config.available_capabilities().items())
         )
         box = QMessageBox(self)
-        box.setWindowTitle(f"Über {config.APP_NAME}")
+        box.setWindowTitle(
+            pick(
+                f"Über {config.APP_NAME}",
+                f"About {config.APP_NAME}",
+                f"{config.APP_NAME} Hakkında",
+                lang=lang,
+            )
+        )
         from ..branding import logo_path
 
         logo = QPixmap(str(logo_path()))
@@ -1631,17 +1918,30 @@ class MainWindow(QMainWindow):
                 )
             )
         box.setText(
-            f"{config.APP_NAME} v{__version__}\n\n"
-            "Prüft Dateien (PDF, Office, E-Mails, Archive, Programme) lokal auf diesem Rechner.\n"
-            "Standardmäßig komplett offline — keine Cloud, keine Telemetrie.\n\n"
-            f"Module:\n{caps}"
+            pick(
+                f"{config.APP_NAME} v{__version__}\n\n"
+                "Prüft Dateien (PDF, Office, E-Mails, Archive, Programme) lokal auf diesem Rechner.\n"
+                "Standardmäßig komplett offline — keine Cloud, keine Telemetrie.\n\n"
+                f"Module:\n{caps}",
+                f"{config.APP_NAME} v{__version__}\n\n"
+                "Inspects files (PDF, Office, emails, archives, executables) locally on this PC.\n"
+                "Completely offline by default — zero cloud uploads, zero telemetry.\n\n"
+                f"Modules:\n{caps}",
+                f"{config.APP_NAME} v{__version__}\n\n"
+                "PDF, Office, e-posta, arşiv ve program dosyalarını bu bilgisayarda yerel olarak tarar.\n"
+                "Varsayılan olarak tamamen çevrimdışıdır — bulut yüklemesi ve telemetri yoktur.\n\n"
+                f"Modüller:\n{caps}",
+                lang=lang,
+            )
         )
+        box.addButton(t("btn.ok"), QMessageBox.ButtonRole.AcceptRole)
         box.exec()
 
     # -- Shutdown ---------------------------------------------------------- #
 
     def closeEvent(self, event) -> None:
         unregister_theme_listener(self._on_theme_changed)
+        unregister_language_listener(self._on_language_changed)
         if self._fixed_size is None:
             save_window_rect(self)
             sizes = self._splitter.sizes()

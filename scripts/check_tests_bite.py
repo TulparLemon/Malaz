@@ -408,8 +408,16 @@ MUTATIONS: tuple[Mutation, ...] = (
     Mutation(
         name="faehigkeiten-titel-nur-einmal",
         file="src/malaz/gui/detail_view.py",
-        old="""            self._btn_tab_capa.setText(f"Fähigkeiten ({len(result.capa_capabilities)})")
-""",
+        old=(
+            "            self._btn_tab_capa.setText(\n"
+            "                pick(\n"
+            '                    f"Fähigkeiten ({len(result.capa_capabilities)})",\n'
+            '                    f"Capabilities ({len(result.capa_capabilities)})",\n'
+            '                    f"Yetenekler ({len(result.capa_capabilities)})",\n'
+            "                    lang=lang,\n"
+            "                )\n"
+            "            )\n"
+        ),
         new="            pass\n",
         test="tests/test_mail_viewer.py::test_capability_tab_title_follows_the_selection",
         why=(
@@ -552,6 +560,39 @@ MUTATIONS: tuple[Mutation, ...] = (
         why=(
             "Spec 006 (PDF-001): ohne graph_incomplete bleiben unlesbare "
             "Seitenbaum-/Root-Objekte beim Link-Scan still unbemerkt."
+        ),
+    ),
+    Mutation(
+        name="i18n-en-key-fehlt",
+        file="src/malaz/i18n_catalog.py",
+        old='    "menu.file": "&File",\n',
+        new="",
+        test="tests/test_i18n.py::test_catalog_key_and_placeholder_parity",
+        why=(
+            "Spec 011 (UI-006): ein fehlender Schluessel im englischen Katalog "
+            "muss vom Paritaetstest sofort gefangen werden."
+        ),
+    ),
+    Mutation(
+        name="i18n-tr-key-fehlt",
+        file="src/malaz/i18n_catalog_tr.py",
+        old='    "options.language.tr": "Türkçe",\n',
+        new="",
+        test="tests/test_i18n.py::test_catalog_key_and_placeholder_parity",
+        why=(
+            "Spec 011 (UI-006): ein fehlender Schluessel im tuerkischen Katalog "
+            "muss vom Paritaetstest sofort gefangen werden."
+        ),
+    ),
+    Mutation(
+        name="i18n-en-unchecked-zu-clean",
+        file="src/malaz/i18n_catalog.py",
+        old='    "state.unk": "Unchecked",\n',
+        new='    "state.unk": "Clean",\n',
+        test="tests/test_i18n.py::test_en_and_tr_completeness_invariant_gui_and_html",
+        why=(
+            "Spec 011 (UI-006): die Vollstaendigkeits-Invariante gilt in allen "
+            "Sprachen — Unchecked darf niemals als Clean erscheinen."
         ),
     ),
 )

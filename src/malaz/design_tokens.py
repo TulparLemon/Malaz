@@ -163,6 +163,15 @@ STATE_LABELS_DE: dict[str, str] = {
 }
 
 
+def state_label(state: str, *, lang: str | None = None) -> str:
+    """Return localized visual-state label dynamically (no import-time cache)."""
+    from .i18n import t
+
+    key = f"state.{state}"
+    val = t(key, lang=lang)
+    return STATE_LABELS_DE.get(state, state) if val == key else val
+
+
 def visual_state(risk_level: Any, is_incomplete: bool) -> str:
     """Map ``(risk_level, is_incomplete)`` to ``ok | unk | warn | bad``.
 
@@ -339,8 +348,15 @@ def format_tag_code(detected_type: str, filename: str = "", *, spoofed: bool = F
     return (code, "")
 
 
-def format_short_type(detected_type: str, filename: str = "") -> str:
-    """Concise German type string for footer & origin strip."""
+def format_short_type(
+    detected_type: str, filename: str = "", *, lang: str | None = None
+) -> str:
+    """Concise localized type string for footer & origin strip."""
+    from .i18n import get_language, localized_type_label, resolve_language
+
+    eff = resolve_language(lang) if lang is not None else get_language()
+    if eff in ("en", "tr"):
+        return localized_type_label(detected_type, filename, lang=eff, short=True)
     dt = (detected_type or "").lower()
     low = (filename or "").lower()
     if dt == "pe" and low.endswith(".dll"):
@@ -354,14 +370,23 @@ def format_short_type(detected_type: str, filename: str = "") -> str:
     return _SHORT_TYPE_DE.get(dt, dt.upper() if dt else "Datei")
 
 
-def format_size_de(size_bytes: int) -> str:
-    """Format byte size concisely using German decimal comma."""
+def format_size(size_bytes: int, *, lang: str | None = None) -> str:
+    """Format byte size concisely (comma for DE, dot for EN)."""
+    from .i18n import get_language, resolve_language
+
+    eff = resolve_language(lang) if lang is not None else get_language()
+    sep = "." if eff == "en" else ","
     if size_bytes < 0:
         return "0 B"
     if size_bytes < 1024:
         return f"{size_bytes} B"
     if size_bytes < 1024 * 1024:
         kb = size_bytes / 1024
-        return f"{kb:.0f} KB" if kb >= 10 else f"{kb:.1f} KB".replace(".", ",")
+        return f"{kb:.0f} KB" if kb >= 10 else f"{kb:.1f} KB".replace(".", sep)
     mb = size_bytes / (1024 * 1024)
-    return f"{mb:.1f} MB".replace(".", ",") if mb < 100 else f"{mb:.0f} MB"
+    return f"{mb:.1f} MB".replace(".", sep) if mb < 100 else f"{mb:.0f} MB"
+
+
+def format_size_de(size_bytes: int) -> str:
+    """Format byte size concisely using active language (legacy alias)."""
+    return format_size(size_bytes)

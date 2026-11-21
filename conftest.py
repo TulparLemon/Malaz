@@ -193,3 +193,16 @@ def _isolate_log_dir(tmp_path_factory, monkeypatch):
         if getattr(handler, "_malaz_privacy_handler", False):
             root_logger.removeHandler(handler)
             handler.close()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_language():
+    """Keep active UI language deterministically pinned to ``de`` between tests."""
+    from malaz import i18n
+    from malaz.gui import settings as gui_settings
+
+    i18n.set_language("de")
+    gui_settings._ACTIVE_LANG_PREF = None
+    yield
+    i18n.set_language("de")
+    gui_settings._ACTIVE_LANG_PREF = None

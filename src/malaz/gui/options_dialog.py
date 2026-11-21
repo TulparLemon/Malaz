@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import config
+from ..i18n import pick, t
 from .display import clamp_dialog_to_screen
 
 
@@ -76,7 +77,7 @@ class OptionsDialog(QDialog):
 
     def __init__(self, parent: QWidget | None = None, *, switches: dict | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Optionen")
+        self.setWindowTitle(t("options.dialog_title"))
         clamp_dialog_to_screen(self, preferred_w=680, preferred_h=620)
         self._switches = switches or {}
 
@@ -85,8 +86,14 @@ class OptionsDialog(QDialog):
         outer.setSpacing(8)
 
         kopf = QLabel(
-            "Malaz arbeitet offline. Alles, was eine Verbindung nach aussen "
-            "aufbaut, steht unten unter „Netzwerk“ und ist standardmässig aus."
+            pick(
+                "Malaz arbeitet offline. Alles, was eine Verbindung nach außen "
+                "aufbaut, steht unten unter „Netzwerk“ und ist standardmäßig aus.",
+                "Malaz runs offline by default. Everything that opens a network connection "
+                "is listed under Network below and disabled by default.",
+                "Malaz varsayılan olarak tamamen çevrimdışı çalışır. Ağ bağlantısı gerektiren "
+                "tüm seçenekler aşağıda listelenir ve varsayılan olarak kapalıdır.",
+            )
         )
         kopf.setWordWrap(True)
         kopf.setObjectName("panelValue")
@@ -106,7 +113,7 @@ class OptionsDialog(QDialog):
         self._build_analysis()
         self._build_output()
 
-        schliessen = QPushButton("Schliessen")
+        schliessen = QPushButton(t("btn.close"))
         schliessen.clicked.connect(self.accept)
         unten = QHBoxLayout()
         unten.addStretch(1)

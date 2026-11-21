@@ -13,6 +13,16 @@ from pathlib import Path
 
 from .. import __version__, config
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip
+from ..i18n import (
+    get_language,
+    language_context,
+    localized_engine_label,
+    localized_engine_name,
+    localized_indicator_detail,
+    localized_indicator_title,
+    pick,
+    resolve_language,
+)
 from ..models import Indicator, RiskLevel, ScanResult, Severity, type_description
 from ..security.escaping import escape_html
 from .mail_section import is_mail_result, mail_lines
@@ -91,16 +101,26 @@ def _esc_newlines(text: str) -> str:
     return escape_html(text).replace("\n", "<br>")
 
 
-def _severity_badge(severity: Severity) -> str:
+def _severity_badge(severity: Severity, *, lang: str) -> str:
     cls = _SEV_CLASS.get(severity, "info")
-    return f'<span class="sev {cls}">{escape_html(severity.label)}</span>'
+    return f'<span class="sev {cls}">{escape_html(severity.label_for(lang))}</span>'
 
 
-def _risk_badge(result: ScanResult) -> str:
+def _risk_badge(result: ScanResult, *, lang: str) -> str:
     color = result.risk_level.color
-    label = escape_html(result.risk_level.label)
     if result.is_incomplete:
-        label = f"{escape_html(result.risk_level.short)} (unvollständig)"
+        if lang == "tr":
+            label = f"{escape_html(result.risk_level.short_for('tr'))} (Denetlenmedi / eksik)"
+            if result.risk_level == RiskLevel.GREEN:
+                color = "#8a5a00"
+        elif lang == "en":
+            label = f"{escape_html(result.risk_level.short_for('en'))} (Unchecked / incomplete)"
+            if result.risk_level == RiskLevel.GREEN:
+                color = "#8a5a00"
+        else:
+            label = f"{escape_html(result.risk_level.short_for('de'))} (unvollständig)"
+    else:
+        label = escape_html(result.risk_level.label_for(lang))
     return f'<span class="badge" style="background:{color}">{label}</span>'
 
 
@@ -112,39 +132,46 @@ _ENGINE_COLORS = {
     "off": "#5f6368",
 }
 _ENGINE_MARKS = {
-    "threat": "\u2716", "clean": "\u2714", "skipped": "\u26a0",
-    "error": "!", "off": "\u2013",
+    "threat": "\u2716",
+    "clean": "\u2714",
+    "skipped": "\u26a0",
+    "error": "!",
+    "off": "\u2013",
 }
 
 
-def _engine_strip(result: ScanResult) -> str:
+def _engine_strip(result: ScanResult, *, lang: str) -> str:
     if not result.engine_verdicts:
         return ""
     parts = []
     for verdict in result.engine_verdicts:
         colour = _ENGINE_COLORS.get(verdict.state, _ENGINE_COLORS["off"])
         mark = _ENGINE_MARKS.get(verdict.state, "\u2013")
+        eng_name = localized_engine_name(verdict.engine, lang=lang)
+        eng_lbl = localized_engine_label(verdict.state, verdict.label, lang=lang)
         parts.append(
             f'<span class="engine" style="border-color:{colour};color:{colour}">'
-            f"{mark} {escape_html(verdict.engine)}: {escape_html(verdict.label)}"
+            f"{mark} {escape_html(eng_name)}: {escape_html(eng_lbl)}"
             "</span>"
         )
     return '<div class="engines">' + "".join(parts) + "</div>"
 
 
-def _indicator_rows(indicators: list[Indicator]) -> str:
+def _indicator_rows(indicators: list[Indicator], *, lang: str) -> str:
     if not indicators:
-        return '<tr><td colspan="4" class="empty">Keine Auffälligkeiten.</td></tr>'
+        empty_txt = pick("Keine Auffälligkeiten.", "No findings.", "Bulgu yok.", lang=lang)
+        return f'<tr><td colspan="4" class="empty">{escape_html(empty_txt)}</td></tr>'
     rows = []
-    # Highest severity first for readability.
     for ind in sorted(indicators, key=lambda i: i.severity, reverse=True):
+        title_txt = localized_indicator_title(ind, lang=lang)
+        detail_txt = localized_indicator_detail(ind, lang=lang)
         rows.append(
             "<tr>"
-            f"<td>{_severity_badge(ind.severity)}</td>"
+            f"<td>{_severity_badge(ind.severity, lang=lang)}</td>"
             f"<td class='mono'>{escape_html(ind.rule_id)}<br>"
             f"<span style='color:#999'>{escape_html(ind.source)}</span></td>"
-            f"<td>{escape_html(ind.title)}</td>"
-            f"<td class='detail'>{_esc_newlines(ind.detail)}</td>"
+            f"<td>{escape_html(title_txt)}</td>"
+            f"<td class='detail'>{_esc_newlines(detail_txt)}</td>"
             "</tr>"
         )
     return "".join(rows)
@@ -154,58 +181,66 @@ def _kv(label: str, value: object) -> str:
     return f'<div class="k">{escape_html(label)}</div><div class="v">{escape_html(value)}</div>'
 
 
-def _render_result(result: ScanResult, is_child: bool = False) -> str:
+def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "de") -> str:
+    anchor_str = pick(" · Anker aktiv", " · Anchor active", " · Kritik eşik aktif", lang=lang)
+    discount_str = pick(
+        f" · {result.av_discount} Punkte Nachlass (AV-ohne-Fund)",
+        f" · {result.av_discount} pts discount (AV clean)",
+        f" · {result.av_discount} puan indirim (AV temiz)",
+        lang=lang,
+    )
     head = (
         '<div class="file-head">'
         f'<span class="name">{escape_html(_clip(result.display_name, MAX_DISPLAY_CHARS))}</span>'
-        f"{_risk_badge(result)}"
+        f"{_risk_badge(result, lang=lang)}"
         f'<span class="score">Score: {result.score}/100'
-        + (" · Anker aktiv" if result.anchored else "")
-        # Why the score can be lower than its raw findings: clean AV votes
-        # (§ models.ScanResult.av_discount). Without this line the verdict
-        # colour is inexplicable to the reader.
-        + (
-            f" · {result.av_discount} Punkte Nachlass (AV-ohne-Fund)"
-            if result.av_discount
-            else ""
-        )
+        + (anchor_str if result.anchored else "")
+        + (discount_str if result.av_discount else "")
         + "</span>"
         "</div>"
     )
-    engines = _engine_strip(result)
+    engines = _engine_strip(result, lang=lang)
 
     meta = (
         '<div class="kv">'
-        + _kv("Pfad", _clip(result.path, MAX_DISPLAY_CHARS))
-        + _kv("Typ", type_description(result.detected_type, result.mime_hint))
-        + _kv("Größe", f"{result.size} Bytes")
+        + _kv(pick("Pfad", "Path", "Konum", lang=lang), _clip(result.path, MAX_DISPLAY_CHARS))
+        + _kv(
+            pick("Typ", "Type", "Tür", lang=lang),
+            type_description(result.detected_type, result.mime_hint, lang=lang),
+        )
+        + _kv(
+            pick("Größe", "Size", "Boyut", lang=lang),
+            pick(f"{result.size} Bytes", f"{result.size} bytes", f"{result.size} bayt", lang=lang),
+        )
         + _kv("SHA-256", result.sha256 or "—")
         + _kv("MD5", result.md5 or "—")
-        + _kv("Dauer", f"{result.duration_ms} ms")
-        + (_kv("Fehler", result.error) if result.error else "")
-        + "".join(_kv(label, value) for label, value in mail_lines(result))
+        + _kv(pick("Dauer", "Duration", "Süre", lang=lang), f"{result.duration_ms} ms")
+        + (_kv(pick("Fehler", "Error", "Hata", lang=lang), result.error) if result.error else "")
+        + "".join(_kv(label, value) for label, value in mail_lines(result, lang=lang))
         + "</div>"
     )
 
+    th_sev = pick("Schwere", "Severity", "Önem", lang=lang)
+    th_rule = pick("Regel", "Rule", "Kural", lang=lang)
+    th_find = pick("Befund", "Finding", "Bulgu", lang=lang)
     table = (
         "<table><thead><tr>"
-        "<th style='width:90px'>Schwere</th><th style='width:200px'>Regel</th>"
-        "<th style='width:280px'>Befund</th><th>Detail</th>"
-        "</tr></thead><tbody>"
-        + _indicator_rows(result.indicators)
-        + "</tbody></table>"
+        f"<th style='width:90px'>{th_sev}</th><th style='width:200px'>{th_rule}</th>"
+        f"<th style='width:280px'>{th_find}</th><th>Detail</th>"
+        "</tr></thead><tbody>" + _indicator_rows(result.indicators, lang=lang) + "</tbody></table>"
     )
 
     children_html = ""
     if result.children:
-        # Name the group: a mail's attachments and an archive's members are
-        # both children, but a reader scanning a phishing report needs to see
-        # "Attachments", not a bare list of nested blocks.
-        noun = "Anhänge" if is_mail_result(result) else "Archiveinträge"
+        noun = (
+            pick("Anhänge", "Attachments", "Ekler", lang=lang)
+            if is_mail_result(result)
+            else pick("Archiveinträge", "Archive entries", "Arşiv öğeleri", lang=lang)
+        )
         children_html = (
             f'<div class="children-head">{escape_html(noun)} '
             f"({len(result.children)}):</div>"
-            + "".join(_render_result(c, is_child=True) for c in result.children)
+            + "".join(_render_result(c, is_child=True, lang=lang) for c in result.children)
         )
 
     container_cls = "child" if is_child else "file"
@@ -213,82 +248,184 @@ def _render_result(result: ScanResult, is_child: bool = False) -> str:
     head = head.replace('class="file-head"', f'class="{head_cls}"', 1)
     incomplete = ""
     if result.is_incomplete:
-        titles = " | ".join(escape_html(i.title) for i in result.incomplete_stages)
-        incomplete = (
-            '<div class="incomplete"><b>Nicht geprüft:</b> '
-            f"{titles}. Das Urteil oben deckt diese Stufen NICHT ab.</div>"
+        titles = " | ".join(
+            escape_html(localized_indicator_title(i, lang=lang)) for i in result.incomplete_stages
         )
+        if lang == "tr":
+            incomplete = (
+                '<div class="incomplete"><b>Denetlenmedi:</b> '
+                f"{titles}. Yukarıdaki karar bu aşamaları KAPSAMAZ.</div>"
+            )
+        elif lang == "en":
+            incomplete = (
+                '<div class="incomplete"><b>Unchecked:</b> '
+                f"{titles}. The verdict above does NOT cover these stages.</div>"
+            )
+        else:
+            incomplete = (
+                '<div class="incomplete"><b>Nicht geprüft:</b> '
+                f"{titles}. Das Urteil oben deckt diese Stufen NICHT ab.</div>"
+            )
+    advice_lbl = pick("Empfehlung:", "Recommendation:", "Öneri:", lang=lang)
     advice = (
-        '<div class="advice"><b>Empfehlung:</b> '
-        f"{escape_html(result.risk_level.advice)}</div>"
+        f'<div class="advice"><b>{advice_lbl}</b> {escape_html(result.risk_level.advice_for(lang))}</div>'
     )
     return (
-        f'<div class="{container_cls}">{head}{incomplete}{advice}{engines}'
-        f"{meta}{table}{children_html}</div>"
+        f'<div class="{container_cls}">{head}{incomplete}{advice}{engines}{meta}{table}{children_html}</div>'
     )
 
 
-def generate_report(results: list[ScanResult], title: str | None = None) -> str:
+def generate_report(
+    results: list[ScanResult],
+    title: str | None = None,
+    *,
+    lang: str | None = None,
+) -> str:
     """Build the full self-contained HTML5 document for a batch of results."""
-    now = datetime.datetime.now(datetime.UTC).astimezone().strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
-    title = title or f"{config.APP_NAME} — Analysebericht"
+    eff = resolve_language(lang) if lang is not None else get_language()
+    is_en = eff == "en"
+    with language_context(eff):
+        now = datetime.datetime.now(datetime.UTC).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        default_title = pick(
+            f"{config.APP_NAME} — Analysebericht",
+            f"{config.APP_NAME} — Security Scan Report",
+            f"{config.APP_NAME} — Güvenlik Tarama Raporu",
+            lang=eff,
+        )
+        doc_title = title or default_title
 
-    counts = {RiskLevel.GREEN: 0, RiskLevel.YELLOW: 0, RiskLevel.RED: 0}
-    for r in results:
-        counts[r.risk_level] = counts.get(r.risk_level, 0) + 1
-    incomplete_count = sum(1 for r in results if r.is_incomplete)
+        counts = {RiskLevel.GREEN: 0, RiskLevel.YELLOW: 0, RiskLevel.RED: 0}
+        for r in results:
+            counts[r.risk_level] = counts.get(r.risk_level, 0) + 1
+        incomplete_count = sum(1 for r in results if r.is_incomplete)
 
-    summary = (
-        '<div class="summary">'
-        f'<div class="card"><div class="num">{len(results)}</div>'
-        '<div class="lbl">Dateien gesamt</div></div>'
-        f'<div class="card green"><div class="num">{counts[RiskLevel.GREEN]}</div>'
-        f'<div class="lbl">{escape_html(RiskLevel.GREEN.short)} (Grün)</div></div>'
-        f'<div class="card yellow"><div class="num">{counts[RiskLevel.YELLOW]}</div>'
-        f'<div class="lbl">{escape_html(RiskLevel.YELLOW.short)} (Gelb)</div></div>'
-        f'<div class="card red"><div class="num">{counts[RiskLevel.RED]}</div>'
-        f'<div class="lbl">{escape_html(RiskLevel.RED.short)} (Rot)</div></div>'
-        f'<div class="card"><div class="num">{incomplete_count}</div>'
-        '<div class="lbl">Nicht vollständig geprüft</div></div>'
-        "</div>"
-        '<div class="legend"><b>Einordnung:</b> Unauffällig = keine Anzeichen für '
-        "Manipulation · Verdächtig = nur bei vertrauenswürdigem Absender öffnen · "
-        "Gefährlich = nicht öffnen, löschen und ggf. die IT informieren.</div>"
-    )
+        if eff == "tr":
+            summary = (
+                '<div class="summary">'
+                f'<div class="card"><div class="num">{len(results)}</div>'
+                '<div class="lbl">Toplam dosya</div></div>'
+                f'<div class="card green"><div class="num">{counts[RiskLevel.GREEN]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.GREEN.short_for("tr"))} (Yeşil)</div></div>'
+                f'<div class="card yellow"><div class="num">{counts[RiskLevel.YELLOW]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.YELLOW.short_for("tr"))} (Sarı)</div></div>'
+                f'<div class="card red"><div class="num">{counts[RiskLevel.RED]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.RED.short_for("tr"))} (Kırmızı)</div></div>'
+                f'<div class="card"><div class="num">{incomplete_count}</div>'
+                '<div class="lbl">Eksik / denetlenmedi</div></div>'
+                "</div>"
+                '<div class="legend"><b>Değerlendirme:</b> Temiz = teknik tehdit işareti yok · '
+                "Şüpheli = yalnızca göndericiye güveniyorsanız açın · "
+                "Tehlikeli = açmayın, silin ve BT ekibinize bildirin.</div>"
+            )
+        elif is_en:
+            summary = (
+                '<div class="summary">'
+                f'<div class="card"><div class="num">{len(results)}</div>'
+                '<div class="lbl">Total files</div></div>'
+                f'<div class="card green"><div class="num">{counts[RiskLevel.GREEN]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.GREEN.short_for("en"))} (Green)</div></div>'
+                f'<div class="card yellow"><div class="num">{counts[RiskLevel.YELLOW]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.YELLOW.short_for("en"))} (Yellow)</div></div>'
+                f'<div class="card red"><div class="num">{counts[RiskLevel.RED]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.RED.short_for("en"))} (Red)</div></div>'
+                f'<div class="card"><div class="num">{incomplete_count}</div>'
+                '<div class="lbl">Unchecked / incomplete</div></div>'
+                "</div>"
+                '<div class="legend"><b>Classification:</b> Clean = no signs of tampering · '
+                "Suspicious = only open if you trust the sender · "
+                "Dangerous = do not open, delete and notify IT.</div>"
+            )
+        else:
+            summary = (
+                '<div class="summary">'
+                f'<div class="card"><div class="num">{len(results)}</div>'
+                '<div class="lbl">Dateien gesamt</div></div>'
+                f'<div class="card green"><div class="num">{counts[RiskLevel.GREEN]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.GREEN.short_for("de"))} (Grün)</div></div>'
+                f'<div class="card yellow"><div class="num">{counts[RiskLevel.YELLOW]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.YELLOW.short_for("de"))} (Gelb)</div></div>'
+                f'<div class="card red"><div class="num">{counts[RiskLevel.RED]}</div>'
+                f'<div class="lbl">{escape_html(RiskLevel.RED.short_for("de"))} (Rot)</div></div>'
+                f'<div class="card"><div class="num">{incomplete_count}</div>'
+                '<div class="lbl">Nicht vollständig geprüft</div></div>'
+                "</div>"
+                '<div class="legend"><b>Einordnung:</b> Unauffällig = keine Anzeichen für '
+                "Manipulation · Verdächtig = nur bei vertrauenswürdigem Absender öffnen · "
+                "Gefährlich = nicht öffnen, löschen und ggf. die IT informieren.</div>"
+            )
 
-    if results:
-        body = "".join(_render_result(r) for r in results)
-    else:
-        body = '<div class="file"><div class="empty">Keine Dateien analysiert.</div></div>'
+        if results:
+            body = "".join(_render_result(r, lang=eff) for r in results)
+        else:
+            empty_msg = pick(
+                "Keine Dateien analysiert.", "No files analyzed.", "Taranan dosya yok.", lang=eff
+            )
+            body = f'<div class="file"><div class="empty">{empty_msg}</div></div>'
 
-    caps = ", ".join(
-        f"{name}={'ja' if ok else 'nein'}"
-        for name, ok in sorted(config.available_capabilities().items())
-    )
+        yes_word, no_word = ("evet", "hayır") if eff == "tr" else (("yes", "no") if is_en else ("ja", "nein"))
+        caps = ", ".join(
+            f"{name}={yes_word if ok else no_word}"
+            for name, ok in sorted(config.available_capabilities().items())
+        )
 
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="de"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>{escape_html(title)}</title>"
-        f"<style>{_CSS}</style></head><body>"
-        f"<header><h1>{escape_html(config.APP_NAME)}</h1>"
-        f'<div class="meta">Analysebericht · erstellt {escape_html(now)} · '
-        f"Version {escape_html(__version__)} · 100% offline</div></header>"
-        f'<div class="wrap">{summary}{body}</div>'
-        f"<footer>Malaz v{escape_html(__version__)} — rein statische Analyse, "
-        "keine Ausführung von Payloads. Verfügbare Module: "
-        f"{escape_html(caps)}. Dieser Bericht enthält kein JavaScript.</footer>"
-        "</body></html>"
-    )
+        if eff == "tr":
+            meta_line = (
+                f"Güvenlik raporu · oluşturma {escape_html(now)} · "
+                f"Sürüm {escape_html(__version__)} · %100 çevrimdışı"
+            )
+            footer_line = (
+                f"Malaz v{escape_html(__version__)} — yerel statik analiz, "
+                "zararlı kod çalıştırılmaz. Mevcut modüller: "
+                f"{escape_html(caps)}. Bu rapor JavaScript içermez."
+            )
+        elif is_en:
+            meta_line = (
+                f"Security report · generated {escape_html(now)} · "
+                f"Version {escape_html(__version__)} · 100% offline"
+            )
+            footer_line = (
+                f"Malaz v{escape_html(__version__)} — static local analysis, "
+                "zero payload execution. Available modules: "
+                f"{escape_html(caps)}. This report contains no JavaScript."
+            )
+        else:
+            meta_line = (
+                f"Analysebericht · erstellt {escape_html(now)} · "
+                f"Version {escape_html(__version__)} · 100% offline"
+            )
+            footer_line = (
+                f"Malaz v{escape_html(__version__)} — rein statische Analyse, "
+                "keine Ausführung von Payloads. Verfügbare Module: "
+                f"{escape_html(caps)}. Dieser Bericht enthält kein JavaScript."
+            )
+
+        return (
+            "<!DOCTYPE html>\n"
+            f'<html lang="{eff}"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            f"<title>{escape_html(doc_title)}</title>"
+            f"<style>{_CSS}</style></head><body>"
+            f"<header><h1>{escape_html(config.APP_NAME)}</h1>"
+            f'<div class="meta">{meta_line}</div></header>'
+            f'<div class="wrap">{summary}{body}</div>'
+            f"<footer>{footer_line}</footer>"
+            "</body></html>"
+        )
 
 
-def save_report(results: list[ScanResult], path: str | Path, title: str | None = None) -> Path:
+def save_report(
+    results: list[ScanResult],
+    path: str | Path,
+    title: str | None = None,
+    *,
+    lang: str | None = None,
+) -> Path:
     """Generate the report and write it to ``path`` (UTF-8)."""
-    html = generate_report(results, title=title)
+    html = generate_report(results, title=title, lang=lang)
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     return out
+
+
+render_html_report = generate_report

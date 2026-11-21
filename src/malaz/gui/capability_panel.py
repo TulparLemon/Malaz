@@ -90,11 +90,32 @@ def _group_rank(label: str) -> int:
     return len(_GROUP_ORDER)
 
 
+_GROUP_EN: dict[str, str] = {
+    "anti-analysis": "Anti-Analysis & Evasion",
+    "collection": "Data Collection",
+    "communication": "Network & Communication",
+    "c2": "Command & Control",
+    "data-manipulation": "Encryption & Data Manipulation",
+    "executable": "Executable & Loading",
+    "host-interaction": "System & Host Interaction",
+    "impact": "System Impact",
+    "internal": "Internal Functions",
+    "lib": "Library Routines",
+    "linking": "Linking & Runtime",
+    "load-code": "Dynamic Code Loading",
+    "malware-family": "Malware Family",
+    "nursery": "Experimental Rules",
+    "persistence": "Persistence",
+    "targeting": "Targeting",
+}
+
+
 class CapabilityPanel(QScrollArea):
     """Der Inhalt des Faehigkeiten-Reiters."""
 
     def __init__(self) -> None:
         super().__init__()
+        self._last_result: ScanResult | None = None
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.NoFrame)
         self._body = QWidget()
@@ -104,72 +125,131 @@ class CapabilityPanel(QScrollArea):
         self.setWidget(self._body)
 
     def clear(self) -> None:
+        self._last_result = None
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
 
+    def retranslate(self) -> None:
+        if self._last_result is not None:
+            self.show_result(self._last_result)
+
     def show_result(self, result: ScanResult) -> None:
+        from ..i18n import get_language, pick
+
         self.clear()
+        self._last_result = result
+        lang = get_language()
+        is_en = lang == "en"
         faehigkeiten = list(getattr(result, "capa_capabilities", None) or [])
         if not faehigkeiten:
             self._add(
-                "Für diese Datei liegen keine Fähigkeiten vor. Das heißt nicht, "
-                "dass sie harmlos ist: capa erkennt gepackte Programme und "
-                "unbekannte Formate nicht.",
+                pick(
+                    "Für diese Datei liegen keine Fähigkeiten vor. Das heißt nicht, "
+                    "dass sie harmlos ist: capa erkennt gepackte Programme und "
+                    "unbekannte Formate nicht.",
+                    "No capabilities were detected for this file. That does not mean "
+                    "it is harmless: capa cannot analyze packed binaries or unknown formats.",
+                    "Bu dosya için davranışsal yetenek tespit edilmedi. Bu dosyanın güvenli olduğu "
+                    "anlamına gelmez: capa paketlenmiş programları ve bilinmeyen biçimleri çözümleyemez.",
+                    lang=lang,
+                ),
                 object_name="panelValue",
             )
             self._layout.addStretch(1)
             return
 
-        self._add(
-            f"Was dieses Programm technisch kann — {len(faehigkeiten)} "
-            f"Fähigkeiten erkannt.",
-            object_name="panelHeading",
-        )
-        self._add(
-            "Das ist eine Einordnung, kein Urteil: viele dieser Fähigkeiten "
-            "treffen auch auf völlig normale Programme zu. Ob die Datei "
-            "gefährlich ist, steht oben im Ergebnis.",
-            object_name="panelValue",
-        )
-        # Die Gruppen sind deutsch, die Einzelnamen sind capas eigene
-        # Bezeichner und bleiben englisch. Das zu sagen ist besser, als den
-        # Nutzer raten zu lassen — und besser, als tausend Regelnamen zu
-        # uebersetzen, die mit jeder capa-Version wandern.
-        self._add(
-            "Die Gruppennamen sind übersetzt; die Einzelnamen stammen aus dem "
-            "Regelwerk von capa und stehen dort auf Englisch.",
-            object_name="panelKey",
-        )
+        if get_language() == "tr":
+            self._add(
+                f"Bu programın teknik olarak yapabildikleri — {len(faehigkeiten)} yetenek tespit edildi.",
+                object_name="panelHeading",
+            )
+            self._add(
+                "Bu bir zararlılık kararı değil, teknik bağlamdır: sıradan birçok program "
+                "benzer yeteneklere sahiptir. Genel karar için yukarıdaki sonuca bakın.",
+                object_name="panelValue",
+            )
+        elif is_en:
+            self._add(
+                f"What this executable can technically do — {len(faehigkeiten)} capabilities detected.",
+                object_name="panelHeading",
+            )
+            self._add(
+                "This is behavioral context, not a malware verdict: many normal programs "
+                "share these capabilities. Check the overall verdict above.",
+                object_name="panelValue",
+            )
+        else:
+            self._add(
+                f"Was dieses Programm technisch kann — {len(faehigkeiten)} "
+                f"Fähigkeiten erkannt.",
+                object_name="panelHeading",
+            )
+            self._add(
+                "Das ist eine Einordnung, kein Urteil: viele dieser Fähigkeiten "
+                "treffen auch auf völlig normale Programme zu. Ob die Datei "
+                "gefährlich ist, steht oben im Ergebnis.",
+                object_name="panelValue",
+            )
+            self._add(
+                "Die Gruppennamen sind übersetzt; die Einzelnamen stammen aus dem "
+                "Regelwerk von capa und stehen dort auf Englisch.",
+                object_name="panelKey",
+            )
 
         gruppen: dict[str, list[str]] = defaultdict(list)
+        group_tr = {
+            "anti-analysis": "Analiz Engelleme",
+            "collection": "Veri Toplama",
+            "communication": "Ağ ve İletişim",
+            "compiler": "Derleyici / Paketleyici",
+            "data-manipulation": "Şifreleme ve Veri İşleme",
+            "executable": "Çalıştırılabilir Yapı",
+            "host-interaction": "Sistem ve İşletim Sistemi",
+            "impact": "Etki ve Değişiklik",
+            "internal": "Dahili / Yardımcı",
+            "lib": "Kütüphaneler",
+            "linking": "Bağlama",
+            "load-code": "Kod Yükleme",
+            "malware-family": "Zararlı Yazılım Ailesi",
+            "nursery": "Diğer",
+            "persistence": "Kalıcılık",
+            "runtime": "Çalışma Zamanı",
+            "targeting": "Hedefleme",
+        }
         for eintrag in faehigkeiten:
-            # ``name`` (kurz), nicht ``display`` (mit Namensraum als Praefix):
-            # die Gruppe steht schon in der Ueberschrift.
-            gruppen[_group_label(str(eintrag.get("namespace", "")))].append(
+            ns = str(eintrag.get("namespace", ""))
+            top_ns = ns.split("/", 1)[0].strip().lower()
+            if lang == "tr":
+                glabel = group_tr.get(top_ns, top_ns.replace("-", " ").title() if top_ns else "Diğer")
+            elif is_en:
+                glabel = _GROUP_EN.get(top_ns, top_ns.replace("-", " ").title() if top_ns else "Other")
+            else:
+                glabel = _group_label(ns)
+            gruppen[glabel].append(
                 str(eintrag.get("name") or eintrag.get("display") or "")
             )
 
-        for label in sorted(gruppen, key=_group_rank):
+        sort_key = (lambda lbl: lbl) if lang != "de" else _group_rank
+        for label in sorted(gruppen, key=sort_key):
             namen = gruppen[label]
             self._add(
                 _clip(f"{label} ({len(namen)})", MAX_DISPLAY_CHARS),
                 object_name="panelHeading",
             )
             for name in namen[:40]:
-                # Gekuerzt wie ueberall sonst (core/mail_view.MAX_DISPLAY_CHARS):
-                # ein 5000-Zeichen-Name erzeugte ein 5006-Zeichen-Label. capa
-                # liefert die Namen aus seinem Regelwerk, aber die Ausgabe
-                # kommt von einem externen Werkzeug, das eine
-                # angreiferkontrollierte Datei beschreibt — die Grenze gehoert
-                # an die Senke, nicht ins Vertrauen.
                 self._add(f"    • {_clip(name, MAX_DISPLAY_CHARS)}", object_name="panelValue")
             if len(namen) > 40:
-                self._add(
-                    f"    … und {len(namen) - 40} weitere", object_name="panelValue"
+                extra = len(namen) - 40
+                more_txt = pick(
+                    f"    … und {extra} weitere",
+                    f"    … and {extra} more",
+                    f"    … ve {extra} adet daha",
+                    lang=lang,
                 )
+                self._add(more_txt, object_name="panelValue")
         self._layout.addStretch(1)
 
     def _add(self, text: str, *, object_name: str) -> None:

@@ -6,8 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Securit
 ## [Unreleased]
 
 ### Added
+- **Trilingual UI & Report Localization (`UI-006`, DE / EN / TR / System):** Zero-dependency localization catalog (`src/malaz/i18n.py`, `src/malaz/i18n_catalog.py`, `src/malaz/i18n_catalog_tr.py`) covering **German (`Deutsch`)**, **English (`English`)**, and idiomatic **Turkish (`Türkçe`)** across the entire desktop GUI, 240+ canonical rule findings, and HTML/PDF reports. Supports automatic Windows LCID detection (`System`), live language switching in **Options → Language**, and ephemeral `--lang {system,de,en,tr}` CLI overrides while keeping JSON/CSV exports 100% machine-invariant and preserving the completeness invariant (`Ungeprüft` / `Unchecked` / `Denetlenmedi`) in all languages.
+- **Reproducible Showcase Asset Generator (`scripts/make_showcase_assets.py`):** Regenerates the English README screenshots (`docs/assets/malaz-{ui,overview,light,options}.png`) and animated walkthrough (`docs/assets/malaz-demo.gif`) deterministically from the real PySide6 application.
 - **PDF structural link analysis (`PDF-001`):** Extracts `/URI` targets structurally via the bounded action-graph walk (including compressed `/ObjStm` streams and UTF-16BE/LE strings without BOM), strips C0 control characters, filters format namespaces, and checks links offline against local URL/domain/IP blocklists (`PDF_LINK`, `BINARY_IOC_BLOCKED`, `PDF_LINK_CAPPED`).
-- Documented the `.eml`/`.msg` workflow for sender/phishing verification in `docs/USAGE.md`.
+- Documented the `.eml`/`.msg` workflow for sender/phishing verification and `--lang` usage in `docs/USAGE.md`.
+
+### Fixed
+- Fixed `_EngineCapsule.set_engines()` not showing dynamically created engine badges after background `_EngineProbe` completion on an already-visible window.
+- Adjusted sidebar status filter chip spacing/stretch so labels (`Alle` / `All` / `Tümü` and `OK`) render without horizontal clipping in all languages.
 
 ### Changed
 - Tightened `RiskLevel.GREEN.advice` so clean static results never promise safety ("bedenkenlos") and explicitly remind users that sender authenticity and business content still require verification.

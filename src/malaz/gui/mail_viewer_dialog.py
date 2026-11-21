@@ -51,6 +51,7 @@ from .. import config
 from ..core.eml_analysis import analyze_structure, looks_like_mail, parse_mail
 from ..core.mail_score import mechanism_label, sender_score
 from ..core.mail_view import MAX_DISPLAY_CHARS, _clip, render_mail, sender_verdict
+from ..i18n import pick, t
 from ..security.escaping import mask_invisible
 from .display import clamp_dialog_to_screen
 from .theme import FONT_SUBTITLE, RISK_COLORS, RISK_MARKS
@@ -82,7 +83,7 @@ class MailViewerDialog(QDialog):
         # "Rechnung\u202egpj.eml" wie "Rechnungeml.jpg" aussehen, und ein
         # 60 000-Zeichen-Name landete ungekuerzt in der Titelleiste.
         self.setWindowTitle(
-            "Mail ansehen: "
+            pick("Mail ansehen: ", "Email viewer: ", "E-posta görüntüleyici: ")
             + _clip(mask_invisible(self._path.name), MAX_DISPLAY_CHARS)
         )
         clamp_dialog_to_screen(self, preferred_w=820, preferred_h=680)
@@ -104,7 +105,7 @@ class MailViewerDialog(QDialog):
 
         unten = QHBoxLayout()
         unten.addStretch(1)
-        schliessen = QPushButton("Schliessen")
+        schliessen = QPushButton(t("btn.close"))
         schliessen.clicked.connect(self.accept)
         unten.addWidget(schliessen)
         outer.addLayout(unten)
@@ -122,11 +123,20 @@ class MailViewerDialog(QDialog):
         layout = QVBoxLayout(rahmen)
         layout.setContentsMargins(12, 10, 12, 10)
         text = QLabel(
-            "Diese Anzeige oeffnet die Mail NICHT in Ihrem Mailprogramm und "
-            "fuehrt nichts aus. Anhaenge werden nicht entpackt, Bilder nicht "
-            "geladen — der Absender erfaehrt also nicht, dass Sie die Mail "
-            "angesehen haben. Sie bewertet die Datei auch nicht; dafuer "
-            "scannen Sie sie."
+            pick(
+                "Diese Anzeige oeffnet die Mail NICHT in Ihrem Mailprogramm und "
+                "fuehrt nichts aus. Anhaenge werden nicht entpackt, Bilder nicht "
+                "geladen — der Absender erfaehrt also nicht, dass Sie die Mail "
+                "angesehen haben. Sie bewertet die Datei auch nicht; dafuer "
+                "scannen Sie sie.",
+                "This viewer does NOT open the email in your mail client and executes "
+                "nothing. Attachments are not extracted and remote images are never "
+                "loaded — the sender is never notified. This view does not judge risk; "
+                "scan the file for a verdict.",
+                "Bu görüntüleyici e-postayı e-posta istemcinizde AÇMAZ ve hiçbir kod çalıştırmaz. "
+                "Ekler çıkarılmaz ve harici görseller yüklenmez — göndericiye bildirim gitmez. "
+                "Bu ekran risk değerlendirmesi yapmaz; karar için dosyayı tarayın.",
+            )
         )
         text.setWordWrap(True)
         text.setObjectName("panelValue")
@@ -203,7 +213,7 @@ class MailViewerDialog(QDialog):
         farbe = RISK_COLORS[score.color]
         mark = RISK_MARKS[score.color]
 
-        self._add("Absender", heading=True)
+        self._add(pick("Absender", "Sender", "Gönderici"), heading=True)
         zeile = QLabel(mask_invisible(f"{mark}  {score.label}"))
         zeile.setStyleSheet(
             f"color: {farbe}; font-size: {FONT_SUBTITLE}; font-weight: 700;"
