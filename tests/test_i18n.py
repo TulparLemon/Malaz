@@ -635,6 +635,7 @@ def test_html_and_pdf_incomplete_green_badges_never_say_clean_or_temiz(qapp, tmp
 
     html_tr = generate_report([inc_green], lang="tr")
     assert "Taranamadı (eksik)" in html_tr
+    assert "Temiz (eksik)" not in html_tr
     assert "Temiz (Taranamadı" not in html_tr
     assert "Puan:" in html_tr
     assert "<th>Ayrıntı</th>" in html_tr

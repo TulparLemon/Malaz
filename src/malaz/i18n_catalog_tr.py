@@ -141,9 +141,9 @@ STRINGS_TR: dict[str, str] = {
     ),
     "verdict.warn.headline": "Şüpheli — Açarken dikkatli olun",
     "verdict.warn.default_summary": (
-        "Olağandışı bulgular var · Emin değilseniz göndericiyle teyit edin."
+        "Olağandışı bulgular var · Emin değilseniz gönderenle teyit edin."
     ),
-    "verdict.warn.reason_summary": "{reason} · Yalnızca göndericiye güveniyorsanız açın.",
+    "verdict.warn.reason_summary": "{reason} · Yalnızca gönderene güveniyorsanız açın.",
     "verdict.unk.headline": "Taranamadı — Temiz sayılmaz",
     "verdict.unk.default_summary": (
         "En az bir kontrol aşaması çalışmadı · Sonuç eksiktir, güvenli kabul etmeyin."
@@ -266,7 +266,7 @@ STRINGS_TR: dict[str, str] = {
     "options.manual_update.desc": "İmzaları, YARA kurallarını veya yerel engelleme listelerini şimdi güncelle",
     "options.btn_clamav": "ClamAV Güncelle",
     "options.btn_yara": "YARA Güncelle",
-    "options.btn_feeds": "Listeler ve Akışlar…",
+    "options.btn_feeds": "Tehdit Listeleri…",
     "options.sec_analysis": "Yerel Analiz ve Görünüm",
     "options.analysis_hint": "Anında uygulanır",
     "options.capa.title": "Davranış Analizi (capa)",
@@ -620,7 +620,7 @@ INCOMPLETE_REASON_TR: dict[str, str] = {
     "Datei konnte nicht analysiert werden": "Dosya incelenemedi",
     "Scan-Worker konnte die Datei nicht prüfen": "Tarama işlemi dosyayı inceleyemedi",
     "Abschlussnotiz des Containers NICHT gelesen (ungeprüft)": "Paketin sonundaki ek bölüm okunamadı (taranamadı)",
-    "Mitglieder nicht gescannt — Inhalt ungeprüft": "Arşiv içeriği taranamadı — taranamadı",
+    "Mitglieder nicht gescannt — Inhalt ungeprüft": "Arşiv içeriği atlandı — taranamadı",
     "Archiv nicht vollständig ausgewertet": "Arşiv tam olarak açılamadı/incelenemedi",
     "PDF-Link-Prüfung durch Trefferdeckel begrenzt": "PDF bağlantı kontrolü güvenlik sınırında durdu — kalanlar taranamadı",
     "Adressprüfung durch Trefferdeckel begrenzt": "IOC adres kontrolü güvenlik sınırında durdu",
@@ -656,7 +656,7 @@ RULE_TR_TITLES: dict[str, str] = {
     "ARCH_DOUBLE_EXT": "Arşivde sahte çift uzantılı dosya",
     "ARCH_ENCRYPTED": "Parola korumalı arşiv öğeleri",
     "ARCH_MEMBER_ERROR": "Arşiv öğesi çıkarılamadı",
-    "ARCH_MEMBER_SKIP": "Arşiv içeriği taranamadı — taranamadı",
+    "ARCH_MEMBER_SKIP": "Arşiv içeriği atlandı — taranamadı",
     "ARCH_MEMBER_STOP": "Arşiv tam incelenemedi (sınıra ulaşıldı)",
     "ARCH_NESTED_ARCHIVE": "İç içe gömülü arşivler tespit edildi",
     "ARCH_NOTE_UNREAD": "Paket sonu bölümü okunamadı (taranamadı)",
@@ -958,7 +958,7 @@ RULE_TR_DETAILS: dict[str, str] = {
     "IP_BLOCKLIST_UNAVAILABLE": "Yerel IP engelleme listesi okunamadı; IP kontrolü atlandı.",
     "URL_BLOCKLIST_UNAVAILABLE": "Yerel URL engelleme listesi okunamadı; URL kontrolü atlandı.",
     # capa & DIE
-    "CAPA_CAPABILITY": "capa bu çalıştırılabilir dosyada dikkat çekici davranış yetenekleri tespit etti.",
+    "CAPA_CAPABILITY": "capa bu çalıştırılabilir dosyada dikkat çekici davranışlar algıladı.",
     "CAPA_ERROR": "capa bu dosyayı incelerken hata oluştu.",
     "CAPA_SKIPPED": "capa bu dosya için sonuç üretmedi (zaman aşımı veya atlandı).",
     "CAPA_UNAVAILABLE": "capa kurulu olmadığı için davranış analizi çalışmadı.",
@@ -1033,7 +1033,7 @@ RULE_TR_DETAILS: dict[str, str] = {
     "MAIL_AUTH_DNS": "Gönderen alan adının SPF/DMARC politikası canlı DNS ile kontrol edildi.",
     "MAIL_AUTH_DNS_UNKNOWN": "Gönderici kimliğinin canlı DNS doğrulaması tamamlanamadı.",
     "MAIL_AUTH_FAIL": "E-posta başlıkları SPF, DKIM veya DMARC doğrulamasının başarısız olduğunu bildiriyor.",
-    "MAIL_AUTH_UNVERIFIABLE": "Mevcut başlıklardan gönderici kimlik doğrulaması değerlendirilemedi.",
+    "MAIL_AUTH_UNVERIFIABLE": "Mevcut başlıklardan gönderen kimlik doğrulaması değerlendirilemedi.",
     "MAIL_BODY_CREDENTIALS": "Mesaj metni şifre, oturum bilgisi veya hassas doğrulama kodları talep ediyor.",
     "MAIL_BODY_HIDDEN_TEXT": "HTML e-posta, spam filtrelerini atlatmak için gizlenmiş metin içeriyor.",
     "MAIL_BODY_LURE_PHRASES": "Mesajda kimlik avı saldırılarına özgü aciliyet, fatura veya ödeme baskısı ifadeleri var.",

@@ -319,7 +319,7 @@ def generate_report(
                 '<div class="lbl">Eksik / taranamadı</div></div>'
                 "</div>"
                 '<div class="legend"><b>Değerlendirme:</b> Temiz = teknik tehdit işareti yok · '
-                "Şüpheli = yalnızca göndericiye güveniyorsanız açın · "
+                "Şüpheli = yalnızca gönderene güveniyorsanız açın · "
                 "Tehlikeli = açmayın, silin ve BT ekibinize bildirin.</div>"
             )
         elif is_en:

@@ -585,7 +585,7 @@ def _cards_for_mail(result: ScanResult) -> list[tuple[str, str, str, str, bool, 
         c1 = (
             c1_sender,
             pick("Antwort weicht ab", "Reply differs", "Yanıt adresi farklı", lang=lang),
-            pick("Reply-To != Absender", "Reply-To != From", "Yanıt adresi farklı", lang=lang),
+            pick("Reply-To != Absender", "Reply-To != From", "Reply-To != Gönderen", lang=lang),
             "warn",
             False,
             pick(
