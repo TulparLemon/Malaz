@@ -364,7 +364,12 @@ _CONTAINER_PREFIX_TR: dict[str, str] = {
 }
 
 
-def localized_incomplete_reason(reason: str, *, lang: str | None = None) -> str:
+_MAX_INCOMPLETE_RECURSION = 8
+
+
+def localized_incomplete_reason(
+    reason: str, *, lang: str | None = None, _depth: int = 0
+) -> str:
     """Localize an incomplete-stage reason string into DE, EN, or TR."""
     eff = _effective_lang(lang)
     clean = strip_bidi(reason or "").strip()
@@ -373,25 +378,29 @@ def localized_incomplete_reason(reason: str, *, lang: str | None = None) -> str:
     reason_map = INCOMPLETE_REASON_TR if eff == "tr" else INCOMPLETE_REASON_EN
     if clean in reason_map:
         return reason_map[clean]
-    m_note = _STUFEN_NOTE_RE.match(clean[:600])
-    if m_note:
-        count = int(m_note.group(1))
-        raw_parts = [p.strip() for p in m_note.group(2).split("|") if p.strip()]
-        loc_parts = [localized_incomplete_reason(p, lang=eff) for p in raw_parts]
-        return t(
-            "report.incomplete_note",
-            lang=eff,
-            count=count,
-            names=" | ".join(loc_parts),
-        )
+    if _depth < _MAX_INCOMPLETE_RECURSION:
+        m_note = _STUFEN_NOTE_RE.match(clean[:600])
+        if m_note:
+            count = int(m_note.group(1))
+            raw_parts = [p.strip() for p in m_note.group(2).split("|") if p.strip()]
+            loc_parts = [
+                localized_incomplete_reason(p, lang=eff, _depth=_depth + 1)
+                for p in raw_parts
+            ]
+            return t(
+                "report.incomplete_note",
+                lang=eff,
+                count=count,
+                names=" | ".join(loc_parts),
+            )
     for de_prefix, loc_text in reason_map.items():
         if clean.startswith(de_prefix):
             return loc_text
-    if ": " in clean:
+    if _depth < _MAX_INCOMPLETE_RECURSION and ": " in clean:
         child_prefix, rest = clean.split(": ", 1)
         cmap = _CONTAINER_PREFIX_TR if eff == "tr" else _CONTAINER_PREFIX_EN
         loc_prefix = cmap.get(child_prefix, child_prefix)
-        loc_rest = localized_incomplete_reason(rest, lang=eff)
+        loc_rest = localized_incomplete_reason(rest, lang=eff, _depth=_depth + 1)
         if loc_prefix != child_prefix or loc_rest != rest:
             return f"{loc_prefix}: {loc_rest}"
     if "nicht geprüft" in clean:
@@ -546,7 +555,12 @@ def _extract_evidence_snippets(raw_detail: str, eff: str) -> str:
     urls = _DEFANGED_URL_RE.findall(raw_detail)
     if urls:
         defanged = [
-            re.sub(r"^https?://", lambda m: "hxxp" + m.group(0)[4:], u, flags=re.IGNORECASE)
+            re.sub(
+                r"^https?://",
+                lambda m: "hxxp" + m.group(0)[4:].lower(),
+                u,
+                flags=re.IGNORECASE,
+            )
             for u in urls
         ]
         all_unique = list(dict.fromkeys(defanged))

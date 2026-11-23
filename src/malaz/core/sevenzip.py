@@ -26,6 +26,7 @@ Security notes (see docs/SECURITY_MODEL.md):
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import tempfile
@@ -123,9 +124,11 @@ def _sanitize_7z_output(raw: str, work: Path | None = None) -> str:
     never exposing the local Windows username via ``tempfile.mkdtemp`` paths.
     """
     text = raw or ""
-    if work is not None:
+    if work is not None and work.is_absolute():
         w_str = str(work)
-        text = text.replace(w_str, "<temp>").replace(w_str.replace("\\", "/"), "<temp>")
+        for variant in dict.fromkeys((w_str, w_str.replace("\\", "/"))):
+            if len(variant) > 3:
+                text = re.sub(re.escape(variant), "<temp>", text, flags=re.IGNORECASE)
     lines: list[str] = []
     for raw_line in text.splitlines():
         line = raw_line.strip()

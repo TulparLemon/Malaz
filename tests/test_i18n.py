@@ -780,32 +780,38 @@ def test_dynamic_helpers_threat_order_url_dedup_and_mail_reasons() -> None:
     assert "Kısaltılmış bağlantı gerçek hedef adresi gizliyor" in tr_lines["Link 1"]
 
 
-def test_v12_audit_regression_fixes() -> None:
+def test_v12_audit_regression_fixes(tmp_path: Path) -> None:
     """Regressions caught by the v1.2 456-file + 220-file GUI/HTML/PDF audit."""
     from pathlib import Path as _Path
 
     from malaz.core.sevenzip import _sanitize_7z_output
     from malaz.gui.options_view import _localize_engine_status_line
+    from malaz.gui.sanitize import clip_text, masked_widget_text
     from malaz.i18n import (
         localized_incomplete_reason,
         localized_indicator_detail,
         localized_indicator_title,
     )
 
-    # BUG-1: all real _engine_badges() lines translate cleanly in EN & TR
+    # BUG-1 + M2 + N2: real OptionsView pipeline (masked_widget_text -> localize -> clip_text)
     for de_line, avail in (
         ("RAR/7z/deb/rpm-Inhalte werden entpackt und gescannt.", True),
         ("On-Demand-Scans möglich. Defender aktiv", True),
         ("Signatur-DB: C:\\clam\\db\nDatenbank vor 2 Tag(en) aktualisiert", True),
+        ("Signatur-DB: C:\\clam\\db Datenbank vor 2 Tag(en) aktualisiert", True),
         ("Regeln geladen und einsatzbereit.\nYARA: 2026-04-01", True),
         ("Detect It Easy verfügbar (Packererkennung).", True),
         ("Detect It Easy nicht installiert (optional).", False),
+        ("Nicht installiert — optional (Defender übernimmt die AV-Spalte).", False),
         ("Installiert, aber ohne Signatur-DB — jeder Scan wird übersprungen.", False),
         ("Stufe abgeschaltet (SEVENZIP_ENABLED=False) — RAR/7z/deb/rpm-Inhalte bleiben ungeprüft.", False),
         ("Status unklar (Probe ohne Ergebnis) — Binary vorhanden, Scan-Fähigkeit unbewiesen.", False),
     ):
         for lang in ("en", "tr"):
-            out = _localize_engine_status_line(de_line, lang, avail=avail)
+            out = clip_text(
+                _localize_engine_status_line(masked_widget_text(de_line), lang, avail=avail),
+                90,
+            )
             for forbidden in (
                 "entpackt",
                 "möglich",
@@ -813,8 +819,13 @@ def test_v12_audit_regression_fixes() -> None:
                 "einsatzbereit",
                 "abgeschaltet",
                 "unbewiesen",
+                "datenbank",
             ):
                 assert forbidden not in out.lower(), f"{lang} leaked {forbidden!r}: {out!r}"
+    # N2: non-AV optional tool must NOT mention Defender
+    assert "Defender" not in _localize_engine_status_line(
+        "capa nicht installiert (optional).", "en", avail=False
+    )
 
     # BUG-2: BINARY_IOC title & detail localize in EN/TR while keeping extracted URLs
     ind = Indicator(
@@ -871,7 +882,31 @@ def test_v12_audit_regression_fixes() -> None:
     assert "Can not open the file as archive" in cleaned
     assert "<temp>" in cleaned
 
-    # Sister HTML report check: result.error must localize in EN/TR
+    # M1: deeply nested ': ' input must never raise RecursionError
+    for lang in ("en", "tr"):
+        deep = "a: " * 1200 + "ZIP-Container nicht lesbar: x"
+        out_deep = localized_incomplete_reason(deep, lang=lang)
+        assert isinstance(out_deep, str) and len(out_deep) > 0
+
+    # N1: case-insensitive Windows path redaction & relative Path('.') must not mangle dots
+    mixed_case = noisy.replace("Alice", "ALICE").replace("alice", "ALICE")
+    cleaned_ci = _sanitize_7z_output(mixed_case, fake_work)
+    assert "alice" not in cleaned_ci.lower() and "<temp>" in cleaned_ci
+    assert _sanitize_7z_output("ERROR: foo.bar", _Path(".")) == "ERROR: foo.bar"
+
+    # N3: multi-segment parenthesized path & uppercase HTTPS:// defang
+    assert ScanResult(path="(dir)/sub/(file)", depth=1).display_name == "(file)"
+    ind_upper = Indicator(
+        rule_id="BINARY_IOC",
+        title="Adressen im Binärinhalt (1)",
+        detail="URLs: HTTPS://198.51.100.12/drop",
+        severity=Severity.INFO,
+        category="netz",
+        weight=0,
+    )
+    assert "hxxps://198.51.100.12/drop" in localized_indicator_detail(ind_upper, lang="en")
+
+    # Sister HTML & PDF report checks: result.error must localize in EN/TR
     err_res = ScanResult(
         path="(CAB/ISO-Inhalt)",
         error="7-Zip-Listing fehlgeschlagen — Archiv aus Sicherheitsgründen nicht entpackt",
@@ -880,3 +915,6 @@ def test_v12_audit_regression_fixes() -> None:
     for lang in ("en", "tr"):
         html_out = generate_report([err_res], lang=lang)
         assert "7-Zip-Listing fehlgeschlagen" not in html_out, lang
+        pdf_path = tmp_path / f"err_{lang}.pdf"
+        generate_pdf([err_res], pdf_path, lang=lang)
+        assert pdf_path.is_file() and pdf_path.stat().st_size > 500

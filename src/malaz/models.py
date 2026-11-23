@@ -343,6 +343,8 @@ class ScanResult:
         if (
             self.path.startswith("(")
             and self.path.endswith(")")
+            and self.path.count("(") == 1
+            and self.path.count(")") == 1
             and "\\" not in self.path
         ):
             return self.path

@@ -493,7 +493,7 @@ def _localize_engine_status_line(text: str, lang: str = "en", *, avail: bool = T
                 if is_tr
                 else "Detect It Easy not installed (optional)."
             )
-        if "optional" in low:
+        if "optional" in low and ("defender" in low or "clamav" in low):
             return (
                 "Kurulu değil — isteğe bağlı (AV sütununu Defender karşılar)."
                 if is_tr
@@ -550,7 +550,8 @@ def _localize_engine_status_line(text: str, lang: str = "en", *, avail: bool = T
     if "daemon" in low or "clamd" in low:
         return "ClamAV hazır (clamd servisi)" if is_tr else "ClamAV ready (clamd daemon)"
     if "signatur-db:" in low:
-        first_line = text.splitlines()[0].replace(
+        first_line = _CLAM_AGE_RE.sub("", text.splitlines()[0]).strip(" —-·")
+        first_line = first_line.replace(
             "Signatur-DB:",
             "İmza veritabanı:" if is_tr else "Signature DB:",
         )
