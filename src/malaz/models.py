@@ -340,6 +340,12 @@ class ScanResult:
 
     @property
     def display_name(self) -> str:
+        if (
+            self.path.startswith("(")
+            and self.path.endswith(")")
+            and "\\" not in self.path
+        ):
+            return self.path
         try:
             return Path(self.path).name
         except Exception:

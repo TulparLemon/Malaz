@@ -697,7 +697,7 @@ class FileDetailView(QWidget):
                     "bad",
                     False,
                     pick("Prüffehler", "Scan Error", "Tarama Hatası", lang=lang),
-                    masked_widget_text(result.error),
+                    masked_widget_text(localized_incomplete_reason(result.error, lang=lang)),
                     "bad",
                     pick("Fehler", "Error", "Hata", lang=lang),
                 )
@@ -1018,7 +1018,7 @@ class FileDetailView(QWidget):
             id_rows.append(
                 (
                     pick("Fehler", "Error", "Hata", lang=lang),
-                    masked_widget_text(result.error),
+                    masked_widget_text(localized_incomplete_reason(result.error, lang=lang)),
                     "bad",
                     ("bad", pick("Fehler", "Error", "Hata", lang=lang)),
                     None,

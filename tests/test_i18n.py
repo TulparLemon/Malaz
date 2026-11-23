@@ -48,9 +48,9 @@ from malaz.reporting.pdf_report import generate_pdf
 _ROOT = Path(__file__).resolve().parents[1]
 _PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 _RULE_LITERAL_RE = re.compile(
-    r'["\']((?:ARCH|AV|BINARY_IOC|CAPA|CLAMAV|CORE|DIE|ELF|GEN|HEIC|IMG|JPEG|LNK|'
+    r'["\']((?:(?:ARCH|AV|BINARY_IOC|CAPA|CLAMAV|CORE|DIE|ELF|GEN|HEIC|IMG|JPEG|LNK|'
     r'MACHO|MAIL|OFFICE|PDF|PE|PNG|SCRIPT|SWF|URL|YARA|HASH_BLOCKLIST|'
-    r'DOMAIN_BLOCKLIST|IP_BLOCKLIST)_[A-Z0-9_]+)["\']'
+    r'DOMAIN_BLOCKLIST|IP_BLOCKLIST)_[A-Z0-9_]+)|BINARY_IOC)["\']'
 )
 _CONFIG_SUFFIXES = (
     "_ENABLED",
@@ -778,3 +778,105 @@ def test_dynamic_helpers_threat_order_url_dedup_and_mail_reasons() -> None:
     tr_lines = dict(mail_lines(mail_res, lang="tr"))
     assert "URL shortener hides the final destination" in en_lines["Link 1"]
     assert "Kısaltılmış bağlantı gerçek hedef adresi gizliyor" in tr_lines["Link 1"]
+
+
+def test_v12_audit_regression_fixes() -> None:
+    """Regressions caught by the v1.2 456-file + 220-file GUI/HTML/PDF audit."""
+    from pathlib import Path as _Path
+
+    from malaz.core.sevenzip import _sanitize_7z_output
+    from malaz.gui.options_view import _localize_engine_status_line
+    from malaz.i18n import (
+        localized_incomplete_reason,
+        localized_indicator_detail,
+        localized_indicator_title,
+    )
+
+    # BUG-1: all real _engine_badges() lines translate cleanly in EN & TR
+    for de_line, avail in (
+        ("RAR/7z/deb/rpm-Inhalte werden entpackt und gescannt.", True),
+        ("On-Demand-Scans möglich. Defender aktiv", True),
+        ("Signatur-DB: C:\\clam\\db\nDatenbank vor 2 Tag(en) aktualisiert", True),
+        ("Regeln geladen und einsatzbereit.\nYARA: 2026-04-01", True),
+        ("Detect It Easy verfügbar (Packererkennung).", True),
+        ("Detect It Easy nicht installiert (optional).", False),
+        ("Installiert, aber ohne Signatur-DB — jeder Scan wird übersprungen.", False),
+        ("Stufe abgeschaltet (SEVENZIP_ENABLED=False) — RAR/7z/deb/rpm-Inhalte bleiben ungeprüft.", False),
+        ("Status unklar (Probe ohne Ergebnis) — Binary vorhanden, Scan-Fähigkeit unbewiesen.", False),
+    ):
+        for lang in ("en", "tr"):
+            out = _localize_engine_status_line(de_line, lang, avail=avail)
+            for forbidden in (
+                "entpackt",
+                "möglich",
+                "aktualisiert",
+                "einsatzbereit",
+                "abgeschaltet",
+                "unbewiesen",
+            ):
+                assert forbidden not in out.lower(), f"{lang} leaked {forbidden!r}: {out!r}"
+
+    # BUG-2: BINARY_IOC title & detail localize in EN/TR while keeping extracted URLs
+    ind = Indicator(
+        rule_id="BINARY_IOC",
+        title="Adressen im Binärinhalt (1)",
+        detail="Serveradressen im Rohinhalt der Datei: URLs: http://198.51.100.12",
+        severity=Severity.INFO,
+        category="netz",
+        weight=0,
+    )
+    for lang in ("en", "tr"):
+        title = localized_indicator_title(ind, lang=lang)
+        detail = localized_indicator_detail(ind, lang=lang)
+        assert "Binärinhalt" not in title and "(1)" in title, title
+        assert "Serveradressen" not in detail and "hxxp://198.51.100.12" in detail, detail
+
+    # BUG-3 & BUG-4: synthetic container display_name keeps opening paren & localizes child reasons
+    for synthetic in ("(CAB/ISO-Inhalt)", "(RAR/7z-Inhalt)", "(TAR/komprimierter Inhalt)"):
+        r = ScanResult(path=synthetic, depth=1)
+        assert r.display_name == synthetic, r.display_name
+
+    for lang in ("en", "tr"):
+        r1 = localized_incomplete_reason(
+            "(CAB/ISO-Inhalt): 7-Zip-Listing fehlgeschlagen — Archiv aus Sicherheitsgründen nicht entpackt",
+            lang=lang,
+        )
+        r2 = localized_incomplete_reason(
+            "(TAR/komprimierter Inhalt): Zip-Slip: 1 Eintragsname(n) würden beim Entpacken schreiben",
+            lang=lang,
+        )
+        r3 = localized_incomplete_reason(
+            "rechnung.pdf: PDF konnte nicht geöffnet werden — Tiefen-Scan nicht gelaufen",
+            lang=lang,
+        )
+        r4 = localized_incomplete_reason(
+            "(ZIP-Inhalt): ZIP-Container nicht lesbar: Bad magic number",
+            lang=lang,
+        )
+        for out in (r1, r2, r3, r4):
+            for de_tok in ("Inhalt)", "fehlgeschlagen", "geöffnet", "nicht lesbar", "würden"):
+                assert de_tok not in out, f"{lang} leaked {de_tok!r} in {out!r}"
+        assert r3.startswith("rechnung.pdf: "), r3
+
+    # BUG-5: 7-Zip error sanitizer redacts local temp dir + strips copyright banner
+    fake_work = _Path(r"C:\Users\alice\AppData\Local\Temp\malaz_7z_xyz")
+    noisy = (
+        "7-Zip 26.05 (x64) : Copyright (c) 1999-2026 Igor Pavlov\n\n"
+        "Scanning the drive for archives:\n1 file, 512 bytes (1 KiB)\n\n"
+        f"Listing archive: {fake_work}\\archive.iso\n\n"
+        f"ERROR: {fake_work}\\archive.iso : Can not open the file as archive"
+    )
+    cleaned = _sanitize_7z_output(noisy, fake_work)
+    assert "alice" not in cleaned and "Copyright" not in cleaned and "Scanning the drive" not in cleaned
+    assert "Can not open the file as archive" in cleaned
+    assert "<temp>" in cleaned
+
+    # Sister HTML report check: result.error must localize in EN/TR
+    err_res = ScanResult(
+        path="(CAB/ISO-Inhalt)",
+        error="7-Zip-Listing fehlgeschlagen — Archiv aus Sicherheitsgründen nicht entpackt",
+        depth=1,
+    )
+    for lang in ("en", "tr"):
+        html_out = generate_report([err_res], lang=lang)
+        assert "7-Zip-Listing fehlgeschlagen" not in html_out, lang

@@ -116,6 +116,33 @@ def _extract(
     return rc, (out + "\n" + err).strip()
 
 
+def _sanitize_7z_output(raw: str, work: Path | None = None) -> str:
+    """Redact local temp directory paths and strip noisy 7-Zip banner lines.
+
+    Keeps the actionable error line(s) concise for GUI/HTML/JSON reports while
+    never exposing the local Windows username via ``tempfile.mkdtemp`` paths.
+    """
+    text = raw or ""
+    if work is not None:
+        w_str = str(work)
+        text = text.replace(w_str, "<temp>").replace(w_str.replace("\\", "/"), "<temp>")
+    lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or set(line) <= {"-", "="}:
+            continue
+        low = line.lower()
+        if (
+            (low.startswith("7-zip") and "copyright" in low)
+            or low.startswith(("scanning the drive", "listing archive:", "extracting archive:"))
+            or (low.startswith("1 file,") and "bytes" in low)
+        ):
+            continue
+        lines.append(line)
+    summary = " | ".join(lines) if lines else text.strip()
+    return summary[: config.MAX_STRING_CAPTURE]
+
+
 def _looks_like_wrong_password(rc: int, output: str) -> bool:
     low = output.lower()
     return rc == 2 and (
@@ -184,7 +211,7 @@ def _list_members(
         return _LIST_TRUNCATED_RC, None, (
             "7-Zip-Listing wurde an der Ausgabe-Obergrenze abgeschnitten — "
             "Eintragsliste unvollständig, Bomben-Pre-Check nicht möglich: "
-            f"{output[: config.MAX_STRING_CAPTURE]}"
+            f"{_sanitize_7z_output(output, archive_path.parent)}"
         )
     if rc != 0:
         return rc, None, output
@@ -308,7 +335,7 @@ def iter_7z_members(
                 (
                     "7-Zip-Listing fehlgeschlagen — Archiv aus Sicherheitsgründen "
                     "nicht entpackt (Bomben-Pre-Check nicht möglich): "
-                    f"{list_output[: config.MAX_STRING_CAPTURE]}"
+                    f"{_sanitize_7z_output(list_output, work)}"
                 ),
             )
             return
@@ -380,7 +407,7 @@ def iter_7z_members(
                 break  # some other error; stop trying passwords
 
         if rc != 0:
-            excerpt = output[: config.MAX_STRING_CAPTURE]
+            excerpt = _sanitize_7z_output(output, work)
             yield (
                 "",
                 b"",

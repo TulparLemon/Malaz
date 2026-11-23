@@ -9,6 +9,7 @@ and live local engine status rows.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -402,8 +403,9 @@ class OptionsView(QWidget):
                     lang=lang,
                 )
             else:
-                sub_raw = clip_text(masked_widget_text(detail), 90)
-                sub = _localize_engine_status_line(sub_raw, lang, avail=avail) if lang != "de" else sub_raw
+                masked = masked_widget_text(detail)
+                loc = _localize_engine_status_line(masked, lang, avail=avail) if lang != "de" else masked
+                sub = clip_text(loc, 90)
             v_lbl = QLabel(sub, row)
             v_lbl.setObjectName("mutedLabel")
             v_lbl.setTextFormat(Qt.TextFormat.PlainText)
@@ -463,15 +465,59 @@ class OptionsView(QWidget):
             btn.setEnabled(not scanning)
 
 
+_CLAM_AGE_RE = re.compile(r"Datenbank vor (\d+) Tag\(en\) aktualisiert")
+
+
 def _localize_engine_status_line(text: str, lang: str = "en", *, avail: bool = True) -> str:
     low = text.lower()
     is_tr = lang == "tr"
     # Always handle negative/disabled/error states FIRST — never flip unavailable to active!
     if "nicht verfügbar" in low or "nicht verfuegbar" in low:
         return "Kullanılamıyor" if is_tr else "Unavailable"
+    if "ohne signatur-db" in low:
+        return (
+            "Kurulu ancak imza veritabanı yok — freshclam çalıştırın."
+            if is_tr
+            else "Installed without signature DB — run freshclam."
+        )
     if "nicht installiert" in low or "nicht gefunden" in low or "fehlt" in low:
+        if "rar/7z" in low:
+            return (
+                "Kurulu değil — RAR/7z/deb/rpm içerikleri taranamıyor."
+                if is_tr
+                else "Not installed — RAR/7z/deb/rpm contents remain unchecked."
+            )
+        if "detect it easy" in low:
+            return (
+                "Detect It Easy kurulu değil (isteğe bağlı)."
+                if is_tr
+                else "Detect It Easy not installed (optional)."
+            )
+        if "optional" in low:
+            return (
+                "Kurulu değil — isteğe bağlı (AV sütununu Defender karşılar)."
+                if is_tr
+                else "Not installed — optional (Defender covers the AV column)."
+            )
         return "Bu sistemde kurulu değil" if is_tr else "Not installed on this system"
-    if "deaktiviert" in low or "inaktiv" in low or "nicht aktiv" in low:
+    if (
+        "deaktiviert" in low
+        or "abgeschaltet" in low
+        or "inaktiv" in low
+        or "nicht aktiv" in low
+    ):
+        if "sevenzip_enabled" in low:
+            return (
+                "Devre dışı (SEVENZIP_ENABLED=False) — RAR/7z/deb/rpm taranmıyor."
+                if is_tr
+                else "Disabled (SEVENZIP_ENABLED=False) — RAR/7z/deb/rpm unchecked."
+            )
+        if "clamav_enabled" in low:
+            return (
+                "Devre dışı (CLAMAV_ENABLED=False) — yapılandırmayla kapatıldı."
+                if is_tr
+                else "Disabled (CLAMAV_ENABLED=False) — turned off by configuration."
+            )
         return "Devre dışı" if is_tr else "Disabled"
     if (
         "läuft nicht" in low
@@ -481,14 +527,57 @@ def _localize_engine_status_line(text: str, lang: str = "en", *, avail: bool = T
         or "fehler" in low
     ):
         return "Hizmet çalışmıyor veya hata" if is_tr else "Service unavailable or error"
+    if "status unklar" in low:
+        return (
+            "Durum belirsiz — dosya bulundu, tarama yeteneği doğrulanamadı."
+            if is_tr
+            else "Status unclear — binary found, scan capability unverified."
+        )
+    if "keine regeln geladen" in low:
+        return (
+            "Hiç kural yüklenmedi — YARA eşleşme üretemez."
+            if is_tr
+            else "No rules loaded — YARA produces no matches."
+        )
     if not avail:
         return "Kullanılamıyor" if is_tr else "Unavailable"
     if low == "verfügbar":
         return "Kullanılabilir" if is_tr else "Available"
+    if "on-demand-scans möglich" in low:
+        return "İsteğe bağlı taramaya hazır." if is_tr else "On-demand scans ready."
     if "aktiv" in low and "defender" in low:
         return "Windows Defender aktif (MpCmdRun)" if is_tr else "Windows Defender active (MpCmdRun)"
     if "daemon" in low or "clamd" in low:
         return "ClamAV hazır (clamd servisi)" if is_tr else "ClamAV ready (clamd daemon)"
+    if "signatur-db:" in low:
+        first_line = text.splitlines()[0].replace(
+            "Signatur-DB:",
+            "İmza veritabanı:" if is_tr else "Signature DB:",
+        )
+        m_age = _CLAM_AGE_RE.search(text)
+        if m_age:
+            days = m_age.group(1)
+            age_txt = (
+                f"Veritabanı {days} gün önce güncellendi"
+                if is_tr
+                else f"Database updated {days} day(s) ago"
+            )
+            return f"{first_line} ({age_txt})"
+        return first_line
+    if "regeln geladen und einsatzbereit" in low:
+        return "Kurallar yüklendi ve hazır." if is_tr else "Rules loaded and ready."
+    if "rar/7z/deb/rpm-inhalte werden entpackt und gescannt" in low:
+        return (
+            "RAR/7z/deb/rpm içerikleri açılıp taranır."
+            if is_tr
+            else "RAR/7z/deb/rpm contents are extracted and scanned."
+        )
+    if "detect it easy verfügbar" in low:
+        return (
+            "Detect It Easy hazır (paketleyici tespiti)."
+            if is_tr
+            else "Detect It Easy available (packer detection)."
+        )
     if "verfügbar" in low:
         return "Yerelde hazır" if is_tr else "Available locally"
     if "regeln" in low:

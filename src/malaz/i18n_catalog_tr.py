@@ -635,12 +635,20 @@ INCOMPLETE_REASON_TR: dict[str, str] = {
     "E-Mail konnte nicht vollständig gelesen werden": "E-posta tam olarak okunamadı",
     "E-Mail nur teilweise analysiert (MIME-Teile-Limit)": "E-posta kısmen incelendi (MIME bölüm sınırına ulaşıldı)",
     "Reputations-Abgleich fehlgeschlagen": "Bağlantı itibar sorgusu başarısız oldu",
-    "DNS-Prüfung nicht möglich": "DNS gönderici doğrulaması yapılamadı",
+    "DNS-Prüfung nicht möglich": "DNS gönderen doğrulaması yapılamadı",
     "Lokale SHA-256-Blockliste nicht lesbar": "Yerel SHA-256 engelleme listesi okunamadı",
     "Lokale Domain-Blockliste nicht lesbar": "Yerel alan adı engelleme listesi okunamadı",
     "Lokale IP-Blockliste nicht lesbar": "Yerel IP engelleme listesi okunamadı",
     "Lokale URL-Hash-Blockliste nicht lesbar": "Yerel URL engelleme listesi okunamadı",
     "7-Zip nicht verfügbar": "7-Zip kurulu değil — arşiv içeriği taranamadı",
+    "7-Zip nicht installiert": "7-Zip kurulu değil — arşiv içeriği taranamadı",
+    "7-Zip-Listing fehlgeschlagen": "7-Zip arşiv listelemesi başarısız — güvenlik nedeniyle açılmadı",
+    "7-Zip-Listing wurde an der Ausgabe-Obergrenze abgeschnitten": "7-Zip listelemesi çıktı sınırında kesildi — arşiv bombası ön kontrolü yapılamadı",
+    "7-Zip konnte das Archiv nicht entpacken": "7-Zip arşivi açamadı",
+    "Passwortgeschützt / Inhalt verschlüsselt": "Parola korumalı / şifreli içerik",
+    "PDF konnte nicht geöffnet werden — Tiefen-Scan nicht gelaufen": "PDF açılamadı — derin analiz çalışmadı",
+    "ZIP-Container nicht lesbar": "ZIP kapsayıcısı okunamadı",
+    "Zip-Slip:": "Zip-Slip: arşiv öğesi hedef klasör dışına yazmaya çalışıyor (dizin geçişi)",
 }
 
 RULE_TR_TITLES: dict[str, str] = {
@@ -682,6 +690,7 @@ RULE_TR_TITLES: dict[str, str] = {
     "CLAMAV_SKIPPED": "ClamAV: tarama atlandı",
     "CLAMAV_THREAT": "ClamAV: tehdit algılandı",
     # Binary IOCs & Blocklists
+    "BINARY_IOC": "İkili içerikte ağ adresleri",
     "BINARY_IOC_BLOCKED": "Yerel engelleme listesinde bilinen zararlı adres",
     "BINARY_IOC_CAPPED": "IOC adres taraması güvenlik sınırında durdu",
     "DOMAIN_BLOCKLIST_UNAVAILABLE": "Yerel alan adı engelleme listesi okunamadı",
@@ -951,6 +960,7 @@ RULE_TR_DETAILS: dict[str, str] = {
     "CLAMAV_SKIPPED": "ClamAV bu dosyayı taramadı (kapalı, kullanılamıyor veya atlandı).",
     "CLAMAV_THREAT": "ClamAV bu dosyada zararlı yazılım imzası eşleştirdi.",
     # Binary IOCs & Blocklists
+    "BINARY_IOC": "İnceleme için dosyanın ham ikili içeriğinden ağ adresleri (URL, IP veya alan adları) çıkarıldı.",
     "BINARY_IOC_BLOCKED": "Dosyadan çıkarılan bir alan adı, IP veya URL yerel tehdit engelleme listesinde eşleşti.",
     "BINARY_IOC_CAPPED": "Çok fazla adres bulunduğundan kontrol güvenlik sınırında durdu; kalan adresler taranamadı.",
     "DOMAIN_BLOCKLIST_UNAVAILABLE": "Yerel alan adı engelleme listesi okunamadı; alan adı kontrolü atlandı.",
@@ -1031,7 +1041,7 @@ RULE_TR_DETAILS: dict[str, str] = {
     "MAIL_AUTH_CLAIMED_SPOOF": "Başlıklar doğrulama geçti diyor ancak belirtilen alan adı gönderenle uyuşmuyor.",
     "MAIL_AUTH_CLAIM_UNBACKED": "Başlıkta teslimat zinciri tarafından desteklenmeyen bir doğrulama geçti beyanı var.",
     "MAIL_AUTH_DNS": "Gönderen alan adının SPF/DMARC politikası canlı DNS ile kontrol edildi.",
-    "MAIL_AUTH_DNS_UNKNOWN": "Gönderici kimliğinin canlı DNS doğrulaması tamamlanamadı.",
+    "MAIL_AUTH_DNS_UNKNOWN": "Gönderen kimliğinin canlı DNS doğrulaması tamamlanamadı.",
     "MAIL_AUTH_FAIL": "E-posta başlıkları SPF, DKIM veya DMARC doğrulamasının başarısız olduğunu bildiriyor.",
     "MAIL_AUTH_UNVERIFIABLE": "Mevcut başlıklardan gönderen kimlik doğrulaması değerlendirilemedi.",
     "MAIL_BODY_CREDENTIALS": "Mesaj metni şifre, oturum bilgisi veya hassas doğrulama kodları talep ediyor.",

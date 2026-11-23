@@ -18,6 +18,7 @@ from ..i18n import (
     language_context,
     localized_engine_label,
     localized_engine_name,
+    localized_incomplete_reason,
     localized_indicator_detail,
     localized_indicator_title,
     pick,
@@ -219,7 +220,14 @@ def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "d
         + _kv("SHA-256", result.sha256 or "—")
         + _kv("MD5", result.md5 or "—")
         + _kv(pick("Dauer", "Duration", "Süre", lang=lang), f"{result.duration_ms} ms")
-        + (_kv(pick("Fehler", "Error", "Hata", lang=lang), result.error) if result.error else "")
+        + (
+            _kv(
+                pick("Fehler", "Error", "Hata", lang=lang),
+                localized_incomplete_reason(result.error, lang=lang),
+            )
+            if result.error
+            else ""
+        )
         + "".join(_kv(label, value) for label, value in mail_lines(result, lang=lang))
         + "</div>"
     )

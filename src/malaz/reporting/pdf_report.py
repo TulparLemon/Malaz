@@ -35,6 +35,7 @@ from ..i18n import (
     language_context,
     localized_engine_label,
     localized_engine_name,
+    localized_incomplete_reason,
     localized_indicator_detail,
     localized_indicator_title,
     pick,
@@ -423,7 +424,12 @@ def _render_result(
     _kv_line(r, "SHA-256", result.sha256 or "—", width)
     _kv_line(r, pick("Dauer", "Duration", "Süre", lang=r.lang), f"{result.duration_ms} ms", width)
     if result.error:
-        _kv_line(r, pick("Hinweis", "Note", "Not", lang=r.lang), result.error, width)
+        _kv_line(
+            r,
+            pick("Hinweis", "Note", "Not", lang=r.lang),
+            localized_incomplete_reason(result.error, lang=r.lang),
+            width,
+        )
     for label, value in mail_lines(result, lang=r.lang):
         _kv_line(r, label, value, width)
     if result.engine_verdicts:

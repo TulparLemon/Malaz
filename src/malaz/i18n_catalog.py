@@ -1095,6 +1095,14 @@ INCOMPLETE_REASON_EN: dict[str, str] = {
     "Lokale IP-Blockliste nicht lesbar": "Local IP blocklist unreadable",
     "Lokale URL-Hash-Blockliste nicht lesbar": "Local URL hash blocklist unreadable",
     "7-Zip nicht verfügbar": "7-Zip unavailable — archive contents unchecked",
+    "7-Zip nicht installiert": "7-Zip not installed — archive contents unchecked",
+    "7-Zip-Listing fehlgeschlagen": "7-Zip archive listing failed — not extracted for safety",
+    "7-Zip-Listing wurde an der Ausgabe-Obergrenze abgeschnitten": "7-Zip listing truncated at output cap — bomb pre-check impossible",
+    "7-Zip konnte das Archiv nicht entpacken": "7-Zip could not extract the archive",
+    "Passwortgeschützt / Inhalt verschlüsselt": "Password-protected / encrypted contents",
+    "PDF konnte nicht geöffnet werden — Tiefen-Scan nicht gelaufen": "PDF could not be opened — deep inspection did not run",
+    "ZIP-Container nicht lesbar": "ZIP container unreadable",
+    "Zip-Slip:": "Zip-Slip: archive entry path would escape target folder (path traversal)",
 }
 
 # --------------------------------------------------------------------------- #
@@ -1143,6 +1151,7 @@ RULE_EN_TITLES: dict[str, str] = {
     "CLAMAV_SKIPPED": "ClamAV: scan skipped",
     "CLAMAV_THREAT": "ClamAV: threat detected",
     # Binary IOCs & Blocklists
+    "BINARY_IOC": "Addresses in binary content",
     "BINARY_IOC_BLOCKED": "Known malicious address on local blocklist",
     "BINARY_IOC_CAPPED": "IOC address check capped at safety limit",
     "DOMAIN_BLOCKLIST_UNAVAILABLE": "Local domain blocklist could not be read",
@@ -1412,6 +1421,7 @@ RULE_EN_DETAILS: dict[str, str] = {
     "CLAMAV_SKIPPED": "ClamAV did not scan this file (disabled, unavailable, or skipped).",
     "CLAMAV_THREAT": "ClamAV matched a malware signature on this file.",
     # Binary IOCs & Blocklists
+    "BINARY_IOC": "Network addresses (URLs, IPs, or domains) were extracted from raw binary content for inspection.",
     "BINARY_IOC_BLOCKED": "A domain, IP, or URL extracted from this file matched a local threat-intelligence blocklist.",
     "BINARY_IOC_CAPPED": "Too many addresses were found; IOC lookup stopped at the safety cap and remaining items were not checked.",
     "DOMAIN_BLOCKLIST_UNAVAILABLE": "The local domain blocklist file could not be read; domain reputation checks were skipped.",
