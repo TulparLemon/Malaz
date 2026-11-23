@@ -25,7 +25,7 @@ from ..i18n import (
     resolve_language,
 )
 from ..models import Indicator, RiskLevel, ScanResult, Severity, type_description
-from ..security.escaping import escape_html
+from ..security.escaping import escape_html, mask_invisible
 from .mail_section import is_mail_result, mail_lines
 
 _CSS = """
@@ -223,7 +223,7 @@ def _render_result(result: ScanResult, is_child: bool = False, *, lang: str = "d
         + (
             _kv(
                 pick("Fehler", "Error", "Hata", lang=lang),
-                localized_incomplete_reason(result.error, lang=lang),
+                localized_incomplete_reason(mask_invisible(result.error), lang=lang),
             )
             if result.error
             else ""

@@ -918,3 +918,13 @@ def test_v12_audit_regression_fixes(tmp_path: Path) -> None:
         pdf_path = tmp_path / f"err_{lang}.pdf"
         generate_pdf([err_res], pdf_path, lang=lang)
         assert pdf_path.is_file() and pdf_path.stat().st_size > 500
+
+    # BiDi-masking order: raw RLO in result.error must stay visibly masked (\u202e), not silently stripped
+    bidi_res = ScanResult(
+        path="spoof.zip",
+        error="Archiv-Eintrag '../rechnung\u202eexe.pdf' verlässt das Zielverzeichnis",
+    )
+    for lang in ("de", "en", "tr"):
+        html_bidi = generate_report([bidi_res], lang=lang)
+        assert "\u202e" not in html_bidi
+        assert "\\u202e" in html_bidi, f"{lang} stripped RLO instead of visibly masking it"

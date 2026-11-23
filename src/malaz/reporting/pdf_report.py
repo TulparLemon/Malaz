@@ -427,7 +427,7 @@ def _render_result(
         _kv_line(
             r,
             pick("Hinweis", "Note", "Not", lang=r.lang),
-            localized_incomplete_reason(result.error, lang=r.lang),
+            localized_incomplete_reason(mask_invisible(result.error), lang=r.lang),
             width,
         )
     for label, value in mail_lines(result, lang=r.lang):
