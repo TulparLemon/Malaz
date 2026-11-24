@@ -928,3 +928,86 @@ def test_v12_audit_regression_fixes(tmp_path: Path) -> None:
         html_bidi = generate_report([bidi_res], lang=lang)
         assert "\u202e" not in html_bidi
         assert "\\u202e" in html_bidi, f"{lang} stripped RLO instead of visibly masking it"
+
+
+def test_all_incomplete_rule_titles_localized_in_en_and_tr() -> None:
+    """Every German title emitted for any _INCOMPLETE_RULES entry must localize in EN & TR."""
+    import ast
+
+    from malaz.i18n import localized_incomplete_reason
+    from malaz.models import _INCOMPLETE_RULES
+
+    # Direct check for live-test catch ("capa nicht installiert") + sister titles
+    for raw_title in (
+        "capa nicht installiert",
+        "AV-Mitgliedsscan fehlerhaft",
+        "PDF-Struktur-Scan unvollständig — Aktionsgraph zu tief/groß",
+        "PDF-Struktur-Scan unvollständig — Seitenbaum/Root nicht lesbar",
+        "PDF-Struktur-Scan fehlerhaft — Objekt-/Anhang-Scan unvollständig",
+    ):
+        for lang in ("en", "tr"):
+            loc = localized_incomplete_reason(raw_title, lang=lang)
+            assert loc != raw_title, f"{lang} failed to translate {raw_title!r}"
+            assert "nicht installiert" not in loc and "fehlerhaft" not in loc, loc
+
+    # AST sweep over src/malaz/ to prevent any future _INCOMPLETE_RULES title from leaking German
+    src_dir = _ROOT / "src" / "malaz"
+    unlocalized: list[str] = []
+    for py_file in sorted(src_dir.rglob("*.py")):
+        if "i18n" in py_file.name:
+            continue
+        tree = ast.parse(py_file.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Dict):
+                for k, v in zip(node.keys, node.values, strict=True):
+                    if (
+                        isinstance(k, ast.Constant)
+                        and isinstance(k.value, str)
+                        and k.value in _INCOMPLETE_RULES
+                        and isinstance(v, ast.Constant)
+                        and isinstance(v.value, str)
+                    ):
+                        for lang in ("en", "tr"):
+                            if localized_incomplete_reason(v.value, lang=lang) == v.value:
+                                unlocalized.append(f"{lang}:{k.value}:{v.value!r}")
+            elif isinstance(node, ast.Call):
+                fn = node.func
+                fname = (
+                    fn.id
+                    if isinstance(fn, ast.Name)
+                    else (fn.attr if isinstance(fn, ast.Attribute) else "")
+                )
+                if fname != "Indicator":
+                    continue
+                rule_id = None
+                title_val = None
+                if (
+                    node.args
+                    and isinstance(node.args[0], ast.Constant)
+                    and node.args[0].value in _INCOMPLETE_RULES
+                ):
+                    rule_id = str(node.args[0].value)
+                    if (
+                        len(node.args) > 1
+                        and isinstance(node.args[1], ast.Constant)
+                        and isinstance(node.args[1].value, str)
+                    ):
+                        title_val = node.args[1].value
+                for kw in node.keywords:
+                    if (
+                        kw.arg == "rule_id"
+                        and isinstance(kw.value, ast.Constant)
+                        and kw.value.value in _INCOMPLETE_RULES
+                    ):
+                        rule_id = str(kw.value.value)
+                    if (
+                        kw.arg == "title"
+                        and isinstance(kw.value, ast.Constant)
+                        and isinstance(kw.value.value, str)
+                    ):
+                        title_val = kw.value.value
+                if rule_id and title_val and title_val != "Defender/ClamAV":
+                    for lang in ("en", "tr"):
+                        if localized_incomplete_reason(title_val, lang=lang) == title_val:
+                            unlocalized.append(f"{lang}:{rule_id}:{title_val!r}")
+    assert not unlocalized, f"Unlocalized _INCOMPLETE_RULES titles: {unlocalized}"
