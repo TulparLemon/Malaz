@@ -327,7 +327,13 @@ class MainWindow(QMainWindow):
         self.retranslate()
 
         self.statusBar().hide()
-        self.statusBar().showMessage("Bereit. Dateien ablegen oder auswählen.")
+        self.statusBar().showMessage(
+            pick(
+                "Bereit. Dateien ablegen oder auswählen.",
+                "Ready. Drop or select files.",
+                "Hazır. Dosya bırakın veya seçin.",
+            )
+        )
 
         # Probe engine status off the GUI thread.
         self._engine_signals = _EngineSignals(self)
@@ -975,7 +981,13 @@ class MainWindow(QMainWindow):
             self._truncation_banner.show()
             self.statusBar().showMessage(warn_txt)
         elif added:
-            self.statusBar().showMessage(f"{added} Datei(en) zur Prüfung bereit.")
+            self.statusBar().showMessage(
+                pick(
+                    f"{added} Datei(en) zur Prüfung bereit.",
+                    f"{added} file(s) ready to scan.",
+                    f"{added} dosya taramaya hazır.",
+                )
+            )
 
         self._refresh_sidebar_actions()
         if added and self._pages.currentIndex() == _PAGE_EMPTY and self.table.topLevelItemCount() > 0:
@@ -1187,9 +1199,21 @@ class MainWindow(QMainWindow):
         )
 
         if self._scan_cancelled:
-            self.statusBar().showMessage(f"Scan abgebrochen ({len(self._results)} Datei(en) geprüft).")
+            self.statusBar().showMessage(
+                pick(
+                    f"Scan abgebrochen ({len(self._results)} Datei(en) geprüft).",
+                    f"Scan cancelled ({len(self._results)} file(s) scanned).",
+                    f"Tarama durduruldu ({len(self._results)} dosya tarandı).",
+                )
+            )
         else:
-            self.statusBar().showMessage(f"Fertig: {len(self._results)} Datei(en) geprüft.")
+            self.statusBar().showMessage(
+                pick(
+                    f"Fertig: {len(self._results)} Datei(en) geprüft.",
+                    f"Done: {len(self._results)} file(s) scanned.",
+                    f"Tamamlandı: {len(self._results)} dosya tarandı.",
+                )
+            )
 
         if self._results and self.table.currentItem() is None:
             self.table.setCurrentItem(self.table.topLevelItem(0))
@@ -1199,7 +1223,9 @@ class MainWindow(QMainWindow):
             self._scan_cancelled = True
             self._worker.cancel()
             self.btn_cancel.setEnabled(False)
-            self.statusBar().showMessage("Abbruch angefordert…")
+            self.statusBar().showMessage(
+                pick("Abbruch angefordert…", "Cancellation requested…", "Durdurma istendi…")
+            )
 
     def _sync_report_enabled(self) -> None:
         enabled = (
@@ -1229,9 +1255,17 @@ class MainWindow(QMainWindow):
             sw.setEnabled(not scanning)
         self._sync_report_enabled()
         self.btn_cancel.setEnabled(scanning and self._worker is not None)
+        self._btn_pending_go.setEnabled(not scanning)
+        self._btn_pending_go.setText(
+            pick("Prüfung läuft…", "Scanning…", "Taranıyor…")
+            if scanning
+            else pick("Jetzt prüfen", "Scan now", "Şimdi tara")
+        )
         self._refresh_sidebar_actions()
+        if self._pages.currentIndex() == _PAGE_PENDING:
+            self._on_selection_changed(self.table.currentItem())
         if scanning:
-            self.statusBar().showMessage("Scan läuft…")
+            self.statusBar().showMessage(pick("Scan läuft…", "Scanning…", "Tarama sürüyor…"))
 
     # -- Reset / Clear ----------------------------------------------------- #
 
@@ -1254,7 +1288,9 @@ class MainWindow(QMainWindow):
         if self._scan_active:
             return
         self._reset_result_view()
-        self.statusBar().showMessage("Liste geleert.")
+        self.statusBar().showMessage(
+            pick("Liste geleert.", "List cleared.", "Liste temizlendi.")
+        )
 
     # -- Selection, Filtering & Navigation --------------------------------- #
 
@@ -1313,22 +1349,40 @@ class MainWindow(QMainWindow):
             raw = str(current.data(0, PENDING_PATH_ROLE) or root_path)
             state = str(current.data(0, STATE_ROLE) or "pending")
             lang = get_language()
-            self._pending_title.setText(
-                pick("Prüfung abgebrochen", "Scan cancelled", "Tarama durduruldu", lang=lang)
-                if state == "cancelled"
-                else pick("Bereit zur Prüfung", "Ready to scan", "Taramaya hazır", lang=lang)
-            )
-            self._pending_path_lbl.setText(clip_text(masked_widget_text(raw), 180))
-            self._current_reveal_path = raw
-            self._set_page(
-                _PAGE_PENDING,
-                footer_text=pick(
+            is_scanning = self._scan_active or state == "scanning"
+            if is_scanning:
+                self._pending_title.setText(
+                    pick("Prüfung läuft…", "Scanning…", "Taranıyor…", lang=lang)
+                )
+                self._btn_pending_go.setText(
+                    pick("Prüfung läuft…", "Scanning…", "Taranıyor…", lang=lang)
+                )
+                self._btn_pending_go.setEnabled(False)
+                footer = pick(
+                    "Prüfung läuft — Datei befindet sich in der Warteschlange",
+                    "Scan in progress — file is queued",
+                    "Tarama sürüyor — dosya kuyrukta",
+                    lang=lang,
+                )
+            else:
+                self._pending_title.setText(
+                    pick("Prüfung abgebrochen", "Scan cancelled", "Tarama durduruldu", lang=lang)
+                    if state == "cancelled"
+                    else pick("Bereit zur Prüfung", "Ready to scan", "Taramaya hazır", lang=lang)
+                )
+                self._btn_pending_go.setText(
+                    pick("Jetzt prüfen", "Scan now", "Şimdi tara", lang=lang)
+                )
+                self._btn_pending_go.setEnabled(True)
+                footer = pick(
                     "Noch nicht geprüft · Klicken Sie auf ‚Prüfen‘",
                     "Not yet scanned · Click 'Scan'",
-                    "Henüz taranmadı · ‚Tara‘ düğmesine tıklayın",
+                    "Henüz taranmadı · 'Tara' düğmesine tıklayın",
                     lang=lang,
-                ),
-            )
+                )
+            self._pending_path_lbl.setText(clip_text(masked_widget_text(raw), 180))
+            self._current_reveal_path = raw
+            self._set_page(_PAGE_PENDING, footer_text=footer)
 
     def _set_page(self, page_idx: int, *, footer_text: str | None = None) -> None:
         self._pages.setCurrentIndex(page_idx)
@@ -1556,7 +1610,11 @@ class MainWindow(QMainWindow):
         )
         self._btn_empty_files.setText(pick("Dateien auswählen…", "Select files…", "Dosya seç…", lang=lang))
         self._btn_empty_folder.setText(pick("Ordner prüfen…", "Scan folder…", "Klasör tara…", lang=lang))
-        self._btn_pending_go.setText(pick("Jetzt prüfen", "Scan now", "Şimdi tara", lang=lang))
+        self._btn_pending_go.setText(
+            pick("Prüfung läuft…", "Scanning…", "Taranıyor…", lang=lang)
+            if self._scan_active
+            else pick("Jetzt prüfen", "Scan now", "Şimdi tara", lang=lang)
+        )
 
         # Right footer buttons
         self.btn_reveal.setText(pick("Im Ordner zeigen", "Show in folder", "Klasörde göster", lang=lang))

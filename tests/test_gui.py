@@ -2968,3 +2968,40 @@ def test_recursive_incomplete_depth2_unknown_badge_archive_c3_and_nul_reveal(qap
 
     # 6. reveal_in_explorer safely rejects synthetic NUL-byte path (ValueError)
     assert reveal_in_explorer("C:\\tmp\\bad\x00name.pdf") is False
+
+
+def test_pending_page_disables_scan_now_while_scan_is_active(window, tmp_path) -> None:
+    """Live-test regression: clicking another queued file mid-scan must not show active 'Scan now'."""
+    from malaz.i18n import language_context
+
+    f1 = tmp_path / "one.txt"
+    f2 = tmp_path / "two.txt"
+    f1.write_text("a", encoding="utf-8")
+    f2.write_text("b", encoding="utf-8")
+
+    with language_context("en"):
+        window.retranslate()
+        window.add_paths([str(f1), str(f2)])
+        item2 = window.table.topLevelItem(1)
+        assert item2 is not None
+
+        # Before scanning: selecting queued item shows enabled 'Scan now'
+        window.table.setCurrentItem(item2)
+        assert window._btn_pending_go.isEnabled() is True
+        assert window._btn_pending_go.text() == "Scan now"
+
+        # Simulate active batch scan: switching to another queued file must show 'Scanning…' disabled
+        window.table.mark_pending_as_scanning()
+        window._set_scanning(True)
+        window.table.setCurrentItem(item2)
+        assert window._btn_pending_go.isEnabled() is False
+        assert window._btn_pending_go.text() == "Scanning…"
+        assert window._pending_title.text() == "Scanning…"
+        assert "queued" in window.right_footer_lbl.text().lower()
+
+        # Once scanning finishes (e.g. cancelled), the button cleanly re-enables
+        window.table.mark_unscanned_as_cancelled()
+        window._set_scanning(False)
+        window.table.setCurrentItem(item2)
+        assert window._btn_pending_go.isEnabled() is True
+        assert window._btn_pending_go.text() == "Scan now"
