@@ -40,6 +40,7 @@ _SRC = Path(__file__).resolve().parent.parent / "src" / "malaz"
 # blieben damit ungeprueft.
 _MODULES = (
     "core/eml_analysis.py",
+    "core/eml_parser.py",
     "core/mail_view.py",
     "core/email_extract.py",
     "core/magic.py",
@@ -162,6 +163,7 @@ def test_pattern_scan_covers_the_attacker_facing_modules():
     covered = {rel for rel, _pattern, _flags in _patterns()}
     required = {
         "core/eml_analysis.py",
+        "core/eml_parser.py",
         "core/js_deobf.py",
         "core/script_deobf.py",
         "core/rtf_extract.py",
