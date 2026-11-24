@@ -870,7 +870,7 @@ def test_v12_audit_regression_fixes(tmp_path: Path) -> None:
         assert r3.startswith("rechnung.pdf: "), r3
 
     # BUG-5: 7-Zip error sanitizer redacts local temp dir + strips copyright banner
-    fake_work = _Path(r"C:\Users\alice\AppData\Local\Temp\malaz_7z_xyz")
+    fake_work = tmp_path / "alice_home" / "malaz_7z_xyz"
     noisy = (
         "7-Zip 26.05 (x64) : Copyright (c) 1999-2026 Igor Pavlov\n\n"
         "Scanning the drive for archives:\n1 file, 512 bytes (1 KiB)\n\n"
@@ -878,7 +878,7 @@ def test_v12_audit_regression_fixes(tmp_path: Path) -> None:
         f"ERROR: {fake_work}\\archive.iso : Can not open the file as archive"
     )
     cleaned = _sanitize_7z_output(noisy, fake_work)
-    assert "alice" not in cleaned and "Copyright" not in cleaned and "Scanning the drive" not in cleaned
+    assert "alice_home" not in cleaned and "Copyright" not in cleaned and "Scanning the drive" not in cleaned
     assert "Can not open the file as archive" in cleaned
     assert "<temp>" in cleaned
 
@@ -889,9 +889,9 @@ def test_v12_audit_regression_fixes(tmp_path: Path) -> None:
         assert isinstance(out_deep, str) and len(out_deep) > 0
 
     # N1: case-insensitive Windows path redaction & relative Path('.') must not mangle dots
-    mixed_case = noisy.replace("Alice", "ALICE").replace("alice", "ALICE")
+    mixed_case = noisy.replace("alice_home", "ALICE_HOME")
     cleaned_ci = _sanitize_7z_output(mixed_case, fake_work)
-    assert "alice" not in cleaned_ci.lower() and "<temp>" in cleaned_ci
+    assert "alice_home" not in cleaned_ci.lower() and "<temp>" in cleaned_ci
     assert _sanitize_7z_output("ERROR: foo.bar", _Path(".")) == "ERROR: foo.bar"
 
     # N3: multi-segment parenthesized path & uppercase HTTPS:// defang
