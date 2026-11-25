@@ -280,11 +280,11 @@ class _WebTagCollector(HTMLParser):
         self.object_hhctrl_depth = 0
 
         self.has_script_tag = False
-        self.script_texts: list[str] = []
         self.event_handlers: list[str] = []
-        self.event_values: list[str] = []
         self.js_uris: list[str] = []
         self.svg_data_html_uris: list[str] = []
+        self.has_js_exfil = False
+        self.has_svg_js_redirect = False
 
         self.foreign_active_hits: list[str] = []
 
@@ -293,8 +293,11 @@ class _WebTagCollector(HTMLParser):
         self.external_form_actions: list[str] = []
         self.foreign_external_form_actions: list[str] = []
 
-        self.meta_refresh_targets: list[str] = []
-        self.download_names: list[str] = []
+        self.has_meta_refresh = False
+        self.suspicious_meta_refresh_targets: list[str] = []
+        self.has_any_dl = False
+        self.has_risky_dl = False
+        self.has_non_benign_dl = False
 
         self.has_hhctrl_object = False
         self.has_hhctrl_shortcut_param = False
@@ -303,6 +306,26 @@ class _WebTagCollector(HTMLParser):
 
     def _local_name(self, tag: str) -> str:
         return tag.rsplit(":", 1)[-1].lower()
+
+    def _inspect_js_chunk(self, chunk: str) -> None:
+        if not chunk or (self.has_js_exfil and self.has_svg_js_redirect):
+            return
+        pre = _preprocess_js(chunk)
+        if not self.has_js_exfil and _JS_EXFIL_RE.search(pre):
+            self.has_js_exfil = True
+        if not self.has_svg_js_redirect and _SVG_JS_REDIRECT_RE.search(pre):
+            self.has_svg_js_redirect = True
+
+    def _record_download_name(self, name: str) -> None:
+        low = name.strip().lower()
+        if not low:
+            return
+        self.has_any_dl = True
+        if low.endswith(_SMUGGLING_DOWNLOAD_SUFFIXES):
+            self.has_risky_dl = True
+            self.has_non_benign_dl = True
+        elif not any(low.endswith(ext) for ext in _BENIGN_DOWNLOAD_SUFFIXES):
+            self.has_non_benign_dl = True
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if self.tag_limit_exceeded:
@@ -324,8 +347,8 @@ class _WebTagCollector(HTMLParser):
             if _ON_ATTR_RE.match(k):
                 if len(self.event_handlers) < 16:
                     self.event_handlers.append(k)
-                if len(self.event_values) < 64 and v:
-                    self.event_values.append(v[:1024])
+                if v:
+                    self._inspect_js_chunk(v[:4096])
                 if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
                     self.foreign_active_hits.append(f"@{k}")
 
@@ -337,6 +360,7 @@ class _WebTagCollector(HTMLParser):
                     if cleaned.startswith(("javascript:", "vbscript:")):
                         if len(self.js_uris) < 16:
                             self.js_uris.append(cleaned[:256])
+                        self._inspect_js_chunk(cleaned[:4096])
                         if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
                             self.foreign_active_hits.append(cleaned[:32])
                     elif cleaned.startswith("data:text/html"):
@@ -391,14 +415,16 @@ class _WebTagCollector(HTMLParser):
             if http_equiv == "refresh" and content:
                 m = _META_URL_RE.search(content)
                 if m:
+                    self.has_meta_refresh = True
                     raw_url = m.group(1).strip().strip("'\"")
-                    if len(self.meta_refresh_targets) < 8:
-                        self.meta_refresh_targets.append(raw_url)
+                    cleaned_url = _clean_uri_scheme(raw_url)
+                    if cleaned_url.startswith(
+                        ("javascript:", "vbscript:", "data:", "file:", "\\\\")
+                    ) and len(self.suspicious_meta_refresh_targets) < 8:
+                        self.suspicious_meta_refresh_targets.append(cleaned_url[:64])
 
         if local in ("a", "area") and "download" in attr_map:
-            dl = attr_map.get("download", "").strip()
-            if dl and len(self.download_names) < 16:
-                self.download_names.append(dl)
+            self._record_download_name(attr_map.get("download", ""))
 
         if local == "object":
             classid = attr_map.get("classid", "").lower()
@@ -414,11 +440,15 @@ class _WebTagCollector(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
-        # In WHATWG HTML5, trailing '/' closes elements ONLY in XML mode or
-        # inside foreign content (<svg>/<math> §13.2.6.5), never HTML non-voids.
-        if not (self.xml_mode or self.foreign_ns_depth > 0):
-            return
         local = self._local_name(tag)
+        # In WHATWG HTML5, trailing '/' closes elements ONLY in XML mode or
+        # inside foreign content (<svg>/<math> §13.2.6.5), NOT inside an HTML
+        # integration point such as <svg><foreignObject> (except <foreignObject/> itself).
+        in_foreign_ns = self.foreign_ns_depth > 0 and (
+            self.foreign_depth == 0 or local == "foreignobject"
+        )
+        if not (self.xml_mode or in_foreign_ns):
+            return
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
         elif local == self.rawtext_tag:
@@ -448,15 +478,15 @@ class _WebTagCollector(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self.tag_limit_exceeded:
             return
-        if self.script_depth > 0 and data and len(self.script_texts) < 128:
-            self.script_texts.append(data)
+        if self.script_depth > 0 and data:
+            self._inspect_js_chunk(data)
 
     def unknown_decl(self, data: str) -> None:
         """Capture ``<![CDATA[...]]>`` inside ``<svg:script>`` blocks."""
         if self.tag_limit_exceeded:
             return
-        if self.script_depth > 0 and data.startswith("CDATA[") and len(self.script_texts) < 128:
-            self.script_texts.append(data[6:])
+        if self.script_depth > 0 and data.startswith("CDATA["):
+            self._inspect_js_chunk(data[6:])
 
 
 def _find_tag_end_linear(
@@ -749,13 +779,10 @@ class WebContentPipeline(Pipeline):
 
         work = _preprocess_js(text)
 
-        download_names = list(collector.download_names)
         for m in _JS_DOWNLOAD_RE.finditer(work):
-            if len(download_names) >= 32:
-                break
-            download_names.append(m.group(1).strip())
+            collector._record_download_name(m.group(1))
 
-        smuggle_ind = self._check_html_smuggling(work, download_names)
+        smuggle_ind = self._check_html_smuggling(work, collector)
         if smuggle_ind is not None:
             _add(smuggle_ind)
 
@@ -798,21 +825,15 @@ class WebContentPipeline(Pipeline):
         return list(found.values())
 
     def _check_html_smuggling(
-        self, work: str, download_names: list[str]
+        self, work: str, collector: _WebTagCollector
     ) -> Indicator | None:
         low_work = work.lower()
         has_binary_mime = any(mime in low_work for mime in _BINARY_SMUGGLE_MIMES)
 
-        normalized_dls = [d.lower().strip() for d in download_names if d.strip()]
-        has_risky_dl = any(
-            d.endswith(_SMUGGLING_DOWNLOAD_SUFFIXES) for d in normalized_dls
-        )
+        has_risky_dl = collector.has_risky_dl
         all_benign_dl = (
-            bool(normalized_dls)
-            and all(
-                any(d.endswith(ext) for ext in _BENIGN_DOWNLOAD_SUFFIXES)
-                for d in normalized_dls
-            )
+            collector.has_any_dl
+            and not collector.has_non_benign_dl
             and not has_binary_mime
         )
 
@@ -1007,12 +1028,10 @@ class WebContentPipeline(Pipeline):
         exfil_sources: list[str] = []
         if actions:
             exfil_sources.append(f"form[action]={actions[0]}")
-        else:
-            js_scope = "\n".join(collector.script_texts + collector.event_values)
-            if not js_scope and is_html:
-                js_scope = work
-            if _JS_EXFIL_RE.search(_preprocess_js(js_scope)):
-                exfil_sources.append("JS-Abfluss (fetch/XHR/sendBeacon)")
+        elif collector.has_js_exfil or (
+            is_html and not collector.has_script_tag and _JS_EXFIL_RE.search(work)
+        ):
+            exfil_sources.append("JS-Abfluss (fetch/XHR/sendBeacon)")
 
         if not exfil_sources:
             return None
@@ -1030,11 +1049,7 @@ class WebContentPipeline(Pipeline):
         )
 
     def _check_meta_refresh(self, collector: _WebTagCollector) -> Indicator | None:
-        bad_targets: list[str] = []
-        for raw_target in collector.meta_refresh_targets:
-            cleaned = _clean_uri_scheme(raw_target)
-            if cleaned.startswith(("javascript:", "vbscript:", "data:", "file:", "\\\\")):
-                bad_targets.append(cleaned[:64])
+        bad_targets = collector.suspicious_meta_refresh_targets
         if not bad_targets:
             return None
         return self._indicator(
@@ -1114,12 +1129,9 @@ class WebContentPipeline(Pipeline):
             )
 
         redir_reasons: list[str] = []
-        js_context = "\n".join(
-            collector.script_texts + collector.event_values + collector.js_uris
-        )
-        if js_context and _SVG_JS_REDIRECT_RE.search(_preprocess_js(js_context)):
+        if collector.has_svg_js_redirect:
             redir_reasons.append("JS-Weiterleitung (location/window.open)")
-        if collector.meta_refresh_targets:
+        if collector.has_meta_refresh:
             redir_reasons.append("<meta http-equiv='refresh'>")
         if collector.svg_data_html_uris:
             redir_reasons.append("data:text/html-URI")
