@@ -30,6 +30,7 @@ from ..models import (
     Indicator,
     Severity,
 )
+from . import pdf_qr
 from .base import Pipeline
 from .pdf_javascript import (
     _PDF_JS_COMMON as _PDF_JS_COMMON,
@@ -354,6 +355,7 @@ class PdfPipeline(Pipeline):
         try:
             if pdf is not None:
                 indicators.extend(self._structure_scan(ctx, pdf))
+                indicators.extend(pdf_qr.scan_pdf_qr(pdf))
                 indicators.extend(self._javascript_scan(ctx, pdf))
                 indicators.extend(self._layout_forensics(ctx, pdf))
         finally:

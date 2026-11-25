@@ -380,6 +380,23 @@ _ATTACH_NAME_STREAMS = (
 )
 
 
+MAX_EMAIL_INLINE_IMAGES = 16
+_MIN_INLINE_IMAGE_BYTES = 44
+_INLINE_IMAGE_EXT: dict[str, str] = {
+    "image/png": ".png",
+    "image/x-png": ".png",
+    "image/jpeg": ".jpg",
+    "image/pjpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/gif": ".gif",
+    "image/bmp": ".bmp",
+    "image/webp": ".webp",
+    "image/tiff": ".tiff",
+    "image/heic": ".heic",
+    "image/avif": ".avif",
+}
+
+
 def _per_attachment_limit() -> int:
     return config.MAX_EXTRACTED_FILE_SIZE
 
@@ -484,6 +501,7 @@ def _iter_eml(data: bytes) -> Iterator[tuple[str, bytes, str | None]]:
     from email.message import Message as _Message
 
     stack: list[tuple[_Message, int]] = [(message, 0)]
+    inline_image_parts: list[tuple[_Message, str]] = []
     depth_skipped = False
     while stack:
         part, depth = stack.pop()
@@ -539,6 +557,10 @@ def _iter_eml(data: bytes) -> Iterator[tuple[str, bytes, str | None]]:
         disposition = (part.get_content_disposition() or "").lower()
         filename = part.get_filename()
         if not filename and disposition not in ("attachment", "inline"):
+            ctype_leaf = (part.get_content_type() or "").lower()
+            ext = _INLINE_IMAGE_EXT.get(ctype_leaf)
+            if ext is not None:
+                inline_image_parts.append((part, ext))
             continue
         if not filename:
             filename = f"anhang_{processed}.bin"
@@ -575,6 +597,42 @@ def _iter_eml(data: bytes) -> Iterator[tuple[str, bytes, str | None]]:
             return
         extracted_total += len(payload)
         yield (filename, payload, None)
+    # Pass 2: Deferred unnamed inline raster images (never evict real attachments).
+    inline_count = 0
+    for part, ext in inline_image_parts:
+        per_attachment = _per_attachment_limit()
+        payload, decode_error = _decode_attachment_bounded(part, per_attachment)
+        if decode_error:
+            yield (f"inline_img_{inline_count + 1}{ext}", b"", decode_error)
+            continue
+        if payload is None or len(payload) < _MIN_INLINE_IMAGE_BYTES:
+            continue
+        if inline_count >= MAX_EMAIL_INLINE_IMAGES:
+            yield (
+                "",
+                b"",
+                (
+                    f"{BUDGET_STOP_PREFIX} Limit von {MAX_EMAIL_INLINE_IMAGES} "
+                    "namenlosen Inline-Bildern überschritten — weitere "
+                    "Inline-Bilder wurden NICHT analysiert."
+                ),
+            )
+            return
+        if extracted_total + len(payload) > _total_limit():
+            yield (
+                "",
+                b"",
+                (
+                    f"{BUDGET_STOP_PREFIX} MIME-Gesamtlimit für Anhänge "
+                    "überschritten — weitere Inline-Bilder wurden NICHT "
+                    "dekodiert und NICHT analysiert."
+                ),
+            )
+            return
+        inline_count += 1
+        extracted_total += len(payload)
+        yield (f"inline_img_{inline_count}{ext}", payload, None)
+
     if depth_skipped:
         yield (
             "",

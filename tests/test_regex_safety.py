@@ -54,6 +54,7 @@ _MODULES = (
     "pipelines/pdf_pipeline.py",
     "pipelines/pdf_streams.py",
     "pipelines/web_pipeline.py",
+    "core/qr_scan.py",
     "security/escaping.py",
 )
 

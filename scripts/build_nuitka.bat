@@ -107,8 +107,14 @@ if errorlevel 1 (
 REM pikepdf.libs enthaelt die nativen qpdf-DLLs (delvewheel-Layout); das
 REM Verzeichnis ist kein Python-Paket, wird daher als Daten gebuendelt.
 set "PKLIBS=%ROOT%\.venv\Lib\site-packages\pikepdf.libs"
+set "ZXLIBS=%ROOT%\.venv\Lib\site-packages\zxing_cpp.libs"
 if not exist "%PKLIBS%" (
     echo pikepdf.libs nicht gefunden: %PKLIBS%
+    popd
+    exit /b 1
+)
+if not exist "%ZXLIBS%" (
+    echo zxing_cpp.libs nicht gefunden: %ZXLIBS%
     popd
     exit /b 1
 )
@@ -152,6 +158,7 @@ pushd "%ROOT%\src"
     --include-package=msoffcrypto ^
     --include-package=pyxlsb2 ^
     --include-package=jaraco ^
+    --include-package=zxingcpp ^
     --include-package-data=XLMMacroDeobfuscator ^
     --include-module=XLMMacroDeobfuscator.deobfuscator ^
     --include-module=XLMMacroDeobfuscator.configs.settings ^
@@ -160,6 +167,7 @@ pushd "%ROOT%\src"
     --include-module=XLMMacroDeobfuscator.xls_wrapper ^
     --include-module=XLMMacroDeobfuscator.xlsb_wrapper ^
     --include-data-dir="%PKLIBS%"=pikepdf.libs ^
+    --include-data-dir="%ZXLIBS%"=zxing_cpp.libs ^
     --no-deployment-flag=excluded-module-usage ^
     --include-data-dir=..\rules=rules ^
     --noinclude-data-files=rules/yara/external ^
