@@ -40,5 +40,9 @@ RISKY_SUFFIXES: tuple[str, ...] = (
     ".xlsb", ".sldm", ".xlam",
     # Datentraeger-Abbild und Java-Archiv: umgehen die Pruefung, indem sie
     # ihren Inhalt erst beim Oeffnen zeigen
-    ".iso", ".img", ".vhd", ".jar",
+    ".iso", ".img", ".vhd", ".vhdx", ".jar",
+    # Hilfe-, Notiz- und App-Installer-Container (Spec 014)
+    ".chm", ".one", ".onepkg", ".msix", ".appx", ".appinstaller",
+    # Explorer-/Shell-/MMC-/Setup-Vektoren (Spec 014)
+    ".scf", ".library-ms", ".search-ms", ".settingcontent-ms", ".msc", ".inf",
 )

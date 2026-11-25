@@ -53,6 +53,7 @@ _MODULES = (
     "pipelines/generic_pipeline.py",
     "pipelines/pdf_pipeline.py",
     "pipelines/pdf_streams.py",
+    "pipelines/web_pipeline.py",
     "security/escaping.py",
 )
 

@@ -54,6 +54,17 @@ _SIGNATURES: tuple[Signature, ...] = (
     Signature("bzip2", "application/x-bzip2", 0, b"BZh"),
     Signature("xz", "application/x-xz", 0, b"\xfd7zXZ\x00"),
     Signature("cab", "application/vnd.ms-cab-compressed", 0, b"MSCF"),
+    Signature("chm", "application/vnd.ms-htmlhelp", 0, b"ITSF\x03\x00\x00\x00"),
+    Signature("chm", "application/vnd.ms-htmlhelp", 0, b"ITSF\x02\x00\x00\x00"),
+    Signature("vhdx", "application/x-vhdx", 0, b"vhdxfile"),
+    # Microsoft OneNote section file (.one), MS-ONESTORE guidFileType
+    # {7B5C52E4-D88C-4DA7-AEB1-5378D02996D3} in little-endian bytes.
+    Signature(
+        "onenote",
+        "application/onenote",
+        0,
+        b"\xe4\x52\x5c\x7b\x8c\xd8\xa7\x4d\xae\xb1\x53\x78\xd0\x29\x96\xd3",
+    ),
     Signature("rtf", "application/rtf", 0, b"{\\rtf"),
     Signature("swf", "application/x-shockwave-flash", 0, b"FWS"),
     Signature("swf", "application/x-shockwave-flash", 0, b"CWS"),
@@ -238,6 +249,103 @@ def _looks_like_internet_shortcut(data: bytes) -> bool:
     )
 
 
+def decode_utf16_if_detected(data: bytes, max_bytes: int | None = None) -> str | None:
+    """Decode UTF-16 (with BOM or BOM-less XML/HTML ``<`` prefix), else ``None``."""
+    if len(data) < 2:
+        return None
+    view = data if max_bytes is None else data[:max_bytes]
+    if view[:2] in (_UTF16_LE, _UTF16_BE):
+        return view.decode("utf-16", errors="replace").lstrip("\ufeff")
+    if len(view) >= 8 and view[:2] in (b"<\x00", b"\x00<"):
+        sample = view[:256]
+        even_nuls = sample[0::2].count(0)
+        odd_nuls = sample[1::2].count(0)
+        half = max(1, len(sample) // 2)
+        if view[:2] == b"<\x00" and odd_nuls >= half * 0.4 and even_nuls <= half * 0.1:
+            return view.decode("utf-16-le", errors="replace").lstrip("\ufeff")
+        if view[:2] == b"\x00<" and even_nuls >= half * 0.4 and odd_nuls <= half * 0.1:
+            return view.decode("utf-16-be", errors="replace").lstrip("\ufeff")
+    return None
+
+
+def skip_xml_prolog_pos(text: str) -> int:
+    """Linear O(N) prolog skip over BOM, whitespace, ``<?...?>``, ``<!--...-->`` and ``<!DOCTYPE ...>``."""
+    n = len(text)
+    pos = 0
+    if pos < n and text[pos] == "\ufeff":
+        pos += 1
+    while pos < n:
+        while pos < n and text[pos] in " \t\r\n\f":
+            pos += 1
+        if pos >= n:
+            break
+        if text.startswith("<!--", pos):
+            end = text.find("-->", pos + 4)
+            if end == -1:
+                return n
+            pos = end + 3
+            continue
+        if text.startswith("<?", pos):
+            end = text.find("?>", pos + 2)
+            if end == -1:
+                return n
+            pos = end + 2
+            continue
+        if text[pos : pos + 9].lower() == "<!doctype":
+            # Handle optional internal subset [...] linearly.
+            gt = text.find(">", pos + 9)
+            if gt == -1:
+                return n
+            lb = text.find("[", pos + 9, gt)
+            if lb != -1:
+                rb = text.find("]>", lb + 1)
+                if rb == -1:
+                    return n
+                pos = rb + 2
+            else:
+                pos = gt + 1
+            continue
+        break
+    return pos
+
+
+def is_svg_root(text: str) -> bool:
+    """Return True if the first root element after XML prolog is ``<svg`` or ``<prefix:svg``."""
+    pos = skip_xml_prolog_pos(text)
+    if pos >= len(text) or text[pos] != "<":
+        return False
+    i = pos + 1
+    n = len(text)
+    if i >= n:
+        return False
+    # Read optional namespace prefix + local name without regex backtracking.
+    start = i
+    while i < n and (text[i].isalnum() or text[i] in "_.-:"):
+        i += 1
+    name = text[start:i].lower()
+    if not name:
+        return False
+    local = name.rsplit(":", 1)[-1]
+    if local != "svg":
+        return False
+    return i < n and text[i] in " \t\r\n/>"
+
+
+def _filesystem_type(data: bytes) -> FileType | None:
+    """Detect raw NTFS / FAT12 / FAT16 / FAT32 / exFAT partition boot sectors."""
+    if len(data) < 512 or data[510:512] != b"\x55\xaa":
+        return None
+    if data[3:11] == b"NTFS    ":
+        return FileType("ntfs", "application/x-ntfs-image")
+    if (
+        data[3:11] == b"EXFAT   "
+        or data[54:62].startswith((b"FAT12   ", b"FAT16   ", b"FAT     "))
+        or data[82:90].startswith(b"FAT32   ")
+    ):
+        return FileType("fat", "application/x-fat-image")
+    return None
+
+
 def _classify_text(data: bytes) -> FileType:
     """Refine a text blob into html/xml/eml/json when recognisable."""
     # BOM ENTFERNEN, nicht nur Leerzeichen: ``lstrip()`` kennt \xef\xbb\xbf
@@ -256,6 +364,10 @@ def _classify_text(data: bytes) -> FileType:
     lower = head.lower()
     if lower.startswith((b"<?xml", b"<svg")):
         return FileType("xml", "application/xml")
+    if b"<" in data[:65536]:
+        prolog_text = data[:65536].decode("utf-8", errors="replace")
+        if is_svg_root(prolog_text):
+            return FileType("xml", "application/xml")
     if any(tag in lower[:256] for tag in _HTML_TAGS):
         return FileType("html", "text/html")
     # A .url is an INI file with a fixed section and a target. Checked before
@@ -530,8 +642,13 @@ def detect(data: bytes) -> FileType:
     # (0xFF 0xFE) also satisfies the 11-bit MPEG sync, so this MUST run before
     # the raw-frame probe. "Hallo Welt".encode("utf-16") otherwise became
     # "mp3" (FF FE + printable+NUL bytes looked like a frame header).
-    if data[:2] in (_UTF16_LE, _UTF16_BE):
-        return FileType("text", "text/plain")
+    fs_type = _filesystem_type(data)
+    if fs_type is not None:
+        return fs_type
+
+    utf16_text = decode_utf16_if_detected(data, max_bytes=65536)
+    if utf16_text is not None:
+        return _classify_text(utf16_text.encode("utf-8", errors="replace"))
 
     # Raw MPEG audio has no fixed prefix (0xFF is only an 11-bit sync), so it
     # needs the header plausibility check instead of a signature entry.
@@ -588,6 +705,11 @@ _EXTENSION_MAP = {
     ".rtf": "rtf",
     ".swf": "swf",
     ".cab": "cab",
+    ".chm": "chm",
+    ".vhdx": "vhdx",
+    ".one": "onenote",
+    ".ntfs": "ntfs",
+    ".fat": "fat",
     ".class": "class",
     ".html": "html",
     ".htm": "html",

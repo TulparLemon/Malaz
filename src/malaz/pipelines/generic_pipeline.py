@@ -242,6 +242,10 @@ _ENTROPY_ARCHIVE_TYPES = frozenset({
     # Cabinet/ISO were missing from the original skip list — latent false
     # positives exactly like the .deb/.rpm field report.
     "cab", "iso",
+    # Spec 014: CHM (LZX), VHDX/NTFS/FAT disk images and OneNote containers
+    # (which routinely embed compressed PNG/JPEG screenshots) are judged via
+    # their unpacked children rather than raw container entropy.
+    "chm", "vhdx", "ntfs", "fat", "onenote",
 })
 
 # Atomic formats that are compressed by specification. SWF is deliberately
@@ -629,6 +633,7 @@ class GenericPipeline(Pipeline):
         if ctx.detected_type in (
             "text", "html", "xml", "eml", "json", "lnk", "url", "empty", "ole",
             "zip", "rar", "7z", "tar", "gzip", "bzip2", "xz", "cab", "iso",
+            "chm", "vhdx", "ntfs", "fat", "onenote",
         ):
             return []
         data = ctx.data

@@ -47,6 +47,7 @@ from ..pipelines.macho_pipeline import MachoPipeline
 from ..pipelines.office_pipeline import OfficePipeline
 from ..pipelines.pdf_pipeline import PdfPipeline
 from ..pipelines.pe_pipeline import PePipeline
+from ..pipelines.web_pipeline import WebContentPipeline
 from ..security.limits import LimitExceeded, guard_file_size, guard_read_size
 from . import magic
 from .container_dispatch import (
@@ -62,6 +63,7 @@ from .container_dispatch import (
     scan_children,
     scan_compressed_members,
     scan_email_members,
+    scan_onenote_objects,
     scan_rtf_objects,
     scan_sevenzip_members,
     scan_swf_payload,
@@ -95,7 +97,17 @@ _OOXML_OFFICE_SUFFIXES = {
 # has no archive stage, so a ZIP hidden behind a prefix would lose its whole
 # content scan (see ``_prefixed_zip_type``).
 _ARCHIVE_TYPES = frozenset(
-    {"zip", "rar", "7z", "deb", "rpm", "cab", "iso", "tar", "gzip", "bzip2", "xz"}
+    {
+        "zip", "rar", "7z", "deb", "rpm", "cab", "iso",
+        "chm", "vhdx", "ntfs", "fat",
+        "tar", "gzip", "bzip2", "xz",
+    }
+)
+_SEVENZIP_TYPES = frozenset(
+    {"rar", "7z", "deb", "rpm", "cab", "iso", "chm", "vhdx", "ntfs", "fat"}
+)
+_WEB_TEXT_SUFFIXES = frozenset(
+    {".html", ".htm", ".shtml", ".xhtml", ".xht", ".hta", ".mht", ".mhtml", ".svg"}
 )
 
 # End-of-central-directory record: 22 fixed bytes plus an archive comment of
@@ -348,6 +360,7 @@ class Dispatcher:
         self.eml = EmlPipeline()
         self.elf = ElfPipeline()
         self.macho = MachoPipeline()
+        self.web = WebContentPipeline()
 
     @property
     def defender_status(self) -> DefenderStatus:
@@ -833,7 +846,7 @@ class Dispatcher:
 
         # Archive recursion (Zip-Slip- and bomb-safe via core.archive /
         # core.sevenzip for RAR/7z/deb/rpm).
-        if ftype.type in ("zip", "rar", "7z", "deb", "rpm", "cab", "iso"):
+        if ftype.type == "zip" or ftype.type in _SEVENZIP_TYPES:
             if depth >= config.MAX_ARCHIVE_DEPTH:
                 indicators.append(self._depth_limit_indicator("Archiv"))
             elif ftype.type == "zip":
@@ -845,11 +858,18 @@ class Dispatcher:
                     ),
                     indicators,
                 )
-            elif ftype.type in ("rar", "7z", "deb", "rpm", "cab", "iso"):
+            elif ftype.type in _SEVENZIP_TYPES:
+                raw_suffix = path.suffix.lower()
+                canonical_suffix = f".{ftype.type}"
+                sz_suffix = (
+                    canonical_suffix
+                    if ftype.type in ("chm", "vhdx", "ntfs", "fat") or raw_suffix != canonical_suffix
+                    else raw_suffix
+                )
                 result.children = self._guarded_members(
                     "Archiv-Inhalt (7-Zip)",
                     lambda: self._scan_sevenzip_members(
-                        data, depth, path.suffix.lower(), budget, truncated_prefix
+                        data, depth, sz_suffix, budget, truncated_prefix
                     ),
                     indicators,
                 )
@@ -883,6 +903,17 @@ class Dispatcher:
                 result.children = self._guarded_members(
                     "RTF-Inhalt",
                     lambda: self._scan_rtf_objects(
+                        data, depth, budget, truncated_prefix
+                    ),
+                    indicators,
+                )
+        elif ftype.type == "onenote":
+            if depth >= config.MAX_ARCHIVE_DEPTH:
+                indicators.append(self._depth_limit_indicator("OneNote"))
+            else:
+                result.children = self._guarded_members(
+                    "OneNote-Inhalt",
+                    lambda: self._scan_onenote_objects(
                         data, depth, budget, truncated_prefix
                     ),
                     indicators,
@@ -1308,6 +1339,21 @@ class Dispatcher:
             truncated_prefix=truncated_prefix,
         )
 
+    def _scan_onenote_objects(
+        self,
+        data: bytes,
+        depth: int,
+        budget: _ScanBudget | None = None,
+        truncated_prefix: bool = False,
+    ) -> list[ScanResult]:
+        return scan_onenote_objects(
+            self._container_ctx(),
+            data,
+            depth,
+            budget=budget,
+            truncated_prefix=truncated_prefix,
+        )
+
     def _scan_swf_payload(
         self,
         data: bytes,
@@ -1600,6 +1646,10 @@ class Dispatcher:
             pipelines.append(self.elf)
         elif ftype == "macho":
             pipelines.append(self.macho)
+        elif ftype in ("html", "xml") or (
+            ftype in ("text", "unknown") and suffix in _WEB_TEXT_SUFFIXES
+        ):
+            pipelines.append(self.web)
         # 'unknown', etc. -> generic only (entropy + YARA).
         return pipelines
 
