@@ -139,9 +139,7 @@ _HTML_SCRIPT_TOKEN_RE = re.compile(
     r"<!--+>|<!--|-->|</?script(?=[\s/>])", re.IGNORECASE
 )
 _RAWTEXT_CLOSE_RES: dict[str, re.Pattern[str]] = {
-    _tag: re.compile(
-        rf"</(?:[a-zA-Z_][\w.-]{{0,64}}:)?{_tag}[\s/>]", re.IGNORECASE
-    )
+    _tag: re.compile(rf"</{_tag}[\s/>]", re.IGNORECASE)
     for _tag in _HTML_RAWTEXT_TAGS
 }
 _OVERSIZED_EVENT_RE = re.compile(r"""[\s/"']on[a-z]{3,24}\s*=""", re.IGNORECASE)
@@ -165,7 +163,8 @@ _SVG_JS_REDIRECT_RE = re.compile(
 )
 _HHCLICK_RE = re.compile(r"\.\s*hhclick\s*\(", re.IGNORECASE)
 _ON_ATTR_RE = re.compile(r"^on[a-z]{3,24}$")
-_META_URL_RE = re.compile(r"\burl\s*=\s*([^\r\n;]{1,512})", re.IGNORECASE)
+_META_URL_RE = re.compile(r"\burl\s*=\s*([^;]+)", re.IGNORECASE)
+_META_CTRL_TABLE = str.maketrans("", "", "".join(chr(c) for c in range(0x20)))
 _CTRL_SPACE_RE = re.compile(r"[\x00-\x20]+")
 
 
@@ -305,9 +304,10 @@ class _WebTagCollector(HTMLParser):
         self.rawtext_tag: str | None = None
         self.foreign_depth = 0
         # Explicit WHATWG HTML5 namespace stack (HTML mode only): (local_tag, ns)
-        # where ns in {"svg", "math", "html"}. _ns_counts gives O(1) membership check.
+        # where ns in {"svg", "math", "svg_ip", "math_ip", "html"}.
+        # _ns_scope_counts mirrors HTML5 scope boundaries (svg_ip/math_ip) in O(1).
         self._ns_stack: list[tuple[str, str]] = []
-        self._ns_counts: dict[str, int] = {}
+        self._ns_scope_counts: list[dict[str, int]] = [{}]
         self._last_prev_in_foreign = False
         self._last_pushed_ns = False
         self.object_hhctrl_depth = 0
@@ -339,7 +339,7 @@ class _WebTagCollector(HTMLParser):
         self.data_uri_attrs: list[tuple[str, str]] = []
 
     def _local_name(self, tag: str) -> str:
-        return tag.rsplit(":", 1)[-1].lower()
+        return tag.rsplit(":", 1)[-1].lower() if self.xml_mode else tag.lower()
 
     @property
     def current_ns(self) -> str:
@@ -358,17 +358,26 @@ class _WebTagCollector(HTMLParser):
 
     def _push_ns(self, local: str, ns: str) -> None:
         self._ns_stack.append((local, ns))
-        self._ns_counts[local] = self._ns_counts.get(local, 0) + 1
+        if ns in ("svg_ip", "math_ip"):
+            # WHATWG §13.2.4.2: SVG/MathML integration points are scope boundaries;
+            # outer HTML end tags cannot pop past them.
+            self._ns_scope_counts.append({local: 1})
+        else:
+            scope = self._ns_scope_counts[-1]
+            scope[local] = scope.get(local, 0) + 1
         if local == "foreignobject" and ns == "svg_ip":
             self.foreign_depth += 1
 
     def _pop_ns_top(self) -> tuple[str, str]:
         tag, ns = self._ns_stack.pop()
-        cnt = self._ns_counts.get(tag, 1) - 1
+        scope = self._ns_scope_counts[-1]
+        cnt = scope.get(tag, 1) - 1
         if cnt <= 0:
-            self._ns_counts.pop(tag, None)
+            scope.pop(tag, None)
         else:
-            self._ns_counts[tag] = cnt
+            scope[tag] = cnt
+        if ns in ("svg_ip", "math_ip") and len(self._ns_scope_counts) > 1:
+            self._ns_scope_counts.pop()
         if tag == "foreignobject" and ns == "svg_ip" and self.foreign_depth > 0:
             self.foreign_depth -= 1
         return tag, ns
@@ -419,19 +428,21 @@ class _WebTagCollector(HTMLParser):
                 if len(self.event_handlers) < 16:
                     self.event_handlers.append(k)
                 if v:
-                    self._inspect_js_chunk(v[:4096])
+                    self._inspect_js_chunk(v)
                 if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
                     self.foreign_active_hits.append(f"@{k}")
 
             local_attr = k.rsplit(":", 1)[-1]
             if local_attr in ("href", "src", "action", "data", "values", "to", "from"):
                 uri_parts = v.split(";") if local_attr == "values" else (v,)
-                for raw_part in uri_parts[:256]:
+                for raw_part in uri_parts:
+                    if len(raw_part) < 10:
+                        continue
                     cleaned = _clean_uri_scheme(raw_part)
                     if cleaned.startswith(("javascript:", "vbscript:")):
                         if len(self.js_uris) < 16:
                             self.js_uris.append(cleaned[:256])
-                        self._inspect_js_chunk(cleaned[:4096])
+                        self._inspect_js_chunk(cleaned)
                         if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
                             self.foreign_active_hits.append(cleaned[:32])
                     elif cleaned.startswith("data:text/html"):
@@ -489,10 +500,12 @@ class _WebTagCollector(HTMLParser):
             ):
                 self._push_ns(local, "math_ip")
                 self._last_pushed_ns = True
+            elif prev_ns == "math_ip" and local in ("mglyph", "malignmark"):
+                self._push_ns(local, "math")
+                self._last_pushed_ns = True
             else:
                 if (
-                    self._ns_stack
-                    and prev_ns in ("svg_ip", "math_ip", "html")
+                    prev_ns in ("svg_ip", "math_ip", "html")
                     and local not in _HTML_VOID_TAGS
                 ):
                     self._push_ns(local, "html")
@@ -533,7 +546,7 @@ class _WebTagCollector(HTMLParser):
             http_equiv = attr_map.get("http-equiv", "").strip().lower()
             content = attr_map.get("content", "")
             if http_equiv == "refresh" and content:
-                m = _META_URL_RE.search(content)
+                m = _META_URL_RE.search(content.translate(_META_CTRL_TABLE))
                 if m:
                     self.has_meta_refresh = True
                     raw_url = m.group(1).strip().strip("'\"")
@@ -610,12 +623,14 @@ class _WebTagCollector(HTMLParser):
         if self.in_foreign_content and local in ("br", "p"):
             self._breakout_foreign()
             return
-        # Amortized O(1): only pop when local is actually on _ns_stack.
-        if self._ns_counts.get(local, 0) > 0:
+        # Amortized O(1): only pop when local is in the current HTML5 scope.
+        if self._ns_scope_counts[-1].get(local, 0) > 0:
             while self._ns_stack:
                 popped_tag, _ = self._pop_ns_top()
                 if popped_tag == local:
                     break
+            if not self.in_foreign_content:
+                self.foreign_script_depth = 0
 
     def handle_data(self, data: str) -> None:
         if self.tag_limit_exceeded:
@@ -698,14 +713,17 @@ def _find_tag_end_linear(
         i += 1
     return -1, n
 
-def _extract_tag_local_name(text: str, lt: int, gt: int) -> str:
+def _extract_tag_local_name(
+    text: str, lt: int, gt: int, *, xml_mode: bool = False
+) -> str:
     i = lt + 1
     while i < gt and text[i] in " /!?\t\r\n":
         i += 1
     start = i
     while i < gt and (text[i].isalnum() or text[i] in "_.-:"):
         i += 1
-    return text[start:i].rsplit(":", 1)[-1].lower()
+    raw = text[start:i]
+    return raw.rsplit(":", 1)[-1].lower() if xml_mode else raw.lower()
 
 
 def _find_html_script_end(text: str, pos: int) -> tuple[int, int] | None:
@@ -829,6 +847,8 @@ def _feed_bounded_tags(
             if in_foreign:
                 end_cd = text.find("]]>", lt + 9)
                 if end_cd == -1:
+                    if collector.foreign_script_depth > 0:
+                        collector._inspect_js_chunk(text[lt + 9 :])
                     break
                 if collector.foreign_script_depth > 0:
                     collector._inspect_js_chunk(text[lt + 9 : end_cd])
@@ -894,14 +914,15 @@ def _feed_bounded_tags(
 
         tag_len = gt - lt + 1
         if tag_len > _MAX_SINGLE_TAG_LEN:
-            local = _extract_tag_local_name(text, lt, gt)
+            local = _extract_tag_local_name(text, lt, gt, xml_mode=xml_mode)
             tag_slice = text[lt : gt + 1]
             low_slice = tag_slice.lower()
             if "base64," in low_slice:
                 for m in _DATA_URI_B64_RE.finditer(tag_slice):
                     if len(collector.data_uri_attrs) >= _MAX_B64_CANDIDATES:
                         break
-                    collector.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
+                    if not _is_confirmed_benign_image_b64(m.group(2)):
+                        collector.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
             is_benign_geom = (
                 local in _BENIGN_GEOMETRY_TAGS
                 and _OVERSIZED_EVENT_RE.search(tag_slice) is None

