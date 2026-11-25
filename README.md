@@ -109,7 +109,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 | [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) | Windows Authenticode signing policy, team roles, artifact scope (`Malaz.exe`), and privacy declaration (SignPath Foundation) |
 | [docs/RELEASING.md](docs/RELEASING.md) | Maintainer release pipeline: locked GitHub Actions tag builds, tag-tree parity gates, and OpenPGP signing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and security hardening summary starting at `v1.0.0` |
-| [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 36/36 mutations, and fuzzing |
+| [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) | Developer workflow, architecture gates, 558-file golden snapshot, 39/39 mutations, and fuzzing |
 
 ---
 

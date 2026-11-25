@@ -22,7 +22,7 @@ import html
 import re
 from html.parser import HTMLParser
 
-from ..core import magic
+from ..core import magic, qr_scan
 from ..core.risky_types import RISKY_SUFFIXES
 from ..models import (
     CAT_CONTENT,
@@ -1027,7 +1027,20 @@ class WebContentPipeline(Pipeline):
         if not is_svg and not is_html:
             return []
 
-        return self._analyze_text(text, is_svg=is_svg, is_html=is_html, depth=0)
+        qr_budget = qr_scan.DataUriBudget()
+        qr_outcome = qr_scan.QrScanOutcome()
+        input_truncated = ctx.size > len(ctx.data)
+        indicators = self._analyze_text(
+            text,
+            is_svg=is_svg,
+            is_html=is_html,
+            depth=0,
+            qr_budget=qr_budget,
+            qr_outcome=qr_outcome,
+            input_truncated=input_truncated,
+        )
+        indicators.extend(qr_scan.build_qr_indicators(self.name, qr_outcome))
+        return indicators
 
     def _analyze_text(
         self,
@@ -1036,6 +1049,9 @@ class WebContentPipeline(Pipeline):
         is_svg: bool,
         is_html: bool,
         depth: int,
+        qr_budget: qr_scan.DataUriBudget | None = None,
+        qr_outcome: qr_scan.QrScanOutcome | None = None,
+        input_truncated: bool = False,
     ) -> list[Indicator]:
         xml_mode = is_svg and not is_html
         collector = _WebTagCollector(xml_mode=xml_mode)
@@ -1104,6 +1120,14 @@ class WebContentPipeline(Pipeline):
             for ind in self._check_svg(collector):
                 _add(ind)
 
+        if qr_outcome is not None:
+            qr_sub = qr_scan.scan_data_uri_images(
+                text,
+                budget=qr_budget,
+                input_truncated=input_truncated,
+            )
+            qr_outcome.merge(qr_sub)
+
         if depth == 0 and decoded_snippets:
             for snippet_text, snippet_is_svg, snippet_is_html in decoded_snippets:
                 sub_inds = self._analyze_text(
@@ -1111,6 +1135,9 @@ class WebContentPipeline(Pipeline):
                     is_svg=snippet_is_svg,
                     is_html=snippet_is_html,
                     depth=1,
+                    qr_budget=qr_budget,
+                    qr_outcome=qr_outcome,
+                    input_truncated=(len(snippet_text) >= _STAGE2_DECODE_CAP),
                 )
                 for ind in sub_inds:
                     _add(ind)

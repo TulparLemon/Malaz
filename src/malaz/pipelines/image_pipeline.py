@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+from ..core import qr_scan
 from ..models import (
     CAT_FORMAT,
     CAT_METADATA,
@@ -49,8 +50,16 @@ class ImagePipeline(Pipeline):
             # No HEIF decoder is bundled (Pillow has no HEIC plugin here), so
             # "no EXIF finding" must never be read as "no EXIF present".
             indicators.extend(self._exif(ctx, failure_rule="HEIC_EXIF_UNCHECKED"))
+            qr_out = qr_scan.scan_image_bytes(
+                ctx.data, detected_type=ctx.detected_type, source_label="image"
+            )
+            indicators.extend(qr_scan.build_qr_indicators(self.name, qr_out))
             return indicators
         indicators.extend(self._exif(ctx))
+        qr_out = qr_scan.scan_image_bytes(
+            ctx.data, detected_type=ctx.detected_type, source_label="image"
+        )
+        indicators.extend(qr_scan.build_qr_indicators(self.name, qr_out))
         return indicators
 
     # -- PNG --------------------------------------------------------------- #

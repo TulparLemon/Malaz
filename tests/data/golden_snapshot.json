@@ -2,7 +2,8 @@
   "benign/IMG_0042.HEIC": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -67,7 +68,8 @@
   "benign/bild.avif": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -353,7 +355,9 @@
     "type": "ps1"
   },
   "malicious/cut_off.jpg": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [
       "JPEG_NO_EOI"
@@ -1160,7 +1164,9 @@
     "type": "ico"
   },
   "v2/benign_image_11.webp": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1181,7 +1187,9 @@
     "type": "jpeg"
   },
   "v2/benign_image_14.gif": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1202,7 +1210,9 @@
     "type": "ico"
   },
   "v2/benign_image_17.webp": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1223,14 +1233,18 @@
     "type": "jpeg"
   },
   "v2/benign_image_2.gif": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
     "type": "gif"
   },
   "v2/benign_image_20.gif": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1251,7 +1265,9 @@
     "type": "ico"
   },
   "v2/benign_image_23.webp": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1272,7 +1288,9 @@
     "type": "jpeg"
   },
   "v2/benign_image_26.gif": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1293,7 +1311,9 @@
     "type": "ico"
   },
   "v2/benign_image_29.webp": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1314,7 +1334,9 @@
     "type": "ico"
   },
   "v2/benign_image_5.webp": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -1335,7 +1357,9 @@
     "type": "jpeg"
   },
   "v2/benign_image_8.gif": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -2149,7 +2173,9 @@
     "type": "text"
   },
   "v2/benign_tiff.tiff": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "GREEN",
     "rules": [],
     "score": 0,
@@ -2157,7 +2183,8 @@
   },
   "v2/benign_webp.webp": {
     "notes": [
-      "GEN_ENTROPY"
+      "GEN_ENTROPY",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -2513,7 +2540,8 @@
   },
   "v2/gif_comment_0.gif": {
     "notes": [
-      "BINARY_IOC"
+      "BINARY_IOC",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "YELLOW",
     "rules": [
@@ -2524,7 +2552,8 @@
   },
   "v2/gif_comment_1.gif": {
     "notes": [
-      "BINARY_IOC"
+      "BINARY_IOC",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "YELLOW",
     "rules": [
@@ -2535,7 +2564,8 @@
   },
   "v2/gif_comment_2.gif": {
     "notes": [
-      "BINARY_IOC"
+      "BINARY_IOC",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "YELLOW",
     "rules": [
@@ -2546,7 +2576,8 @@
   },
   "v2/gif_comment_3.gif": {
     "notes": [
-      "BINARY_IOC"
+      "BINARY_IOC",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "YELLOW",
     "rules": [
@@ -2557,7 +2588,8 @@
   },
   "v2/gif_comment_4.gif": {
     "notes": [
-      "BINARY_IOC"
+      "BINARY_IOC",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "YELLOW",
     "rules": [
@@ -2569,7 +2601,8 @@
   "v2/heic_0.heic": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -2579,7 +2612,8 @@
   "v2/heic_1.heic": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -2589,7 +2623,8 @@
   "v2/heic_2.heic": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -2599,7 +2634,8 @@
   "v2/heic_3.heic": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -2609,7 +2645,8 @@
   "v2/heic_4.heic": {
     "notes": [
       "GEN_ENTROPY",
-      "HEIC_EXIF_UNCHECKED"
+      "HEIC_EXIF_UNCHECKED",
+      "QR_SCAN_INCOMPLETE"
     ],
     "risk": "GREEN",
     "rules": [],
@@ -5842,7 +5879,9 @@
     "type": "tar"
   },
   "v2/tiff_noise.tiff": {
-    "notes": [],
+    "notes": [
+      "QR_SCAN_INCOMPLETE"
+    ],
     "risk": "YELLOW",
     "rules": [
       "GEN_ENTROPY"

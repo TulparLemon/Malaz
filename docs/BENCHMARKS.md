@@ -27,7 +27,7 @@ The block below is generated and verified automatically by `python scripts/run_c
 - **Profile:** `deterministic_static_only` (offline, no external AV/CLI subprocesses)
 - **Active engines:** `static_pipelines`, `yara_builtin`
 - **Intentionally disabled/pinned engines:** `windows_defender`, `clamav`, `7zip`, `die`, `capa`, `user_threat_intel_feeds`
-- **Registered mutation checks:** 36 (verified separately in CI via `scripts/check_tests_bite.py`)
+- **Registered mutation checks:** 39 (verified separately in CI via `scripts/check_tests_bite.py`)
 
 | Synthetic Corpus | Files | RED | YELLOW | GREEN | Crashes | Unexpected Incomplete | Key Rates (denominator = all files) |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | :--- |

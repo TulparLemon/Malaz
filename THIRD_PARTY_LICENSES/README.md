@@ -1,8 +1,8 @@
 # Third-Party Runtime License Texts
 
 This directory contains the verbatim upstream license and notice files for the
-46 Python wheel distributions included in the **Malaz** runtime environment
-(matching the 47 runtime components documented in
+47 Python wheel distributions included in the **Malaz** runtime environment
+(matching the 48 runtime components documented in
 [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md); `win_unicode_console`
 ships without a separate license file in its wheel metadata).
 

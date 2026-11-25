@@ -13,7 +13,7 @@ provider.
 from __future__ import annotations
 
 from .. import config
-from ..core import eml_analysis
+from ..core import eml_analysis, qr_scan
 from ..core.eml_analysis import (
     analyze_body,
     analyze_structure,
@@ -215,6 +215,12 @@ class EmlPipeline(Pipeline):
         out.extend(self._structure_indicators(facts))
         out.extend(self._link_indicators(facts))
         out.extend(self._attachment_indicators(facts))
+        if facts.html_body or facts.html_body_truncated:
+            qr_out = qr_scan.scan_data_uri_images(
+                facts.html_body,
+                input_truncated=(facts.parts_truncated or facts.html_body_truncated),
+            )
+            out.extend(qr_scan.build_qr_indicators(self.name, qr_out))
         return out
 
     # -- body --------------------------------------------------------------- #

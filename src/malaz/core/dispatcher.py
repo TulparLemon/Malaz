@@ -1632,7 +1632,7 @@ class Dispatcher:
             pipelines.append(self.archive)
             if suffix in _OOXML_OFFICE_SUFFIXES:
                 pipelines.append(self.office)
-        elif ftype in ("png", "jpeg", "gif", "bmp", "heic", "avif"):
+        elif ftype in ("png", "jpeg", "gif", "bmp", "webp", "tiff", "heic", "avif"):
             pipelines.append(self.image)
         elif ftype == "pe":
             pipelines.append(self.pe)

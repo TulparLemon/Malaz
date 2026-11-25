@@ -99,6 +99,7 @@ class MailFacts:
     # The MIME walk hit MAIL_MAX_MIME_PARTS with parts still on the stack.
     # That is "the rest was not inspected", not "nothing found" (BUG-065).
     parts_truncated: bool = False
+    html_body_truncated: bool = False
 
 
 @dataclass
@@ -284,7 +285,7 @@ _RECEIVED_RE = re.compile(r"^received:", re.IGNORECASE | re.MULTILINE)
 # URI schemes that are dangerous in a mail body: they either execute code in
 # the client (javascript/vbscript/data), reach the local disk (file/jar) or
 # abuse a Windows protocol handler (ms-msdt, search-ms).
-_DANGEROUS_URI_SCHEMES = frozenset(
+DANGEROUS_URI_SCHEMES = frozenset(
     {
         "javascript",
         "vbscript",
@@ -294,14 +295,21 @@ _DANGEROUS_URI_SCHEMES = frozenset(
         "ms-msdt",
         "search-ms",
         "ms-officecmd",
+        "smb",
+        "mhtml",
+        "cmd",
+        "powershell",
     }
 )
+_DANGEROUS_URI_SCHEMES = DANGEROUS_URI_SCHEMES
 # Hosts whose whole purpose is to conceal the real target.
 _SHORTENERS = frozenset(
     {
         "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd", "buff.ly",
         "adf.ly", "shorte.st", "cutt.ly", "rb.gy", "rebrand.ly", "s.id",
         "lnkd.in", "t.ly", "shorturl.at", "tiny.cc", "urlz.fr", "1drv.ms",
+        "qrco.de", "qr.codes", "me-qr.com", "qrfy.io", "scan.me", "qr1.be",
+        "q-r.to",
     }
 )
 
@@ -836,7 +844,20 @@ def parse_mail(data: bytes) -> MailFacts:
         ctype = (part.get_content_type() or "").lower()
         if ctype not in ("text/plain", "text/html"):
             continue
+        if budget <= 0:
+            if ctype == "text/html":
+                facts.html_body_truncated = True
+            continue
+        raw_html_len = 0
+        if ctype == "text/html":
+            try:
+                _rp = part.get_payload(decode=True)
+                raw_html_len = len(_rp) if isinstance(_rp, bytes) else 0
+            except Exception:
+                raw_html_len = 0
         decoded = _decode_part(part, budget)
+        if ctype == "text/html" and raw_html_len > budget:
+            facts.html_body_truncated = True
         if not decoded:
             continue
         budget -= len(decoded)
@@ -855,7 +876,10 @@ def parse_mail(data: bytes) -> MailFacts:
         facts.parts_truncated = True
 
     facts.text_body = "\n".join(text_parts)[:_MAX_BODY_BYTES]
-    facts.html_body = "\n".join(html_parts)[:_MAX_BODY_BYTES]
+    joined_html = "\n".join(html_parts)
+    if len(joined_html) > _MAX_BODY_BYTES:
+        facts.html_body_truncated = True
+    facts.html_body = joined_html[:_MAX_BODY_BYTES]
     facts.links = extract_links(facts.text_body, facts.html_body)
     return facts
 
@@ -962,38 +986,118 @@ def _display_host(display: str) -> str:
     return text.lower()
 
 
-def _add_link(out: list[LinkFacts], seen: set[str], url: str, display: str) -> None:
-    """Classify one URL and append it to ``out`` (shared by both extractors)."""
-    url = url.strip().rstrip(".,;!?)")
-    # NOT ":" — a placeholder like "javascript:..." carries the scheme only
-    # in its colon; stripping it made the scheme check miss entirely
-    # (audit finding caught by the dangerous-scheme test).
-    if not url or len(out) >= _MAX_LINKS or url in seen:
-        return
-    seen.add(url)
-    scheme, host = _host_of(url)
-    if not scheme and ":" in url:
-        # urlsplit() reports no scheme for placeholders like "javascript:..."
-        # (no "//"). Read it directly so the dangerous-scheme check works.
-        scheme = url.split(":", 1)[0].lower()
-    link = LinkFacts(url=url, display_text=display.strip(), host=host, scheme=scheme)
+_BARE_WWW_RE = re.compile(
+    r"^www\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,}|xn--[a-z0-9-]+)"
+    r"(?::\d{1,5})?(?:[/?#].*)?$",
+    re.IGNORECASE,
+)
+_URL_BORDER_STRIP = (
+    " \t\r\n\x00\x01\x02\x03\x04\x05\x06\x07\x08\x0b\x0c\x0e\x0f"
+    "\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
+    "\ufeff\u061c\u200b\u200c\u200d\u200e\u200f\u202a\u202b\u202c\u202d\u202e"
+    "\u2066\u2067\u2068\u2069"
+)
+
+
+def _canonicalize_idna_url(url: str) -> tuple[str, str, str, bool]:
+    """Return ``(canonical_url, scheme, ascii_host, is_idn)`` with ASCII netloc host."""
+    norm = url.replace("\\", "/") if "\\" in url else url
+    try:
+        parts = urlsplit(norm)
+    except Exception:
+        return url, "", "", False
+    scheme = parts.scheme.lower()
+    raw_host = (parts.hostname or "").lower()
+    if not raw_host:
+        return url, scheme, "", False
+    is_idn = False
+    ascii_host = raw_host
+    if not raw_host.isascii():
+        is_idn = True
+        try:
+            ascii_host = raw_host.encode("idna").decode("ascii").lower()
+        except UnicodeError:
+            ascii_host = raw_host
+    netloc = parts.netloc
+    if netloc and ascii_host != raw_host:
+        # Replace ONLY the parsed host portion of netloc (preserve userinfo@ and :port).
+        userinfo, sep, hostport = netloc.rpartition("@")
+        if not sep:
+            userinfo = ""
+        port_part = ""
+        host_part = hostport
+        if hostport.startswith("["):
+            end_b = hostport.find("]")
+            if end_b != -1:
+                host_part = hostport[: end_b + 1]
+                port_part = hostport[end_b + 1 :]
+        elif ":" in hostport:
+            host_part, port_num = hostport.rsplit(":", 1)
+            port_part = ":" + port_num
+        _ = host_part
+        new_netloc = f"{userinfo}{sep}{ascii_host}{port_part}"
+        canonical = parts._replace(scheme=scheme, netloc=new_netloc).geturl()
+    elif parts.scheme and parts.scheme != scheme:
+        canonical = parts._replace(scheme=scheme).geturl()
+    else:
+        canonical = norm
+    return canonical, scheme, ascii_host, is_idn
+
+
+def classify_url(url: str, display: str = "", *, canonicalize: bool = True) -> LinkFacts | None:
+    """Classify one URL (shared by EML link extraction and QR-code analysis).
+
+    Handles uppercase schemes (``HTTPS://...``), scheme-less hosts
+    (``//host/path``, ``host.tld/path``, ``www.host.tld``), and raw UTF-8 IDNs
+    (normalising the netloc host via IDNA to Punycode ASCII).
+    """
+    cleaned = url.strip(_URL_BORDER_STRIP).rstrip(".,;!?)")
+    if not cleaned:
+        return None
+    candidate = cleaned
+    if canonicalize:
+        low = candidate.lower()
+        if low.startswith("//"):
+            candidate = "https:" + candidate
+        elif not low.startswith(("http://", "https://")) and (
+            _SCHEMELESS_HREF_RE.match(candidate) or _BARE_WWW_RE.match(candidate)
+        ):
+            candidate = "https://" + candidate
+    canonical, scheme, host, is_idn = _canonicalize_idna_url(candidate)
+    if not scheme and ":" in candidate:
+        scheme = candidate.split(":", 1)[0].lower()
+    if canonicalize and not host and scheme not in DANGEROUS_URI_SCHEMES:
+        return None
+    link = LinkFacts(
+        url=canonical if canonicalize else cleaned,
+        display_text=display.strip(),
+        host=host,
+        scheme=scheme,
+    )
     link.is_ip_literal = _is_ip_literal(host)
-    link.is_punycode = "xn--" in host
+    link.is_punycode = ("xn--" in host) or is_idn
     link.is_shortener = host in _SHORTENERS
     link.risky_tld = _has_risky_tld(host)
     try:
-        # Same normalisation as ``_host_of``: a backslash before the "@" is a
-        # path separator for the browser, not userinfo (SEC-035).
-        link.has_credentials = "@" in (urlsplit(url.replace("\\", "/")).netloc or "")
+        link.has_credentials = "@" in (urlsplit(candidate.replace("\\", "/")).netloc or "")
     except Exception:
         link.has_credentials = False
     if display and host:
         disp_host = _display_host(display)
-        # Only a genuinely different host is a mismatch — a path, a "www."
-        # prefix or a trailing slash must not trigger it.
         if disp_host and _strip_www(disp_host) != _strip_www(host):
             link.mismatch = True
-    out.append(link)
+    return link
+
+
+def _add_link(out: list[LinkFacts], seen: set[str], url: str, display: str) -> None:
+    """Classify one URL and append it to ``out`` (shared by both extractors)."""
+    cleaned = url.strip().rstrip(".,;!?)")
+    if not cleaned or len(out) >= _MAX_LINKS or cleaned in seen:
+        return
+    seen.add(cleaned)
+    link = classify_url(cleaned, display, canonicalize=False)
+    if link is not None:
+        out.append(link)
 
 
 def _web_href_target(href: str) -> str:

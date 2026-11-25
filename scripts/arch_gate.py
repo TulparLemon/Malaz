@@ -33,6 +33,7 @@ FACADE_SUBMODULE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "pipelines/pdf_streams.py",
             "pipelines/pdf_links.py",
             "pipelines/pdf_javascript.py",
+            "pipelines/pdf_qr.py",
         ),
     ),
 )

@@ -595,6 +595,46 @@ MUTATIONS: tuple[Mutation, ...] = (
             "Sprachen — Unchecked darf niemals als Clean erscheinen."
         ),
     ),
+    Mutation(
+        name="qr-suspicious-url-aus",
+        file="src/malaz/core/qr_scan.py",
+        old="    if suspicious_entries:\n",
+        new="    if False and suspicious_entries:\n",
+        test="tests/test_qr_scan.py::test_bite_qr_suspicious_url",
+        why=(
+            "Spec 015 (DET-002): ohne QR_SUSPICIOUS_URL bleiben Quishing-URLs "
+            "in QR-Codes stumm bei GRÜN 0."
+        ),
+    ),
+    Mutation(
+        name="qr-engine-missing-still",
+        file="src/malaz/core/qr_scan.py",
+        old=(
+            "            if zxing is None:\n"
+            "                outcome.add_incomplete(_ENGINE_MISSING_REASON)\n"
+            "                return outcome\n"
+        ),
+        new=(
+            "            if zxing is None:\n"
+            "                return outcome\n"
+        ),
+        test="tests/test_qr_scan.py::test_bite_qr_engine_missing",
+        why=(
+            "Spec 015 (DET-002): Vollstaendigkeits-Invariante — fehlendes "
+            "zxing-cpp darf niemals still als sauber durchgehen."
+        ),
+    ),
+    Mutation(
+        name="qr-pdf-bomb-guard-aus",
+        file="src/malaz/pipelines/pdf_qr.py",
+        old="    filter_err = _check_filter_whitelist(names, raw, w, h)\n",
+        new="    filter_err = None\n",
+        test="tests/test_qr_scan.py::test_bite_qr_pdf_multifilter_bomb_guard",
+        why=(
+            "Spec 015 (DET-002): ohne PDF-Filter-Whitelist wuerden "
+            "Mehrstufen-Filterketten und JBIG2/LZW-Bomben an as_pil_image() gelangen."
+        ),
+    ),
 )
 
 

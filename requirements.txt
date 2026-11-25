@@ -22,6 +22,9 @@ openpyxl>=3.1
 # Image metadata (EXIF)
 Pillow>=10.0
 
+# Offline QR-code decoding (Apache-2.0, GPL-3.0-or-later compatible)
+zxing-cpp>=2.3.0
+
 # PE analysis (sections, imports, imphash, overlay, TLS) — MIT license
 pefile>=2023.2.7
 
