@@ -116,7 +116,7 @@ _OTPAUTH_MIG_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_USERINFO_PASS_RE = re.compile(
-    r"((?:[a-z][a-z0-9+.-]{1,24}:)?//[^/\s:@?#]{1,128}:)([^/\s@?#]+)(@)",
+    r"((?:[a-z][a-z0-9+.-]{1,24}:)?//[^/\s:@?#]{0,128}:)([^/\s@?#]+)(@)",
     re.IGNORECASE,
 )
 _SENSITIVE_QUERY_RE = re.compile(
@@ -486,7 +486,7 @@ def scan_data_uri_images(
         if len(clean) < 32:
             continue
 
-        digest = hashlib.sha256(clean.encode("ascii", "ignore")).hexdigest()[:32]
+        digest = hashlib.sha256(clean.encode("utf-8", "replace")).hexdigest()[:32]
         if digest in b.seen_hashes:
             continue
         b.seen_hashes.add(digest)
@@ -566,7 +566,7 @@ def _extract_qr_targets(payload: str) -> tuple[list[LinkFacts], list[str]]:
 
     if not any(ch.isspace() for ch in stripped):
         direct = classify_url(stripped, canonicalize=True)
-        if direct is not None and direct.host:
+        if direct is not None and direct.host and direct.scheme in ("http", "https"):
             urls.append(direct)
             return urls, dangerous
 

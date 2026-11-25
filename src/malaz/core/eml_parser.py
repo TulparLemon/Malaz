@@ -1037,7 +1037,7 @@ def _canonicalize_idna_url(url: str) -> tuple[str, str, str, bool]:
         _ = host_part
         new_netloc = f"{userinfo}{sep}{ascii_host}{port_part}"
         canonical = parts._replace(scheme=scheme, netloc=new_netloc).geturl()
-    elif parts.scheme and parts.scheme != scheme:
+    elif parts.scheme and not norm.startswith(f"{scheme}:"):
         canonical = parts._replace(scheme=scheme).geturl()
     else:
         canonical = norm
@@ -1066,7 +1066,7 @@ def classify_url(url: str, display: str = "", *, canonicalize: bool = True) -> L
     canonical, scheme, host, is_idn = _canonicalize_idna_url(candidate)
     if not scheme and ":" in candidate:
         scheme = candidate.split(":", 1)[0].lower()
-    if canonicalize and not host and scheme not in DANGEROUS_URI_SCHEMES:
+    if canonicalize and (scheme not in ("http", "https") or not host):
         return None
     link = LinkFacts(
         url=canonical if canonicalize else cleaned,

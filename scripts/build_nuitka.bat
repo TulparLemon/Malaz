@@ -113,6 +113,11 @@ if not exist "%PKLIBS%" (
     popd
     exit /b 1
 )
+if not exist "%ZXLIBS%" (
+    echo zxing_cpp.libs nicht gefunden: %ZXLIBS%
+    popd
+    exit /b 1
+)
 
 REM -- YARA-Regeln vorkompilieren (.yarc) ----------------------------------
 REM Die Engine laedt .yarc bevorzugt (schnellerer Anwendungsstart) und die

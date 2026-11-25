@@ -1163,3 +1163,115 @@ def test_eml_truncated_html_body_reports_qr_incomplete(tmp_path, no_network):
     res = _scan_file(tmp_path, "big_html.eml", eml)
     assert res.detected_type == "eml"
     assert "QR_SCAN_INCOMPLETE" in _rule_ids(res)
+
+
+def test_review_r1_regressions_b1_m1_m2_m3_m4_n1_n3(tmp_path, monkeypatch, no_network):
+    """Regression tests for all code-review r1 findings (B1, M1, M2, M3, M4, N1, N3)."""
+    from malaz.core.eml_parser import classify_url
+
+    # B1: malformed /Mask arrays (/Mask [/Foo], /Mask [true false]), bool /DecodeParms & /Indexed hival
+    for name, modifier in (
+        ("mask_name.pdf", lambda _p, im: im.__setitem__("/Mask", pikepdf.Array([pikepdf.Name("/Foo")]))),
+        ("mask_bool.pdf", lambda _p, im: im.__setitem__("/Mask", pikepdf.Array([True, False]))),
+        (
+            "dp_bool.pdf",
+            lambda _p, im: im.__setitem__("/DecodeParms", pikepdf.Dictionary(Columns=True)),
+        ),
+        (
+            "idx_bool.pdf",
+            lambda _p, im: im.__setitem__(
+                "/ColorSpace",
+                pikepdf.Array(
+                    [
+                        pikepdf.Name("/Indexed"),
+                        pikepdf.Name("/DeviceRGB"),
+                        True,
+                        pikepdf.String(bytes(3)),
+                    ]
+                ),
+            ),
+        ),
+    ):
+        with pikepdf.new() as pdf:
+            pdf.add_blank_page(page_size=(200, 200))
+            im = _make_flate_xobj(pdf, Image.new("L", (32, 32)))
+            modifier(pdf, im)
+            pdf.pages[0]["/Resources"] = pikepdf.Dictionary(XObject=pikepdf.Dictionary(Im=im))
+            res = _scan_file(tmp_path, name, _pdf_bytes(pdf))
+        assert "QR_SCAN_INCOMPLETE" in _rule_ids(res), name
+
+    # M1a: custom scheme with embedded phishing URL must fall through to Step 3
+    res_m1a = _scan_file(
+        tmp_path, "custom_scheme.png", _qr_bytes("app://open?next=https://qrco.de/phish", "PNG")
+    )
+    assert "QR_SUSPICIOUS_URL" in _rule_ids(res_m1a)
+
+    # M1b: otpauth:// must NEVER reach url_reputation_lookup
+    seen_rep_calls: list[list[str]] = []
+
+    def _spy_rep(urls):
+        seen_rep_calls.append(list(urls))
+        return type("R", (), {"error": "", "hits": {}})()
+
+    monkeypatch.setattr(qr_scan, "url_reputation_lookup", _spy_rep)
+    res_otp = _scan_file(
+        tmp_path, "otp_only.png", _qr_bytes("otpauth://totp/App:u?secret=JBSWY3DPEHPK3PXP", "PNG")
+    )
+    assert "QR_CODE_DETECTED" in _rule_ids(res_otp)
+    assert seen_rep_calls == []
+
+    # M2: Data-URI dedup hash must not collapse non-ASCII %C3%A4 decoy onto real phishing QR
+    b64 = base64.b64encode(_qr_bytes("https://qrco.de/dedup", "PNG")).decode("ascii")
+    html_m2 = (
+        f"<html><body>"
+        f'<img src="data:image/png;base64,{b64}%C3%A4">'
+        f'<img src="data:image/png;base64,{b64}">'
+        f"</body></html>"
+    ).encode()
+    res_m2 = _scan_file(tmp_path, "dedup_m2.html", html_m2)
+    assert "QR_SUSPICIOUS_URL" in _rule_ids(res_m2)
+
+    # M3: /Annots[0]/AP/N state dictionary with > 32 entries reports QR_SCAN_INCOMPLETE
+    with pikepdf.new() as pdf:
+        pdf.add_blank_page(page_size=(200, 200))
+        states = {}
+        for i in range(34):
+            states[f"/S{i}"] = pdf.make_stream(
+                b"q Q",
+                {
+                    "/Type": pikepdf.Name("/XObject"),
+                    "/Subtype": pikepdf.Name("/Form"),
+                    "/BBox": pikepdf.Array([0, 0, 10, 10]),
+                },
+            )
+        annot = pdf.make_indirect(
+            pikepdf.Dictionary(
+                Type=pikepdf.Name("/Annot"),
+                Subtype=pikepdf.Name("/Widget"),
+                AP=pikepdf.Dictionary(N=pikepdf.Dictionary(states)),
+            )
+        )
+        pdf.pages[0]["/Annots"] = pikepdf.Array([annot])
+        res_m3 = _scan_file(tmp_path, "ap_states_34.pdf", _pdf_bytes(pdf))
+    assert "QR_SCAN_INCOMPLETE" in _rule_ids(res_m3)
+
+    # M4: empty username credential URL https://:MySecretPass@example.org/ must be redacted
+    res_m4 = _scan_file(
+        tmp_path, "empty_user.png", _qr_bytes("https://:MySecretPass@example.org/x", "PNG")
+    )
+    assert "QR_SUSPICIOUS_URL" in _rule_ids(res_m4)
+    for ind in res_m4.all_indicators():
+        assert "MySecretPass" not in ind.detail
+
+    # N1: uppercase scheme canonicalized to lowercase in link.url
+    lf = classify_url("HTTPS://QRCO.DE/A", canonicalize=True)
+    assert lf is not None
+    assert lf.url.startswith("https://")
+
+    # N3: /Contents array > 128 streams reports QR_SCAN_INCOMPLETE
+    with pikepdf.new() as pdf:
+        pdf.add_blank_page(page_size=(200, 200))
+        empty_s = pdf.make_stream(b"")
+        pdf.pages[0]["/Contents"] = pikepdf.Array([empty_s] * 130)
+        res_n3 = _scan_file(tmp_path, "many_contents.pdf", _pdf_bytes(pdf))
+    assert "QR_SCAN_INCOMPLETE" in _rule_ids(res_n3)

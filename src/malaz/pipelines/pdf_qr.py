@@ -33,6 +33,7 @@ MAX_PDF_QR_COLORSPACE_BYTES = 4 * 1024 * 1024
 MAX_PDF_QR_TOTAL_PIXELS = 32_000_000
 MAX_PDF_FORM_DEPTH = 4
 MAX_PDF_QR_CONTENT_BYTES = 2 * 1024 * 1024
+MAX_PDF_QR_CONTENT_STREAMS = 128
 
 _DEVICE_CS_NAMES = frozenset(
     {"/DeviceGray", "/DeviceRGB", "/DeviceCMYK", "/G", "/RGB", "/CMYK"}
@@ -115,11 +116,10 @@ def _validate_decode_parms(
             return False
         if raw_v is None:
             continue
-        try:
-            iv = int(raw_v)
-        except Exception:
+        if not _is_strict_int(raw_v):
             return False
-        if not _is_strict_int(iv) or iv < lo or iv > hi_lim:
+        iv = int(raw_v)
+        if iv < lo or iv > hi_lim:
             return False
         if key == "/Columns":
             cols = iv
@@ -130,13 +130,10 @@ def _validate_decode_parms(
         bpc_raw = dp.get("/BitsPerComponent")
     except Exception:
         return False
-    if bpc_raw is not None:
-        try:
-            bpc = int(bpc_raw)
-        except Exception:
-            return False
-        if not _is_strict_int(bpc) or bpc not in (1, 2, 4, 8, 16):
-            return False
+    if bpc_raw is not None and (
+        not _is_strict_int(bpc_raw) or int(bpc_raw) not in (1, 2, 4, 8, 16)
+    ):
+        return False
 
     if cols is not None:
         eff_h = max(rows or (h or 1), h or 1)
@@ -208,13 +205,7 @@ def _validate_colorspace(
         base_cs = cs[1]
         hival_raw = cs[2]
         lookup = cs[3]
-        try:
-            if isinstance(hival_raw, bool):
-                return False
-            hival = int(hival_raw)
-        except Exception:
-            return False
-        if not _is_strict_int(hival) or hival < 0 or hival > 255:
+        if not _is_strict_int(hival_raw) or int(hival_raw) < 0 or int(hival_raw) > 255:
             return False
         if not _validate_colorspace(base_cs, pikepdf, allow_none=False, depth=depth + 1):
             return False
@@ -440,8 +431,12 @@ def _scan_image_xobject(
                 if not ok_mask:
                     return False
             elif mkey == "/Mask" and isinstance(mobj, pikepdf.Array):
-                # Color-key mask array of ints (no stream).
-                if not all(_is_strict_int(int(v)) for v in mobj if not isinstance(v, bool)):
+                # Color-key mask array of strict ints (no stream, bounded length).
+                try:
+                    items = list(mobj)
+                except Exception:
+                    return _fail("Ungültiges PDF-/Mask-Array")
+                if len(items) > 32 or not all(_is_strict_int(v) for v in items):
                     return _fail("Ungültiges PDF-/Mask-Array")
             else:
                 return _fail(f"Unerwarteter Typ für PDF-{mkey}")
@@ -492,7 +487,7 @@ def _scan_image_xobject(
     try:
         w_raw = xobj.get(pikepdf.Name.Width)
         h_raw = xobj.get(pikepdf.Name.Height)
-        if w_raw is None or h_raw is None or isinstance(w_raw, bool) or isinstance(h_raw, bool):
+        if not _is_strict_int(w_raw) or not _is_strict_int(h_raw):
             return _fail("PDF-Bild ohne gültige Dimensionen")
         w, h = int(w_raw), int(h_raw)
     except Exception:
@@ -730,7 +725,12 @@ def _walk_page_annots(
             if isinstance(entry, pikepdf.Stream):
                 _walk_form_stream(entry, pikepdf, state, page_label=page_label, depth=0)
             elif isinstance(entry, pikepdf.Dictionary):
-                for sub_key in list(entry.keys())[:32]:
+                sub_keys = list(entry.keys())
+                if len(sub_keys) > 32:
+                    state.outcome.add_incomplete(
+                        "PDF-Annotations-Statuswörterbuch überschreitet Limit"
+                    )
+                for sub_key in sub_keys[:32]:
                     try:
                         sub_stream = entry[sub_key]
                     except Exception:
@@ -772,7 +772,9 @@ def scan_pdf_qr(pdf: Any) -> list[Indicator]:
         if isinstance(contents, pikepdf.Stream):
             _check_stream_inline_images(contents, pikepdf, state)
         elif isinstance(contents, pikepdf.Array):
-            for stream in contents:
+            if len(contents) > MAX_PDF_QR_CONTENT_STREAMS:
+                state.outcome.add_incomplete("PDF-/Contents-Array überschreitet Stream-Limit")
+            for stream in list(contents)[:MAX_PDF_QR_CONTENT_STREAMS]:
                 if isinstance(stream, pikepdf.Stream):
                     _check_stream_inline_images(stream, pikepdf, state)
 
