@@ -136,7 +136,7 @@ _HTML_VOID_TAGS = frozenset(
     }
 )
 _HTML_SCRIPT_TOKEN_RE = re.compile(
-    r"<!--|-->|</?script(?=[\s/>])", re.IGNORECASE
+    r"<!--+>|<!--|-->|</?script(?=[\s/>])", re.IGNORECASE
 )
 _RAWTEXT_CLOSE_RES: dict[str, re.Pattern[str]] = {
     _tag: re.compile(
@@ -490,7 +490,11 @@ class _WebTagCollector(HTMLParser):
                 self._push_ns(local, "math_ip")
                 self._last_pushed_ns = True
             else:
-                if prev_ns in ("svg_ip", "math_ip") and local not in _HTML_VOID_TAGS:
+                if (
+                    self._ns_stack
+                    and prev_ns in ("svg_ip", "math_ip", "html")
+                    and local not in _HTML_VOID_TAGS
+                ):
                     self._push_ns(local, "html")
                     self._last_pushed_ns = True
                 if (
@@ -562,6 +566,8 @@ class _WebTagCollector(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
+        if self.tag_limit_exceeded:
+            return
         local = self._local_name(tag)
         closes_self = self.xml_mode or self._last_prev_in_foreign or local in ("svg", "math")
         if not closes_self:
@@ -707,7 +713,10 @@ def _find_html_script_end(text: str, pos: int) -> tuple[int, int] | None:
     state = 0  # 0=NORMAL, 1=ESCAPED (after <!--), 2=DOUBLE_ESCAPED (after <!--<script)
     for m in _HTML_SCRIPT_TOKEN_RE.finditer(text, pos):
         tok = m.group(0).lower()
-        if tok == "<!--":
+        if tok.startswith("<!--") and tok.endswith(">"):
+            # WHATWG §13.2.5.18-22: <!--> / <!---> returns immediately to NORMAL.
+            state = 0
+        elif tok == "<!--":
             if state == 0:
                 state = 1
         elif tok == "-->":
@@ -940,8 +949,10 @@ class WebContentPipeline(Pipeline):
     ) -> list[Indicator]:
         xml_mode = is_svg and not is_html
         collector = _WebTagCollector(xml_mode=xml_mode)
-        with contextlib.suppress(Exception):
+        try:
             _feed_bounded_tags(collector, text, xml_mode=xml_mode)
+        except Exception:
+            collector.tag_limit_exceeded = True
 
         found: dict[str, Indicator] = {}
 

