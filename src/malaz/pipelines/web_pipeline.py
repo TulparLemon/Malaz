@@ -112,7 +112,7 @@ _DATA_URI_B64_RE = re.compile(
     re.IGNORECASE,
 )
 _SCRIPT_CLOSE_RE = re.compile(
-    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script[\s/>]", re.IGNORECASE
+    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script[ \t\r\n/>]", re.IGNORECASE
 )
 _HTML_RAWTEXT_TAGS = (
     "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes", "noscript",
@@ -136,10 +136,10 @@ _HTML_VOID_TAGS = frozenset(
     }
 )
 _HTML_SCRIPT_TOKEN_RE = re.compile(
-    r"<!--+>|<!--|-->|</?script(?=[\s/>])", re.IGNORECASE
+    r"<!--+>|<!--|-->|</?script(?=[ \t\r\n\f/>])", re.IGNORECASE
 )
 _RAWTEXT_CLOSE_RES: dict[str, re.Pattern[str]] = {
-    _tag: re.compile(rf"</{_tag}[\s/>]", re.IGNORECASE)
+    _tag: re.compile(rf"</{_tag}[ \t\r\n\f/>]", re.IGNORECASE)
     for _tag in _HTML_RAWTEXT_TAGS
 }
 _OVERSIZED_EVENT_RE = re.compile(r"""[\s/"']on[a-z]{3,24}\s*=""", re.IGNORECASE)
@@ -298,6 +298,7 @@ class _WebTagCollector(HTMLParser):
         self.xml_mode = xml_mode
         self.tag_count = 0
         self.tag_limit_exceeded = False
+        self.parse_limit_reason = ""
 
         self.script_depth = 0
         self.foreign_script_depth = 0
@@ -413,6 +414,7 @@ class _WebTagCollector(HTMLParser):
         self.tag_count += 1
         if self.tag_count > _MAX_TAGS:
             self.tag_limit_exceeded = True
+            self.parse_limit_reason = f"mehr als {_MAX_TAGS} Tags"
             return
 
         local = self._local_name(tag)
@@ -606,6 +608,7 @@ class _WebTagCollector(HTMLParser):
         self.tag_count += 1
         if self.tag_count > _MAX_TAGS:
             self.tag_limit_exceeded = True
+            self.parse_limit_reason = f"mehr als {_MAX_TAGS} Tags"
             return
         local = self._local_name(tag)
         if local == "script":
@@ -718,7 +721,7 @@ def _extract_tag_local_name(
     text: str, lt: int, gt: int, *, xml_mode: bool = False
 ) -> str:
     i = lt + 1
-    while i < gt and text[i] in " /!?\t\r\n":
+    while i < gt and text[i] in " /!?\t\r\n\f":
         i += 1
     start = i
     while i < gt and (text[i].isalnum() or text[i] in "_.-:"):
@@ -759,6 +762,61 @@ def _find_html_script_end(
     return None
 
 
+def _find_xml_script_end(
+    text: str, pos: int, collector: _WebTagCollector
+) -> int | None:
+    """Strictly linear O(N) XML/SVG <script> scanner honoring CDATA and comments."""
+    cur = pos
+    n = len(text)
+    next_close_m: re.Match[str] | None = _SCRIPT_CLOSE_RE.search(text, cur)
+    no_close = next_close_m is None
+    next_cd = text.find("<![CDATA[", cur)
+    next_cmt = text.find("<!--", cur)
+    while cur < n:
+        if not no_close and next_close_m is not None and next_close_m.start() < cur:
+            next_close_m = _SCRIPT_CLOSE_RE.search(text, cur)
+            if next_close_m is None:
+                no_close = True
+        if next_cd != -1 and next_cd < cur:
+            next_cd = text.find("<![CDATA[", cur)
+        if next_cmt != -1 and next_cmt < cur:
+            next_cmt = text.find("<!--", cur)
+
+        close_pos = n if (no_close or next_close_m is None) else next_close_m.start()
+        cd_pos = n if next_cd == -1 else next_cd
+        cmt_pos = n if next_cmt == -1 else next_cmt
+        earliest = min(close_pos, cd_pos, cmt_pos)
+
+        if earliest == n:
+            if cur < n:
+                collector.handle_data(text[cur:])
+            return None
+        if earliest == cd_pos:
+            if cd_pos > cur:
+                collector.handle_data(text[cur:cd_pos])
+            end_cd = text.find("]]>", cd_pos + 9)
+            if end_cd == -1:
+                collector.handle_data(text[cd_pos + 9 :])
+                return None
+            collector.handle_data(text[cd_pos + 9 : end_cd])
+            cur = end_cd + 3
+            continue
+        if earliest == cmt_pos:
+            if cmt_pos > cur:
+                collector.handle_data(text[cur:cmt_pos])
+            end_cmt = text.find("-->", cmt_pos + 4)
+            if end_cmt == -1:
+                return None
+            cur = end_cmt + 3
+            continue
+        if close_pos > cur:
+            collector.handle_data(text[cur:close_pos])
+        assert next_close_m is not None
+        end_gt = text.find(">", next_close_m.end() - 1)
+        return None if end_gt == -1 else end_gt + 1
+    return None
+
+
 def _feed_bounded_tags(
     collector: _WebTagCollector, text: str, *, xml_mode: bool = False
 ) -> None:
@@ -774,14 +832,13 @@ def _feed_bounded_tags(
     while pos < n and not collector.tag_limit_exceeded:
         if collector.script_depth > 0:
             if xml_mode:
-                m_close = _SCRIPT_CLOSE_RE.search(text, pos)
-                if m_close is None:
-                    script_end = None
-                else:
-                    end_gt = text.find(">", m_close.end() - 1)
-                    script_end = None if end_gt == -1 else (m_close.start(), end_gt + 1)
-            else:
-                script_end = _find_html_script_end(text, pos, exhausted_quotes)
+                next_pos = _find_xml_script_end(text, pos, collector)
+                if next_pos is None:
+                    break
+                collector.handle_endtag("script")
+                pos = next_pos
+                continue
+            script_end = _find_html_script_end(text, pos, exhausted_quotes)
             body = text[pos:] if script_end is None else text[pos : script_end[0]]
             if body:
                 if "<![CDATA[" in body:
@@ -940,6 +997,9 @@ def _feed_bounded_tags(
             )
             if not is_benign_geom:
                 collector.tag_limit_exceeded = True
+                collector.parse_limit_reason = (
+                    f"Einzel-Tag über {_MAX_SINGLE_TAG_LEN} Zeichen"
+                )
                 break
             pos = next_pos
             continue
@@ -981,6 +1041,7 @@ class WebContentPipeline(Pipeline):
             _feed_bounded_tags(collector, text, xml_mode=xml_mode)
         except Exception:
             collector.tag_limit_exceeded = True
+            collector.parse_limit_reason = "Struktur-Parser-Ausnahme"
 
         found: dict[str, Indicator] = {}
 
@@ -989,12 +1050,15 @@ class WebContentPipeline(Pipeline):
                 found[ind.rule_id] = ind
 
         if collector.tag_limit_exceeded:
+            limit_reason = (
+                collector.parse_limit_reason or f"mehr als {_MAX_TAGS} Tags"
+            )
             _add(
                 self._indicator(
                     "WEB_PARSE_LIMIT",
                     "HTML/SVG-Tag-Limit überschritten",
                     detail=(
-                        f"Die Strukturprüfung wurde nach {_MAX_TAGS} Tags gestoppt. "
+                        f"Die Strukturprüfung wurde am Limit gestoppt ({limit_reason}). "
                         "Der Rest des Dokuments wurde strukturell NICHT geprüft — "
                         "das Ergebnis ist unvollständig und nicht als 'sauber' zu werten."
                     ),
