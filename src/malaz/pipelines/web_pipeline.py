@@ -115,7 +115,7 @@ _SCRIPT_CLOSE_RE = re.compile(
     r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script[\s/>]", re.IGNORECASE
 )
 _HTML_RAWTEXT_TAGS = (
-    "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes",
+    "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes", "noscript",
 )
 _RAWTEXT_CLOSE_RES: dict[str, re.Pattern[str]] = {
     _tag: re.compile(
@@ -276,8 +276,14 @@ class _WebTagCollector(HTMLParser):
         self.script_depth = 0
         self.rawtext_tag: str | None = None
         self.foreign_depth = 0
-        self.foreign_ns_depth = 0
+        # Explicit WHATWG HTML5 namespace stack: (local_tag, is_foreign).
+        # Tracks <svg>/<math> (is_foreign=True) and SVG HTML integration points
+        # (<foreignObject>/<desc>/<title> inside foreign content, is_foreign=False).
+        self._ns_stack: list[tuple[str, bool]] = []
+        self._last_prev_in_foreign = False
+        self._last_pushed_ns = False
         self.object_hhctrl_depth = 0
+        self._object_hhctrl_stack: list[bool] = []
 
         self.has_script_tag = False
         self.event_handlers: list[str] = []
@@ -306,6 +312,10 @@ class _WebTagCollector(HTMLParser):
 
     def _local_name(self, tag: str) -> str:
         return tag.rsplit(":", 1)[-1].lower()
+
+    @property
+    def in_foreign_content(self) -> bool:
+        return bool(self._ns_stack) and self._ns_stack[-1][1]
 
     def _inspect_js_chunk(self, chunk: str) -> None:
         if not chunk or (self.has_js_exfil and self.has_svg_js_redirect):
@@ -374,19 +384,21 @@ class _WebTagCollector(HTMLParser):
                     if m and len(self.data_uri_attrs) < _MAX_B64_CANDIDATES:
                         self.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
 
+        prev_in_foreign = self.in_foreign_content
+        self._last_prev_in_foreign = prev_in_foreign
+        self._last_pushed_ns = False
+
         if local in ("svg", "math"):
-            self.foreign_ns_depth += 1
-
-        in_html_ns = not self.xml_mode and (
-            self.foreign_ns_depth == 0 or self.foreign_depth > 0
-        )
-        if local == "script":
-            self.has_script_tag = True
-            self.script_depth += 1
-        elif local == "style" or (in_html_ns and local in _RAWTEXT_CLOSE_RES):
-            self.rawtext_tag = local
-
-        if local == "foreignobject":
+            if len(self._ns_stack) < 1024:
+                self._ns_stack.append((local, True))
+                self._last_pushed_ns = True
+        elif prev_in_foreign and local in ("foreignobject", "desc", "title"):
+            if len(self._ns_stack) < 1024:
+                self._ns_stack.append((local, False))
+                self._last_pushed_ns = True
+            if local == "foreignobject":
+                self.foreign_depth += 1
+        elif self.xml_mode and local == "foreignobject":
             self.foreign_depth += 1
         elif (
             self.foreign_depth > 0
@@ -394,6 +406,13 @@ class _WebTagCollector(HTMLParser):
             and len(self.foreign_active_hits) < 8
         ):
             self.foreign_active_hits.append(f"<{local}>")
+
+        in_html_ns = (not self.xml_mode) and (not prev_in_foreign)
+        if local == "script":
+            self.has_script_tag = True
+            self.script_depth += 1
+        elif local == "style" or (in_html_ns and local in _RAWTEXT_CLOSE_RES):
+            self.rawtext_tag = local
 
         if local == "input" and attr_map.get("type", "").strip().lower() == "password":
             self.has_password_input = True
@@ -428,9 +447,12 @@ class _WebTagCollector(HTMLParser):
 
         if local == "object":
             classid = attr_map.get("classid", "").lower()
-            if any(cid in classid for cid in _HHCTRL_CLSIDS):
-                self.has_hhctrl_object = True
-                self.object_hhctrl_depth += 1
+            is_hhctrl = any(cid in classid for cid in _HHCTRL_CLSIDS)
+            if len(self._object_hhctrl_stack) < 1024:
+                self._object_hhctrl_stack.append(is_hhctrl)
+                if is_hhctrl:
+                    self.has_hhctrl_object = True
+                    self.object_hhctrl_depth += 1
 
         if local == "param" and self.object_hhctrl_depth > 0:
             pname = attr_map.get("name", "").strip().lower()
@@ -438,27 +460,30 @@ class _WebTagCollector(HTMLParser):
             if pname == "command" and pval in ("shortcut", "tcard", "winhelp"):
                 self.has_hhctrl_shortcut_param = True
 
+    def _pop_object(self) -> None:
+        if self._object_hhctrl_stack and self._object_hhctrl_stack.pop() and self.object_hhctrl_depth > 0:
+            self.object_hhctrl_depth -= 1
+
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
         local = self._local_name(tag)
-        # In WHATWG HTML5, trailing '/' closes elements ONLY in XML mode or
-        # inside foreign content (<svg>/<math> §13.2.6.5), NOT inside an HTML
-        # integration point such as <svg><foreignObject> (except <foreignObject/> itself).
-        in_foreign_ns = self.foreign_ns_depth > 0 and (
-            self.foreign_depth == 0 or local == "foreignobject"
-        )
-        if not (self.xml_mode or in_foreign_ns):
+        # WHATWG HTML5: trailing '/' self-closes ONLY in XML mode, when the
+        # enclosing namespace was foreign content, or on <svg/>/<math/> itself.
+        closes_self = self.xml_mode or self._last_prev_in_foreign or local in ("svg", "math")
+        if not closes_self:
             return
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
         elif local == self.rawtext_tag:
             self.rawtext_tag = None
-        elif local == "foreignobject" and self.foreign_depth > 0:
+        elif local == "object":
+            self._pop_object()
+        if self._last_pushed_ns and self._ns_stack:
+            popped_tag, _ = self._ns_stack.pop()
+            if popped_tag == "foreignobject" and self.foreign_depth > 0:
+                self.foreign_depth -= 1
+        elif self.xml_mode and local == "foreignobject" and self.foreign_depth > 0:
             self.foreign_depth -= 1
-        elif local == "object" and self.object_hhctrl_depth > 0:
-            self.object_hhctrl_depth -= 1
-        if local in ("svg", "math") and self.foreign_ns_depth > 0:
-            self.foreign_ns_depth -= 1
 
     def handle_endtag(self, tag: str) -> None:
         if self.tag_limit_exceeded:
@@ -468,12 +493,19 @@ class _WebTagCollector(HTMLParser):
             self.script_depth -= 1
         elif local == self.rawtext_tag:
             self.rawtext_tag = None
-        elif local == "foreignobject" and self.foreign_depth > 0:
+        elif local == "object":
+            self._pop_object()
+        if self.xml_mode and local == "foreignobject" and self.foreign_depth > 0:
             self.foreign_depth -= 1
-        elif local == "object" and self.object_hhctrl_depth > 0:
-            self.object_hhctrl_depth -= 1
-        if local in ("svg", "math") and self.foreign_ns_depth > 0:
-            self.foreign_ns_depth -= 1
+        elif self._ns_stack:
+            for idx in range(len(self._ns_stack) - 1, -1, -1):
+                if self._ns_stack[idx][0] == local:
+                    popped = self._ns_stack[idx:]
+                    del self._ns_stack[idx:]
+                    for p_tag, _ in popped:
+                        if p_tag == "foreignobject" and self.foreign_depth > 0:
+                            self.foreign_depth -= 1
+                    break
 
     def handle_data(self, data: str) -> None:
         if self.tag_limit_exceeded:
@@ -646,9 +678,7 @@ def _feed_bounded_tags(
         # CDATA exists in XML/SVG and HTML5 foreign content (<svg>/<math> outside
         # <foreignObject>, WHATWG §13.2.5.42); elsewhere '<![CDATA[...>' ends at '>'.
         if text.startswith("<![CDATA[", lt):
-            in_foreign = xml_mode or (
-                collector.foreign_ns_depth > 0 and collector.foreign_depth == 0
-            )
+            in_foreign = xml_mode or collector.in_foreign_content
             if in_foreign:
                 end_cd = text.find("]]>", lt + 9)
                 if end_cd == -1:

