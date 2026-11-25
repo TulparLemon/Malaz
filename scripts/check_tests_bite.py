@@ -635,6 +635,28 @@ MUTATIONS: tuple[Mutation, ...] = (
             "Mehrstufen-Filterketten und JBIG2/LZW-Bomben an as_pil_image() gelangen."
         ),
     ),
+    Mutation(
+        name="ps-deobf-backtick-aus",
+        file="src/malaz/core/script_deobf.py",
+        old='    if "`" not in text:\n        return text, False, False\n',
+        new='    if True or "`" not in text:\n        return text, False, False\n',
+        test="tests/test_script_deobf.py::test_ps_backtick_deobfuscation_uncovers_cradle",
+        why=(
+            "Spec 016 (DET-003): ohne PowerShell-Backtick-Automat bleiben "
+            "I`Nv`Ok`E-E`Xp`Re`Ss`Io`N-Cradles unsichtbar."
+        ),
+    ),
+    Mutation(
+        name="deobf-gzip-bomb-limit-still",
+        file="src/malaz/core/script_deobf.py",
+        old="    if len(out) > max_bytes or dobj.unconsumed_tail:\n        return None, True\n",
+        new="    if len(out) > max_bytes or dobj.unconsumed_tail:\n        return None, False\n",
+        test="tests/test_script_deobf.py::test_ps_gzip_bomb_triggers_deobf_limit",
+        why=(
+            "Spec 016 (DET-003): Vollstaendigkeits-Invariante — eine GZip-Bombe "
+            "im Skript muss GEN_DEOBF_LIMIT (is_incomplete=True) melden."
+        ),
+    ),
 )
 
 

@@ -1094,6 +1094,7 @@ INCOMPLETE_REASON_EN: dict[str, str] = {
     "PDF-Link-Prüfung durch Trefferdeckel begrenzt": "PDF link check stopped at safety cap — remaining links unchecked",
     "HTML/SVG-Tag-Limit überschritten": "HTML/SVG tag limit exceeded — remaining structure unchecked",
     "QR-Code-Prüfung unvollständig": "QR code scan incomplete",
+    "Skript-Deobfuskation am Limit gestoppt": "Script deobfuscation stopped at limit",
     "OneNote-Objekte konnten nicht gelesen werden": "OneNote container objects could not be read",
     "Eingebettetes OneNote-Objekt nicht lesbar": "Embedded OneNote object could not be read",
     "Adressprüfung durch Trefferdeckel begrenzt": "IOC address check stopped at safety cap",
@@ -1206,6 +1207,8 @@ RULE_EN_TITLES: dict[str, str] = {
     "GEN_PS_CRADLE": "PowerShell download-and-execute cradle",
     "GEN_PS_ENCODED": "Encoded PowerShell command decoded",
     "GEN_SUSPICIOUS_STRINGS": "Suspicious command or LOLBin strings",
+    "GEN_SCRIPT_DEOBFUSCATED": "Obfuscated script statically deobfuscated",
+    "GEN_DEOBF_LIMIT": "Script deobfuscation stopped at limit",
     # ELF
     "ELF_HEADER": "ELF binary header",
     "ELF_INTERP": "ELF dynamic interpreter present",
@@ -1493,6 +1496,8 @@ RULE_EN_DETAILS: dict[str, str] = {
     "GEN_PS_CRADLE": "PowerShell pattern that downloads remote content and executes it in memory.",
     "GEN_PS_ENCODED": "Base64-encoded PowerShell command was decoded for inspection.",
     "GEN_SUSPICIOUS_STRINGS": "Suspicious shell, scripting, or system-tool command strings were found inside the file.",
+    "GEN_SCRIPT_DEOBFUSCATED": "Static deobfuscation reconstructed hidden script content without executing code.",
+    "GEN_DEOBF_LIMIT": "Static script deobfuscation reached a safety bound; remaining obfuscated content was not inspected.",
     # ELF
     "ELF_HEADER": "Parsed Linux ELF binary architecture and endianness.",
     "ELF_INTERP": "The ELF binary specifies a dynamic linker/interpreter.",
