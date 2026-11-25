@@ -114,9 +114,15 @@ _DATA_URI_B64_RE = re.compile(
 _SCRIPT_CLOSE_RE = re.compile(
     r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script[\s/>]", re.IGNORECASE
 )
-_STYLE_CLOSE_RE = re.compile(
-    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?style[\s/>]", re.IGNORECASE
+_HTML_RAWTEXT_TAGS = (
+    "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes",
 )
+_RAWTEXT_CLOSE_RES: dict[str, re.Pattern[str]] = {
+    _tag: re.compile(
+        rf"</(?:[a-zA-Z_][\w.-]{{0,64}}:)?{_tag}[\s/>]", re.IGNORECASE
+    )
+    for _tag in _HTML_RAWTEXT_TAGS
+}
 _OVERSIZED_EVENT_RE = re.compile(r"""[\s/"']on[a-z]{3,24}\s*=""", re.IGNORECASE)
 _BENIGN_GEOMETRY_TAGS = frozenset({"path", "polygon", "polyline"})
 _MAX_SINGLE_TAG_LEN = 65_536
@@ -261,13 +267,14 @@ class _WebTagCollector(HTMLParser):
     def set_cdata_mode(self, elem: str, *, escapable: bool = False) -> None:
         return
 
-    def __init__(self) -> None:
+    def __init__(self, *, is_svg: bool = False) -> None:
         super().__init__(convert_charrefs=True)
+        self.is_svg = is_svg
         self.tag_count = 0
         self.tag_limit_exceeded = False
 
         self.script_depth = 0
-        self.style_depth = 0
+        self.rawtext_tag: str | None = None
         self.foreign_depth = 0
         self.object_hhctrl_depth = 0
 
@@ -345,8 +352,8 @@ class _WebTagCollector(HTMLParser):
         if local == "script":
             self.has_script_tag = True
             self.script_depth += 1
-        elif local == "style":
-            self.style_depth += 1
+        elif local == "style" or (not self.is_svg and local in _RAWTEXT_CLOSE_RES):
+            self.rawtext_tag = local
 
         if local == "foreignobject":
             self.foreign_depth += 1
@@ -403,8 +410,8 @@ class _WebTagCollector(HTMLParser):
         local = self._local_name(tag)
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
-        elif local == "style" and self.style_depth > 0:
-            self.style_depth -= 1
+        elif local == self.rawtext_tag:
+            self.rawtext_tag = None
         elif local == "foreignobject" and self.foreign_depth > 0:
             self.foreign_depth -= 1
         elif local == "object" and self.object_hhctrl_depth > 0:
@@ -416,8 +423,8 @@ class _WebTagCollector(HTMLParser):
         local = self._local_name(tag)
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
-        elif local == "style" and self.style_depth > 0:
-            self.style_depth -= 1
+        elif local == self.rawtext_tag:
+            self.rawtext_tag = None
         elif local == "foreignobject" and self.foreign_depth > 0:
             self.foreign_depth -= 1
         elif local == "object" and self.object_hhctrl_depth > 0:
@@ -500,6 +507,9 @@ def _feed_bounded_tags(
     n = len(text)
     pos = 0
     exhausted_quotes: set[str] = set()
+    no_std_comment = False
+    no_bang_comment = False
+    no_pi_close = False
     while pos < n and not collector.tag_limit_exceeded:
         if collector.script_depth > 0:
             m_close = _SCRIPT_CLOSE_RE.search(text, pos)
@@ -517,14 +527,15 @@ def _feed_bounded_tags(
             pos = end_gt + 1
             continue
 
-        if collector.style_depth > 0:
-            m_close = _STYLE_CLOSE_RE.search(text, pos)
+        if collector.rawtext_tag is not None:
+            rt_tag = collector.rawtext_tag
+            m_close = _RAWTEXT_CLOSE_RES[rt_tag].search(text, pos)
             if m_close is None:
                 break
             end_gt = text.find(">", m_close.end() - 1)
             if end_gt == -1:
                 break
-            collector.handle_endtag("style")
+            collector.handle_endtag(rt_tag)
             pos = end_gt + 1
             continue
 
@@ -547,11 +558,17 @@ def _feed_bounded_tags(
             if text.startswith("<!--->", lt):
                 pos = lt + 6
                 continue
-            end_std = text.find("-->", lt + 4)
-            end_bang = text.find("--!>", lt + 4)
-            if end_std == -1 and end_bang == -1:
-                break
-            pos = end_std + 3 if end_std != -1 and (end_bang == -1 or end_std < end_bang) else end_bang + 4
+            end_std = -1 if no_std_comment else text.find("-->", lt + 4)
+            if end_std == -1:
+                no_std_comment = True
+                end_bang = -1 if no_bang_comment else text.find("--!>", lt + 4)
+                if end_bang == -1:
+                    no_bang_comment = True
+                    break
+                pos = end_bang + 4
+            else:
+                end_bang = -1 if no_bang_comment else text.find("--!>", lt + 4, end_std)
+                pos = end_bang + 4 if end_bang != -1 else end_std + 3
             continue
 
         # CDATA only exists in XML/SVG; in HTML5 '<![CDATA[...>' is a bogus comment
@@ -573,11 +590,12 @@ def _feed_bounded_tags(
         # attribute-quote scanning (prevents '<!x a=">' / '<?x a=">' from
         # swallowing the following tag).
         if nxt == "?":
-            if is_svg:
+            if is_svg and not no_pi_close:
                 end_pi = text.find("?>", lt + 2)
                 if end_pi != -1:
                     pos = end_pi + 2
                     continue
+                no_pi_close = True
             gt_pi = text.find(">", lt + 2)
             if gt_pi == -1:
                 break
@@ -659,7 +677,7 @@ class WebContentPipeline(Pipeline):
         is_html: bool,
         depth: int,
     ) -> list[Indicator]:
-        collector = _WebTagCollector()
+        collector = _WebTagCollector(is_svg=is_svg)
         with contextlib.suppress(Exception):
             _feed_bounded_tags(collector, text, is_svg=is_svg)
 
