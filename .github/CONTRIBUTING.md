@@ -70,12 +70,12 @@ python -m bandit -q -ll -r src
 python scripts/check_doc_claims.py
 python scripts/check_duplicate_logic.py
 
-:: Full 12-step CI gate (pytest >= 70% coverage, 39/39 mutations, 558-file golden snapshot, golden UI images)
+:: Full 12-step CI gate (pytest >= 70% coverage, 41/41 mutations, 558-file golden snapshot, golden UI images)
 python scripts/ci_gate.py
 ```
 
 - **Golden Snapshot (`tests/data/golden_snapshot.json`):** Tracks verdicts, scores, rule IDs, and notes across **558 synthetic files (43 file types)**. Run `python scripts/make_golden_snapshot.py --check` to inspect scoring shifts. Only regenerate (`python scripts/make_golden_snapshot.py`) when a score/rule change is intentional, and explain every changed entry in your PR description.
-- **Mutation Bite Gate (`scripts/check_tests_bite.py`):** Applies **39/39 mutations** to temporary copies of critical security and detection paths and verifies that each targeted test fails.
+- **Mutation Bite Gate (`scripts/check_tests_bite.py`):** Applies **41/41 mutations** to temporary copies of critical security and detection paths and verifies that each targeted test fails.
 - **Property-Based & Fuzz Testing:** Hypothesis property tests run as part of `pytest` (`tests/test_properties.py`). Optional parser fuzz harnesses live under `fuzz/` (`requirements-fuzz.txt`) and can be exercised via `python scripts/run_fuzz_smoke.py`.
 
 ---

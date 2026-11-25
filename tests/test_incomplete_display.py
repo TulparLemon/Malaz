@@ -162,6 +162,7 @@ def test_jede_stufenmeldung_ist_entweder_gemeldet_oder_bewusst_ausgenommen():
         "ONENOTE_PARSE_ERROR",
         "ONENOTE_OBJ_ERROR",
         "QR_SCAN_INCOMPLETE",
+        "GEN_DEOBF_LIMIT",
         "OFFICE_LIB_MISSING",
         "OFFICE_STAGE_WARN",
         "OFFICE_DDE_PARSE_WARN",

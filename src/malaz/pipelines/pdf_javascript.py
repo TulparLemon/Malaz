@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ..core.js_deobf import deobfuscate_js
+from ..core.js_deobf import deobfuscate_js_detailed
+from ..core.script_deobf import DeobfBudget
 from ..models import CAT_SCRIPT, AnalysisContext, Indicator, Severity
 from .pdf_links import GRAPH_MAX_DEPTH, GRAPH_MAX_NODES, walk_action_graph
 from .pdf_streams import (
@@ -185,7 +186,11 @@ def extract_pdf_js(
 
 
 def analyze_js_text(
-    js_text: str, auto_exec: bool, *, source: str = "pdf"
+    js_text: str,
+    auto_exec: bool,
+    *,
+    source: str = "pdf",
+    budget: DeobfBudget | None = None,
 ) -> list[Indicator]:
     """Static content analysis of extracted JavaScript (no execution)."""
     out: list[Indicator] = []
@@ -266,7 +271,25 @@ def analyze_js_text(
     # payload. Only a MALICIOUS primitive that was not visible in the
     # original text is a new statement; harmless form JS that uses
     # fromCharCode for a greeting stays without this finding.
-    decoded = deobfuscate_js(js_text)
+    doc_budget = budget if budget is not None else DeobfBudget()
+    deobf_res = deobfuscate_js_detailed(js_text, explicit_script=True, budget=doc_budget)
+    if deobf_res.limit_hit:
+        out.append(
+            make_pdf_indicator(
+                source,
+                "PDF_JS_PARSE_WARN",
+                "JavaScript-Extraktion fehlerhaft — JS-Analyse nicht gelaufen",
+                detail=(
+                    f"Statische JS-Deobfuskation am Sicherheitslimit gestoppt "
+                    f"({deobf_res.limit_reason}) — verbleibender JS-Code wurde nicht "
+                    "vollständig analysiert; das Ergebnis ist nicht als 'sauber' zu werten."
+                ),
+                severity=Severity.MEDIUM,
+                category=CAT_SCRIPT,
+                weight=25,
+            )
+        )
+    decoded = deobf_res.text
     if decoded != js_text:
         decoded_lower = decoded.lower()
         revealed = sorted(
@@ -391,6 +414,7 @@ def scan_pdf_javascript(
         or bool(_AA_KEY_RE.search(ctx.data))
         or root_has_auto_action(pdf)
     )
-    out.extend(analyze_js_text(js_text, auto_exec, source=source))
+    doc_budget = DeobfBudget()
+    out.extend(analyze_js_text(js_text, auto_exec, source=source, budget=doc_budget))
     return out
 

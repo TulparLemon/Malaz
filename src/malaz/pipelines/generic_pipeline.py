@@ -36,6 +36,7 @@ from ..core.binary_iocs import (
     extract_binary_iocs_stream,
     split_blocked_iocs,
 )
+from ..core.eml_parser import classify_url
 from ..core.entropy import (
     entropy_indicator_weight,
     shannon_entropy,
@@ -43,9 +44,18 @@ from ..core.entropy import (
 )
 from ..core.filename_iocs import match_filename_iocs
 from ..core.hashlist import is_listed_with_status, matched_source
+from ..core.js_deobf import deobfuscate_js_detailed
 from ..core.lnk import parse_lnk
 from ..core.magic import expected_type_for_extension
-from ..core.script_deobf import decode_powershell_encoded
+from ..core.script_deobf import (
+    REASON_INPUT_LIMIT,
+    DeobfBudget,
+    ScriptDeobfResult,
+    decode_powershell_encoded,
+    deobfuscate_batch,
+    deobfuscate_powershell,
+    extract_vba_strings,
+)
 from ..core.suspicious_tokens import SUSPICIOUS_COMMAND_TOKENS as _SUSPICIOUS_TOKENS
 from ..core.url_view import defang_url
 from ..core.yara_engine import YaraEngine
@@ -742,9 +752,79 @@ class GenericPipeline(Pipeline):
                 return out
             text = _decode_loose(sample)
             if text:
-                out.extend(self._suspicious_strings(text))
-                out.extend(self._powershell_analysis(text))
-                out.extend(self._iocs(ctx, sample))
+                sample_truncated = (
+                    len(ctx.data) > config.MAX_CONTENT_SCAN_SIZE
+                    or ctx.size > len(ctx.data)
+                )
+                deobf = self._run_script_deobf(
+                    ctx, text, sample_truncated=sample_truncated
+                )
+                eval_text = text
+                eval_bytes = sample
+                if deobf is not None:
+                    if deobf.changed or deobf.decoded_blobs:
+                        extra_text = deobf.text + (
+                            "\n" + "\n".join(deobf.decoded_blobs)
+                            if deobf.decoded_blobs
+                            else ""
+                        )
+                        eval_text = text + "\n" + extra_text
+                        eval_bytes = (
+                            sample
+                            + b"\n"
+                            + extra_text.encode("utf-8", errors="ignore")
+                        )
+                        uncovered = self._deobf_uncovered_hidden(
+                            text, sample, eval_text, eval_bytes
+                        )
+                        if deobf.techniques and uncovered:
+                            out.append(
+                                self._indicator(
+                                    "GEN_SCRIPT_DEOBFUSCATED",
+                                    "Verschleiertes Skript statisch deobfuskiert",
+                                    detail=(
+                                        "Statische Deobfuskation (ohne Code-Ausführung) "
+                                        "hat verborgene Befehle/IOCs freigelegt. Techniken: "
+                                        + ", ".join(deobf.techniques[:8])
+                                    ),
+                                    severity=Severity.HIGH,
+                                    category=CAT_SCRIPT,
+                                    weight=30,
+                                )
+                            )
+                        elif deobf.high_confidence_techniques:
+                            out.append(
+                                self._indicator(
+                                    "GEN_SCRIPT_DEOBFUSCATED",
+                                    "Verschleiertes Skript statisch deobfuskiert",
+                                    detail=(
+                                        "Deutliche Skript-Verschleierung statisch aufgelöst "
+                                        "(ohne Code-Ausführung). Techniken: "
+                                        + ", ".join(deobf.high_confidence_techniques[:8])
+                                    ),
+                                    severity=Severity.MEDIUM,
+                                    category=CAT_SCRIPT,
+                                    weight=15,
+                                )
+                            )
+                    if deobf.limit_hit:
+                        out.append(
+                            self._indicator(
+                                "GEN_DEOBF_LIMIT",
+                                "Skript-Deobfuskation am Limit gestoppt",
+                                detail=(
+                                    f"Die statische Skript-Deobfuskation wurde am "
+                                    f"Sicherheitslimit gestoppt ({deobf.limit_reason}). "
+                                    "Verbleibender verschleierter Inhalt wurde nicht geprüft."
+                                ),
+                                severity=Severity.INFO,
+                                category=CAT_SCRIPT,
+                                weight=0,
+                            )
+                        )
+                out.extend(self._suspicious_strings(eval_text))
+                out.extend(self._powershell_analysis(eval_text))
+                out.extend(self._iocs(ctx, eval_bytes))
                 # The tail pass covers an appended payload (the classic append
                 # trick). Only the region BEYOND the head sample is scanned:
                 # `tail is not sample` was always True for byte slices and ran
@@ -862,6 +942,172 @@ class GenericPipeline(Pipeline):
                 )
             )
         return out
+
+    @staticmethod
+    def _merge_deobf_results(
+        first: ScriptDeobfResult, second: ScriptDeobfResult
+    ) -> ScriptDeobfResult:
+        merged = ScriptDeobfResult(
+            text=second.text,
+            changed=first.changed or second.changed,
+            limit_hit=first.limit_hit or second.limit_hit,
+            limit_reason=first.limit_reason or second.limit_reason,
+        )
+        for t in first.techniques:
+            merged.add_technique(t, high_confidence=(t in first.high_confidence_techniques))
+        for t in second.techniques:
+            merged.add_technique(t, high_confidence=(t in second.high_confidence_techniques))
+        seen_blobs: set[str] = set()
+        for blob in (*first.decoded_blobs, *second.decoded_blobs):
+            if blob not in seen_blobs:
+                seen_blobs.add(blob)
+                merged.decoded_blobs.append(blob)
+        return merged
+
+    def _run_script_deobf(
+        self, ctx: AnalysisContext, text: str, *, sample_truncated: bool
+    ) -> ScriptDeobfResult | None:
+        ext = Path(ctx.path).suffix.lower()
+        dtype = ctx.detected_type
+        budget = DeobfBudget()
+        explicit = False
+        res: ScriptDeobfResult | None = None
+
+        if ext in (".bat", ".cmd") or dtype == "batch":
+            explicit = True
+            r1 = deobfuscate_batch(text, explicit_script=True, budget=budget)
+            r2 = deobfuscate_powershell(
+                r1.text,
+                explicit_script=True,
+                budget=budget,
+                charge_input=False,
+                line_reset_single_quotes=True,
+            )
+            res = self._merge_deobf_results(r1, r2)
+        elif ext in (".hta", ".wsf"):
+            explicit = True
+            r1 = deobfuscate_js_detailed(text, explicit_script=True, budget=budget)
+            r2 = deobfuscate_powershell(
+                r1.text,
+                explicit_script=True,
+                budget=budget,
+                charge_input=False,
+            )
+            res = self._merge_deobf_results(r1, r2)
+        elif ext in (".ps1", ".psm1", ".psd1") or dtype == "ps1":
+            explicit = True
+            res = deobfuscate_powershell(text, explicit_script=True, budget=budget)
+        elif ext == ".vbs" or dtype == "vbs":
+            explicit = True
+            vba_strings = extract_vba_strings(text)
+            res = deobfuscate_powershell(
+                text,
+                explicit_script=True,
+                budget=budget,
+                line_reset_single_quotes=True,
+            )
+            if vba_strings:
+                for vs in vba_strings[:32]:
+                    if vs not in res.decoded_blobs:
+                        res.decoded_blobs.append(vs)
+        elif ext in (".js", ".mjs", ".cjs") or dtype == "js":
+            explicit = True
+            res = deobfuscate_js_detailed(text, explicit_script=True, budget=budget)
+        elif dtype in ("text", "unknown"):
+            low = text[:65_536].lower()
+            has_ps_ctx = (
+                "powershell" in low
+                or "invoke-expression" in low
+                or "frombase64string" in low
+                or "[char" in low
+                or "-encodedcommand" in low
+                or "-enc " in low
+                or "downloadstring" in low
+                or ("`" in low and ("new-object" in low or "i`ex" in low or "i`nv" in low))
+            )
+            has_bat_ctx = (
+                "@echo" in low
+                or (("cmd.exe" in low or "cmd /c" in low) and "^" in low)
+                or ("set " in low and "%" in low and "^" in low)
+            )
+            if has_ps_ctx:
+                res = deobfuscate_powershell(text, explicit_script=False, budget=budget)
+            if has_bat_ctx:
+                rb = deobfuscate_batch(
+                    res.text if res is not None else text,
+                    explicit_script=False,
+                    budget=budget,
+                    charge_input=(res is None),
+                )
+                res = self._merge_deobf_results(res, rb) if res is not None else rb
+
+        if res is not None and explicit and sample_truncated:
+            res.set_limit(REASON_INPUT_LIMIT)
+        return res
+
+    @staticmethod
+    def _scan_signal_sets(
+        text: str, raw: bytes
+    ) -> tuple[set[str], bool, set[str], set[str], set[bytes]]:
+        lowered = text.lower()
+        tokens = {tok for tok in _SUSPICIOUS_TOKENS if tok in lowered}
+        cradle = any(k in lowered for k in _PS_CRADLE_DOWNLOAD) and any(
+            k in lowered for k in _PS_CRADLE_EXEC
+        )
+        lolbins: set[str] = set()
+        for binary, args in _LOLBIN_ABUSE:
+            if binary in lowered and any(a in lowered for a in args):
+                lolbins.add(binary)
+        enc_payloads = set(decode_powershell_encoded(text))
+        iocs: set[bytes] = set()
+        ioc_candidates: list[tuple[str, str]] = []
+        for u in _collect(_URL_RE.finditer(raw), _not_benign_url, 16):
+            u_str = _to_str(u)
+            lf = classify_url(u_str, canonicalize=True)
+            if lf is not None and (
+                lf.is_shortener
+                or lf.is_ip_literal
+                or lf.is_punycode
+                or lf.risky_tld
+                or lf.has_credentials
+            ):
+                iocs.add(u.lower())
+            ioc_candidates.append((IOC_URL, u_str))
+        for ip in _collect(_IPV4_RE.finditer(raw), None, 16):
+            ip_str = _to_str(ip)
+            try:
+                addr = ipaddress.ip_address(ip_str)
+            except ValueError:
+                continue
+            if not (addr.is_loopback or addr.is_unspecified):
+                iocs.add(ip)
+            ioc_candidates.append((IOC_IPV4, ip_str))
+        for dom in _collect(_DOMAIN_RE.finditer(raw), _not_benign, 16):
+            d_str = _to_str(dom)
+            ioc_candidates.append((IOC_DOMAIN, d_str))
+        if ioc_candidates:
+            blocked, _plain, _unavail = split_blocked_iocs(ioc_candidates)
+            for _kind, val in blocked:
+                iocs.add(val.lower().encode("utf-8", errors="ignore"))
+        return tokens, cradle, lolbins, enc_payloads, iocs
+
+    @classmethod
+    def _deobf_uncovered_hidden(
+        cls, raw_text: str, raw_bytes: bytes, comb_text: str, comb_bytes: bytes
+    ) -> bool:
+        r_tok, r_cradle, r_lol, r_enc, r_ioc = cls._scan_signal_sets(
+            raw_text, raw_bytes
+        )
+        c_tok, c_cradle, c_lol, c_enc, c_ioc = cls._scan_signal_sets(
+            comb_text, comb_bytes
+        )
+        return bool(
+            (c_tok - r_tok)
+            or (c_cradle and not r_cradle)
+            or (c_lol - r_lol)
+            or (c_enc - r_enc)
+            or (c_ioc - r_ioc)
+        )
 
     def _suspicious_strings(self, text: str) -> list[Indicator]:
         lowered = text.lower()

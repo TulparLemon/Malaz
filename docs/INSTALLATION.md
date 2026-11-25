@@ -44,7 +44,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 
 > **Locked `%TEMP%` on migrated Windows profiles:** If `pytest` fails with `PermissionError: [WinError 5]` inside `%TEMP%\pytest-of-<user>`, always pass `--basetemp=.pytest-tmp\local` (the repository CI and `scripts/run_tests.bat` do this automatically).
 
-Full 12-step local quality gate (identical to [../.github/workflows/ci.yml](../.github/workflows/ci.yml), including `pytest --cov-fail-under=70`, **39/39 mutations** via `scripts/check_tests_bite.py`, `558`-file golden snapshot via `scripts/make_golden_snapshot.py --check`, golden UI images via `scripts/make_golden_images.py --check`, `scripts/check_doc_claims.py`, and `scripts/check_duplicate_logic.py`):
+Full 12-step local quality gate (identical to [../.github/workflows/ci.yml](../.github/workflows/ci.yml), including `pytest --cov-fail-under=70`, **41/41 mutations** via `scripts/check_tests_bite.py`, `558`-file golden snapshot via `scripts/make_golden_snapshot.py --check`, golden UI images via `scripts/make_golden_images.py --check`, `scripts/check_doc_claims.py`, and `scripts/check_duplicate_logic.py`):
 
 ```bat
 python scripts/ci_gate.py

@@ -23,7 +23,9 @@ import re
 from html.parser import HTMLParser
 
 from ..core import magic, qr_scan
+from ..core.js_deobf import deobfuscate_js_detailed, merge_js_array_joins
 from ..core.risky_types import RISKY_SUFFIXES
+from ..core.script_deobf import DeobfBudget
 from ..models import (
     CAT_CONTENT,
     CAT_IOC,
@@ -182,76 +184,15 @@ def _decode_web_text(data: bytes) -> str:
     return data.decode("utf-8", errors="replace").lstrip("\ufeff")
 
 
-def _merge_array_joins(text: str) -> str:
-    """Linear O(N) resolver for simple ``['a','b'].join('')`` string arrays."""
-    marker = ".join("
-    if marker not in text:
-        return text
-    out: list[str] = []
-    pos = 0
-    n = len(text)
-    while pos < n:
-        idx = text.find(marker, pos)
-        if idx == -1:
-            out.append(text[pos:])
-            break
-        j = idx + len(marker)
-        while j < n and text[j] in " \t":
-            j += 1
-        if j + 2 <= n and text[j : j + 2] in ("''", '""'):
-            k = j + 2
-            while k < n and text[k] in " \t":
-                k += 1
-            if k < n and text[k] == ")":
-                rb = idx - 1
-                while rb >= pos and text[rb] in " \t\r\n":
-                    rb -= 1
-                if rb >= pos and text[rb] == "]":
-                    search_start = max(pos, rb - 65_536)
-                    lb = text.rfind("[", search_start, rb)
-                    if lb != -1:
-                        merged = _parse_string_array(text[lb + 1 : rb])
-                        if merged is not None:
-                            out.append(text[pos:lb])
-                            out.append('"' + merged + '"')
-                            pos = k + 1
-                            continue
-        out.append(text[pos : idx + len(marker)])
-        pos = idx + len(marker)
-    return "".join(out)
-
-
-def _parse_string_array(inner: str) -> str | None:
-    """Parse comma-separated single/double-quoted literals without nesting."""
-    parts: list[str] = []
-    i = 0
-    n = len(inner)
-    while i < n:
-        while i < n and inner[i] in " \t\r\n,":
-            i += 1
-        if i >= n:
-            break
-        quote = inner[i]
-        if quote not in ("'", '"'):
-            return None
-        end = inner.find(quote, i + 1)
-        if end == -1:
-            return None
-        parts.append(inner[i + 1 : end])
-        i = end + 1
-        if len(parts) > 512:
-            return None
-    if len(parts) < 2:
-        return None
-    return "".join(parts)
-
-
-def _preprocess_js(text: str) -> str:
+def _preprocess_js(text: str) -> tuple[str, bool]:
     """Merge simple JS string concatenations and array joins linearly."""
     work = _CONCAT_RE.sub("", text)
+    limit_hit = False
     if ".join(" in work:
-        work = _merge_array_joins(work)
-    return work
+        work, _changed, limit_hit = merge_js_array_joins(
+            work, max_output=max(512 * 1024, len(work) + 65_536)
+        )
+    return work, limit_hit
 
 
 def _b64_decode_prefix(raw_b64: str, max_b64_chars: int) -> bytes | None:
@@ -293,9 +234,16 @@ class _WebTagCollector(HTMLParser):
     def set_cdata_mode(self, elem: str, *, escapable: bool = False) -> None:
         return
 
-    def __init__(self, *, xml_mode: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        xml_mode: bool = False,
+        js_budget: DeobfBudget | None = None,
+    ) -> None:
         super().__init__(convert_charrefs=True)
         self.xml_mode = xml_mode
+        self._js_budget = js_budget if js_budget is not None else DeobfBudget()
+        self.deobf_js_chunks: list[str] = []
         self.tag_count = 0
         self.tag_limit_exceeded = False
         self.parse_limit_reason = ""
@@ -389,9 +337,28 @@ class _WebTagCollector(HTMLParser):
         self.foreign_script_depth = 0
 
     def _inspect_js_chunk(self, chunk: str) -> None:
-        if not chunk or (self.has_js_exfil and self.has_svg_js_redirect):
+        if not chunk:
             return
-        pre = _preprocess_js(chunk)
+        if (
+            self._js_budget.used_input_chars >= self._js_budget.max_input_chars
+            or self._js_budget.used_extra_chars >= self._js_budget.max_total_chars
+        ):
+            self.tag_limit_exceeded = True
+            if not self.parse_limit_reason:
+                self.parse_limit_reason = "JS-Deobfuskations-Limit erreicht"
+            return
+        res = deobfuscate_js_detailed(
+            chunk, explicit_script=True, budget=self._js_budget
+        )
+        if res.limit_hit:
+            self.tag_limit_exceeded = True
+            if not self.parse_limit_reason:
+                self.parse_limit_reason = (
+                    res.limit_reason or "JS-Deobfuskations-Limit erreicht"
+                )
+        pre = _CONCAT_RE.sub("", res.text)
+        if res.changed:
+            self.deobf_js_chunks.append(pre)
         if not self.has_js_exfil and _JS_EXFIL_RE.search(pre):
             self.has_js_exfil = True
         if not self.has_svg_js_redirect and _SVG_JS_REDIRECT_RE.search(pre):
@@ -1029,6 +996,7 @@ class WebContentPipeline(Pipeline):
 
         qr_budget = qr_scan.DataUriBudget()
         qr_outcome = qr_scan.QrScanOutcome()
+        js_budget = DeobfBudget()
         input_truncated = ctx.size > len(ctx.data)
         indicators = self._analyze_text(
             text,
@@ -1037,6 +1005,7 @@ class WebContentPipeline(Pipeline):
             depth=0,
             qr_budget=qr_budget,
             qr_outcome=qr_outcome,
+            js_budget=js_budget,
             input_truncated=input_truncated,
         )
         indicators.extend(qr_scan.build_qr_indicators(self.name, qr_outcome))
@@ -1051,10 +1020,12 @@ class WebContentPipeline(Pipeline):
         depth: int,
         qr_budget: qr_scan.DataUriBudget | None = None,
         qr_outcome: qr_scan.QrScanOutcome | None = None,
+        js_budget: DeobfBudget | None = None,
         input_truncated: bool = False,
     ) -> list[Indicator]:
         xml_mode = is_svg and not is_html
-        collector = _WebTagCollector(xml_mode=xml_mode)
+        active_js_budget = js_budget if js_budget is not None else DeobfBudget()
+        collector = _WebTagCollector(xml_mode=xml_mode, js_budget=active_js_budget)
         try:
             _feed_bounded_tags(collector, text, xml_mode=xml_mode)
         except Exception:
@@ -1086,7 +1057,24 @@ class WebContentPipeline(Pipeline):
                 )
             )
 
-        work = _preprocess_js(text)
+        work, pre_limit = _preprocess_js(text)
+        if pre_limit and "WEB_PARSE_LIMIT" not in found:
+            _add(
+                self._indicator(
+                    "WEB_PARSE_LIMIT",
+                    "HTML/SVG-Tag-Limit überschritten",
+                    detail=(
+                        "Die statische JS-Vorverarbeitung wurde am Sicherheitslimit gestoppt. "
+                        "Der Rest des Dokuments wurde strukturell NICHT geprüft — "
+                        "das Ergebnis ist unvollständig und nicht als 'sauber' zu werten."
+                    ),
+                    severity=Severity.MEDIUM,
+                    category=CAT_CONTENT,
+                    weight=20,
+                )
+            )
+        if collector.deobf_js_chunks:
+            work = work + "\n" + "\n".join(collector.deobf_js_chunks)
 
         for m in _JS_DOWNLOAD_RE.finditer(work):
             collector._record_download_name(m.group(1))
@@ -1137,6 +1125,7 @@ class WebContentPipeline(Pipeline):
                     depth=1,
                     qr_budget=qr_budget,
                     qr_outcome=qr_outcome,
+                    js_budget=active_js_budget,
                     input_truncated=(len(snippet_text) >= _STAGE2_DECODE_CAP),
                 )
                 for ind in sub_inds:

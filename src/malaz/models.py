@@ -214,6 +214,7 @@ _INCOMPLETE_RULES = frozenset(
         "ONENOTE_OBJ_ERROR",
         # QR (Spec 015)
         "QR_SCAN_INCOMPLETE",
+        "GEN_DEOBF_LIMIT",
         # Office
         "OFFICE_LIB_MISSING",
         "OFFICE_STAGE_WARN",

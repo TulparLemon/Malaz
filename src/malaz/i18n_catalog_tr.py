@@ -640,6 +640,7 @@ INCOMPLETE_REASON_TR: dict[str, str] = {
     "PDF-Link-Prüfung durch Trefferdeckel begrenzt": "PDF bağlantı kontrolü güvenlik sınırında durdu — kalanlar taranamadı",
     "HTML/SVG-Tag-Limit überschritten": "HTML/SVG etiket sınırı aşıldı — kalan yapı taranamadı",
     "QR-Code-Prüfung unvollständig": "QR kod taraması tamamlanamadı",
+    "Skript-Deobfuskation am Limit gestoppt": "Betik çözme sınırda durduruldu",
     "OneNote-Objekte konnten nicht gelesen werden": "OneNote kapsayıcı nesneleri okunamadı",
     "Eingebettetes OneNote-Objekt nicht lesbar": "Gömülü OneNote nesnesi okunamadı",
     "Adressprüfung durch Trefferdeckel begrenzt": "IOC adres kontrolü güvenlik sınırında durdu",
@@ -745,6 +746,8 @@ RULE_TR_TITLES: dict[str, str] = {
     "GEN_PS_CRADLE": "PowerShell indir-ve-çalıştır zinciri",
     "GEN_PS_ENCODED": "Kodlanmış PowerShell komutu çözüldü",
     "GEN_SUSPICIOUS_STRINGS": "Şüpheli komut veya sistem aracı ifadeleri",
+    "GEN_SCRIPT_DEOBFUSCATED": "Gizlenmiş betik statik olarak çözüldü",
+    "GEN_DEOBF_LIMIT": "Betik çözme sınırda durduruldu",
     # ELF
     "ELF_HEADER": "Linux ELF dosya başlığı",
     "ELF_INTERP": "ELF dinamik yorumlayıcı tanımlı",
@@ -1032,6 +1035,8 @@ RULE_TR_DETAILS: dict[str, str] = {
     "GEN_PS_CRADLE": "Uzaktan içerik indirip doğrudan bellekte çalıştıran PowerShell kalıbı tespit edildi.",
     "GEN_PS_ENCODED": "Base64 ile kodlanmış PowerShell komutu inceleme için çözüldü.",
     "GEN_SUSPICIOUS_STRINGS": "Dosya içinde şüpheli kabuk, betik veya sistem aracı komutları bulundu.",
+    "GEN_SCRIPT_DEOBFUSCATED": "Statik çözme, kod çalıştırmadan gizlenmiş betik içeriğini yeniden oluşturdu.",
+    "GEN_DEOBF_LIMIT": "Statik betik çözme güvenlik sınırına ulaştı; kalan gizlenmiş içerik incelenmedi.",
     # ELF
     "ELF_HEADER": "Linux ELF mimarisi ve bayt sıralaması okundu.",
     "ELF_INTERP": "ELF uygulaması dinamik bağlayıcı/yorumlayıcı tanımlıyor.",
