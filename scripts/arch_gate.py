@@ -26,6 +26,7 @@ DEFAULT_SRC = ROOT / "src" / "malaz"
 #: Declarative (facade_posix, (submodule_posix, ...)) registry (Spec 012 §4).
 FACADE_SUBMODULE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("core/eml_analysis.py", ("core/eml_parser.py",)),
+    ("core/dispatcher.py", ("core/container_dispatch.py",)),
     (
         "pipelines/pdf_pipeline.py",
         (

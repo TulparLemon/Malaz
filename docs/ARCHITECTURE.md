@@ -43,7 +43,7 @@ security/       Foundational limits, Zip-Slip/junction guards, HTML/CSV/Bidi esc
 
 ## 2. Format Identification & Static Pipelines
 
-`src/malaz/core/dispatcher.py` identifies files by **magic bytes** (`src/malaz/core/magic.py`), including prefixed-ZIP EOCD recovery and prefixed-PDF header recovery within the first 1,024 bytes, preventing extension spoofing (`GEN_FORMAT_MISMATCH`). No pipeline ever executes inspected code.
+`src/malaz/core/dispatcher.py` (with bounded container unpacking in `src/malaz/core/container_dispatch.py`) identifies files by **magic bytes** (`src/malaz/core/magic.py`), including prefixed-ZIP EOCD recovery and prefixed-PDF header recovery within the first 1,024 bytes, preventing extension spoofing (`GEN_FORMAT_MISMATCH`). No pipeline ever executes inspected code.
 
 | Pipeline | Module | Static Inspection Stages |
 | :--- | :--- | :--- |
