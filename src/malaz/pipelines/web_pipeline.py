@@ -129,6 +129,15 @@ _FOREIGN_BREAKOUT_TAGS = frozenset(
 )
 _SVG_HTML_INTEGRATION_TAGS = frozenset({"foreignobject", "desc", "title"})
 _MATH_TEXT_INTEGRATION_TAGS = frozenset({"mi", "mo", "mn", "ms", "mtext"})
+_HTML_VOID_TAGS = frozenset(
+    {
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr",
+    }
+)
+_HTML_SCRIPT_TOKEN_RE = re.compile(
+    r"<!--|-->|</?script(?=[\s/>])", re.IGNORECASE
+)
 _RAWTEXT_CLOSE_RES: dict[str, re.Pattern[str]] = {
     _tag: re.compile(
         rf"</(?:[a-zA-Z_][\w.-]{{0,64}}:)?{_tag}[\s/>]", re.IGNORECASE
@@ -271,6 +280,12 @@ def _is_valid_pe(decoded: bytes) -> bool:
     return 64 <= e_lfanew <= len(decoded) - 4 and decoded[e_lfanew : e_lfanew + 4] == b"PE\x00\x00"
 
 
+def _is_confirmed_benign_image_b64(raw_b64: str) -> bool:
+    """Return True if the first 48 decoded bytes match a benign raster image magic."""
+    head = _b64_decode_prefix(raw_b64, _STAGE1_B64_CHARS)
+    return bool(head and len(head) >= 4 and magic.detect(head).type in _BENIGN_IMAGE_TYPES)
+
+
 class _WebTagCollector(HTMLParser):
     """Single-pass O(N) HTML/SVG tag collector with hard tag cap."""
 
@@ -334,10 +349,17 @@ class _WebTagCollector(HTMLParser):
     def in_foreign_content(self) -> bool:
         return self.current_ns in ("svg", "math")
 
+    @property
+    def cdata_allowed(self) -> bool:
+        # WHATWG §13.2.5.42: CDATA is allowed whenever the adjusted current node
+        # is NOT in the HTML namespace (includes SVG/MathML integration points
+        # themselves until an HTML child element is pushed on top).
+        return self.current_ns in ("svg", "math", "svg_ip", "math_ip")
+
     def _push_ns(self, local: str, ns: str) -> None:
         self._ns_stack.append((local, ns))
         self._ns_counts[local] = self._ns_counts.get(local, 0) + 1
-        if local == "foreignobject" and ns == "html":
+        if local == "foreignobject" and ns == "svg_ip":
             self.foreign_depth += 1
 
     def _pop_ns_top(self) -> tuple[str, str]:
@@ -347,12 +369,12 @@ class _WebTagCollector(HTMLParser):
             self._ns_counts.pop(tag, None)
         else:
             self._ns_counts[tag] = cnt
-        if tag == "foreignobject" and ns == "html" and self.foreign_depth > 0:
+        if tag == "foreignobject" and ns == "svg_ip" and self.foreign_depth > 0:
             self.foreign_depth -= 1
         return tag, ns
 
     def _breakout_foreign(self) -> None:
-        while self._ns_stack and self._ns_stack[-1][1] != "html":
+        while self._ns_stack and self._ns_stack[-1][1] in ("svg", "math"):
             self._pop_ns_top()
         self.foreign_script_depth = 0
 
@@ -420,7 +442,11 @@ class _WebTagCollector(HTMLParser):
 
                 if "base64," in v.lower():
                     m = _DATA_URI_B64_RE.search(v)
-                    if m and len(self.data_uri_attrs) < _MAX_B64_CANDIDATES:
+                    if (
+                        m
+                        and len(self.data_uri_attrs) < _MAX_B64_CANDIDATES
+                        and not _is_confirmed_benign_image_b64(m.group(2))
+                    ):
                         self.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
 
         if not self.xml_mode and self.in_foreign_content and (
@@ -450,23 +476,29 @@ class _WebTagCollector(HTMLParser):
             if local in ("svg", "math"):
                 self._push_ns(local, local)
                 self._last_pushed_ns = True
-            elif (prev_ns == "svg" and local in _SVG_HTML_INTEGRATION_TAGS) or (prev_ns == "math" and (
+            elif prev_ns == "svg" and local in _SVG_HTML_INTEGRATION_TAGS:
+                self._push_ns(local, "svg_ip")
+                self._last_pushed_ns = True
+            elif prev_ns == "math" and (
                 local in _MATH_TEXT_INTEGRATION_TAGS
                 or (
                     local == "annotation-xml"
                     and attr_map.get("encoding", "").strip().lower()
                     in ("text/html", "application/xhtml+xml")
                 )
-            )):
-                self._push_ns(local, "html")
-                self._last_pushed_ns = True
-            elif (
-                self.foreign_depth > 0
-                and local in _FOREIGN_ACTIVE_TAGS
-                and len(self.foreign_active_hits) < 8
             ):
-                self.foreign_active_hits.append(f"<{local}>")
-
+                self._push_ns(local, "math_ip")
+                self._last_pushed_ns = True
+            else:
+                if prev_ns in ("svg_ip", "math_ip") and local not in _HTML_VOID_TAGS:
+                    self._push_ns(local, "html")
+                    self._last_pushed_ns = True
+                if (
+                    self.foreign_depth > 0
+                    and local in _FOREIGN_ACTIVE_TAGS
+                    and len(self.foreign_active_hits) < 8
+                ):
+                    self.foreign_active_hits.append(f"<{local}>")
         in_html_ns = (not self.xml_mode) and (not prev_in_foreign)
         if local == "script":
             self.has_script_tag = True
@@ -670,6 +702,31 @@ def _extract_tag_local_name(text: str, lt: int, gt: int) -> str:
     return text[start:i].rsplit(":", 1)[-1].lower()
 
 
+def _find_html_script_end(text: str, pos: int) -> tuple[int, int] | None:
+    """Linear O(N) WHATWG §13.2.5.17-31 HTML5 script-end scanner (handles double-escaped)."""
+    state = 0  # 0=NORMAL, 1=ESCAPED (after <!--), 2=DOUBLE_ESCAPED (after <!--<script)
+    for m in _HTML_SCRIPT_TOKEN_RE.finditer(text, pos):
+        tok = m.group(0).lower()
+        if tok == "<!--":
+            if state == 0:
+                state = 1
+        elif tok == "-->":
+            if state in (1, 2):
+                state = 0
+        elif tok == "<script":
+            if state == 1:
+                state = 2
+        elif tok == "</script":
+            if state == 2:
+                state = 1
+            else:
+                end_gt = text.find(">", m.end())
+                if end_gt == -1:
+                    return None
+                return m.start(), end_gt + 1
+    return None
+
+
 def _feed_bounded_tags(
     collector: _WebTagCollector, text: str, *, xml_mode: bool = False
 ) -> None:
@@ -684,19 +741,24 @@ def _feed_bounded_tags(
     no_pi_close = False
     while pos < n and not collector.tag_limit_exceeded:
         if collector.script_depth > 0:
-            m_close = _SCRIPT_CLOSE_RE.search(text, pos)
-            body = text[pos:] if m_close is None else text[pos : m_close.start()]
+            if xml_mode:
+                m_close = _SCRIPT_CLOSE_RE.search(text, pos)
+                if m_close is None:
+                    script_end = None
+                else:
+                    end_gt = text.find(">", m_close.end() - 1)
+                    script_end = None if end_gt == -1 else (m_close.start(), end_gt + 1)
+            else:
+                script_end = _find_html_script_end(text, pos)
+            body = text[pos:] if script_end is None else text[pos : script_end[0]]
             if body:
                 if "<![CDATA[" in body:
                     body = body.replace("<![CDATA[", "").replace("]]>", "")
                 collector.handle_data(body)
-            if m_close is None:
-                break
-            end_gt = text.find(">", m_close.end() - 1)
-            if end_gt == -1:
+            if script_end is None:
                 break
             collector.handle_endtag("script")
-            pos = end_gt + 1
+            pos = script_end[1]
             continue
 
         if collector.rawtext_tag is not None:
@@ -754,7 +816,7 @@ def _feed_bounded_tags(
         # CDATA exists in XML/SVG and HTML5 foreign content (<svg>/<math> outside
         # <foreignObject>, WHATWG §13.2.5.42); elsewhere '<![CDATA[...>' ends at '>'.
         if text.startswith("<![CDATA[", lt):
-            in_foreign = xml_mode or collector.in_foreign_content
+            in_foreign = xml_mode or collector.cdata_allowed
             if in_foreign:
                 end_cd = text.find("]]>", lt + 9)
                 if end_cd == -1:
@@ -1011,13 +1073,26 @@ class WebContentPipeline(Pipeline):
         # never starve atob(...) or generic Base64 payload extraction.
         candidates: list[tuple[str, str, str]] = []
 
-        data_candidates: list[tuple[str, str, str]] = [
-            ("data", mime, b64) for mime, b64 in collector.data_uri_attrs[:_MAX_B64_CANDIDATES]
-        ]
-        for m in _DATA_URI_B64_RE.finditer(work):
-            if len(data_candidates) >= _MAX_B64_CANDIDATES * 2:
+        data_seen: set[str] = set()
+        data_candidates: list[tuple[str, str, str]] = []
+        for mime, b64 in collector.data_uri_attrs:
+            dkey = f"{mime}:{len(b64)}:{b64[:64]}:{b64[-32:]}"
+            if dkey in data_seen or _is_confirmed_benign_image_b64(b64):
+                continue
+            data_seen.add(dkey)
+            data_candidates.append(("data", mime, b64))
+            if len(data_candidates) >= _MAX_B64_CANDIDATES:
                 break
-            data_candidates.append(("data", m.group(1).lower(), m.group(2)))
+        for m in _DATA_URI_B64_RE.finditer(work):
+            if len(data_candidates) >= _MAX_B64_CANDIDATES:
+                break
+            mime = m.group(1).lower()
+            b64 = m.group(2)
+            dkey = f"{mime}:{len(b64)}:{b64[:64]}:{b64[-32:]}"
+            if dkey in data_seen or _is_confirmed_benign_image_b64(b64):
+                continue
+            data_seen.add(dkey)
+            data_candidates.append(("data", mime, b64))
         candidates.extend(data_candidates)
 
         for atob_count, m in enumerate(_ATOB_B64_RE.finditer(work)):

