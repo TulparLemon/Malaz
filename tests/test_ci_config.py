@@ -28,6 +28,7 @@ def test_gate_includes_governance_and_coverage_threshold():
         "mutations",
         "golden-snapshot",
         "golden-images",
+        "benchmark-doc",
         "doc-claims",
         "duplicate-logic",
     ]

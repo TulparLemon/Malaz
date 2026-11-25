@@ -1,0 +1,68 @@
+name: False Positive Report
+description: Report a benign file that Malaz flagged as YELLOW or RED.
+title: "[FP]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        False-positive reports help keep Malaz precise.
+        **Privacy & OpSec notice:** Do NOT attach confidential/original business documents, real malware samples, or unredacted HTML/JSON exports. Type or paste only redacted rule IDs and file characteristics.
+
+  - type: input
+    id: version
+    attributes:
+      label: Malaz version
+      placeholder: e.g. 1.2.0
+    validations:
+      required: true
+
+  - type: input
+    id: detected_type
+    attributes:
+      label: Detected file type
+      description: Value shown as `detected_type` (e.g. pdf, docx, pe, eml, zip).
+      placeholder: e.g. pdf
+    validations:
+      required: true
+
+  - type: input
+    id: verdict_score
+    attributes:
+      label: Risk level & score
+      placeholder: e.g. YELLOW (30/100) or RED (65/100)
+    validations:
+      required: true
+
+  - type: textarea
+    id: rule_ids
+    attributes:
+      label: Triggered rule IDs (redacted)
+      description: Copy only the rule IDs and weights (e.g. `PDF_JS_SUSPICIOUS (30)`). Remove local paths, filenames, sender addresses, and metadata.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scan_mode
+    attributes:
+      label: Scan mode
+      options:
+        - Standard (static + local AV engines)
+        - "--static-only"
+    validations:
+      required: true
+
+  - type: textarea
+    id: benign_context
+    attributes:
+      label: Benign source context
+      description: Describe what kind of legitimate file this is (e.g. signed vendor installer, tax form PDF, mailing-list newsletter).
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: privacy_confirm
+    attributes:
+      label: Privacy & safety confirmation
+      options:
+        - label: I confirm this report contains no confidential documents, no unredacted exports or personal file paths, and no live malware samples.
+          required: true

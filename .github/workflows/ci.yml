@@ -82,7 +82,7 @@ jobs:
       - name: Test suite (pytest + coverage)
         run: python -m pytest -q --basetemp=.pytest-tmp/ci --junitxml=artifacts/ci/junit.xml --cov=malaz --cov-fail-under=70 --cov-report=xml:artifacts/ci/coverage.xml --cov-report=term:skip-covered
 
-      - name: Mutation testing (30/30)
+      - name: Mutation testing
         run: python scripts/check_tests_bite.py
 
       - name: Golden snapshot
@@ -90,6 +90,9 @@ jobs:
 
       - name: Golden UI images
         run: python scripts/make_golden_images.py --check
+
+      - name: Benchmark doc drift check
+        run: python scripts/run_corpus.py --check-doc docs/BENCHMARKS.md
 
       - name: Documentation claims & links
         run: python scripts/check_doc_claims.py

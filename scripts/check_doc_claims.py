@@ -28,6 +28,7 @@ CURRENT_DOCS = (
     "docs/INSTALLATION.md",
     "docs/USAGE.md",
     "docs/ARCHITECTURE.md",
+    "docs/BENCHMARKS.md",
     "docs/SECURITY_MODEL.md",
     "docs/VERIFYING_RELEASES.md",
 )

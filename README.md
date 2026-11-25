@@ -102,6 +102,7 @@ python -m pytest -q --basetemp=.pytest-tmp\local
 | :--- | :--- |
 | [docs/INSTALLATION.md](docs/INSTALLATION.md) | System requirements, source setup, optional external engines (ClamAV, 7-Zip, DIE, capa), Nuitka standalone builds, Authenticode & SBOM |
 | [docs/USAGE.md](docs/USAGE.md) | GUI workflow, opt-in settings, CLI & batch flags, exit codes, custom YARA rules, optional feed & blocklist imports |
+| [docs/BENCHMARKS.md](docs/BENCHMARKS.md) | Reproducible static corpus coverage (550+ fixtures), latency benchmarks, mutation checks, and local reproduction commands |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 7-layer architecture, static pipelines, 2 GB streaming model, multi-layer risk scoring, benchmark summary |
 | [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md) | Threat model, all 7 opt-in network paths, completeness invariant weights, parser/archive resource limits, log privacy |
 | [docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md) | Verifying OpenPGP release signatures (`SHA256SUMS`), CycloneDX SBOMs, and SmartScreen / SignPath status |
