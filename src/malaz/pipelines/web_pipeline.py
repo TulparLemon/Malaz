@@ -490,7 +490,7 @@ class _WebTagCollector(HTMLParser):
 
 
 def _find_tag_end_linear(
-    text: str, lt: int, exhausted_quotes: set[str]
+    text: str, start_pos: int, exhausted_quotes: set[str]
 ) -> tuple[int, int]:
     """Strictly O(N) WHATWG HTML5 6-state tag-attribute scanner starting at ``lt``.
 
@@ -501,16 +501,16 @@ def _find_tag_end_linear(
     ``exhausted_quotes`` so later tags are never swallowed.
     """
     n = len(text)
-    i = lt + 1
+    i = start_pos
     # States: 0=TAG_NAME, 1=BEFORE_ATTR_NAME, 2=ATTR_NAME,
     #         3=AFTER_ATTR_NAME, 4=BEFORE_ATTR_VAL, 5=UNQUOTED_VAL
+    # Per WHATWG HTML5 §13.2.5.8/32/33/36/38, '<' inside an open tag never
+    # starts a nested tag or comment; the first unquoted '>' closes the tag.
     state = 0
     while i < n:
         ch = text[i]
         if ch == ">":
             return i, i + 1
-        if ch == "<":
-            return -1, i
 
         is_ws = ch in " \t\r\n\f"
         if state == 0:  # TAG_NAME
@@ -611,10 +611,9 @@ def _feed_bounded_tags(
         if lt == -1 or lt + 1 >= n:
             break
 
-        # HTML5: '<' only starts a tag/declaration if followed by [A-Za-z/!?].
-        # Literal '<' in text (e.g. 'If x < 5 and it's fine') is skipped cleanly.
+        # HTML5 §13.2.5.6: '<' only starts a tag/declaration if followed by ASCII [A-Za-z/!?].
         nxt = text[lt + 1]
-        if not (nxt.isalpha() or nxt in "/!?"):
+        if not ((nxt.isascii() and nxt.isalpha()) or nxt in "/!?"):
             pos = lt + 1
             continue
 
@@ -644,10 +643,13 @@ def _feed_bounded_tags(
             )
             continue
 
-        # CDATA only exists in XML/SVG; in HTML5 '<![CDATA[...>' is a bogus comment
-        # terminated at the very first '>'.
+        # CDATA exists in XML/SVG and HTML5 foreign content (<svg>/<math> outside
+        # <foreignObject>, WHATWG §13.2.5.42); elsewhere '<![CDATA[...>' ends at '>'.
         if text.startswith("<![CDATA[", lt):
-            if xml_mode:
+            in_foreign = xml_mode or (
+                collector.foreign_ns_depth > 0 and collector.foreign_depth == 0
+            )
+            if in_foreign:
                 end_cd = text.find("]]>", lt + 9)
                 if end_cd == -1:
                     break
@@ -690,7 +692,23 @@ def _feed_bounded_tags(
             pos = gt_decl + 1
             continue
 
-        gt, next_pos = _find_tag_end_linear(text, lt, exhausted_quotes)
+        # WHATWG §13.2.5.7 End tag open state: '</' + non-ASCII-alpha is a bogus
+        # comment ending at the first '>'; otherwise scan end-tag name from lt + 2.
+        if nxt == "/":
+            if lt + 2 >= n:
+                break
+            c2 = text[lt + 2]
+            if not (c2.isascii() and c2.isalpha()):
+                gt_bc = text.find(">", lt + 2)
+                if gt_bc == -1:
+                    break
+                pos = gt_bc + 1
+                continue
+            scan_start = lt + 2
+        else:
+            scan_start = lt + 1
+
+        gt, next_pos = _find_tag_end_linear(text, scan_start, exhausted_quotes)
         if gt == -1:
             pos = next_pos
             continue
