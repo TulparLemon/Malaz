@@ -112,12 +112,12 @@ _DATA_URI_B64_RE = re.compile(
     re.IGNORECASE,
 )
 _SCRIPT_CLOSE_RE = re.compile(
-    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script\s*>", re.IGNORECASE
+    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script[\s/>]", re.IGNORECASE
 )
 _STYLE_CLOSE_RE = re.compile(
-    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?style\s*>", re.IGNORECASE
+    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?style[\s/>]", re.IGNORECASE
 )
-_OVERSIZED_EVENT_RE = re.compile(r"[\s/]on[a-z]{3,24}\s*=", re.IGNORECASE)
+_OVERSIZED_EVENT_RE = re.compile(r"""[\s/"']on[a-z]{3,24}\s*=""", re.IGNORECASE)
 _BENIGN_GEOMETRY_TAGS = frozenset({"path", "polygon", "polyline"})
 _MAX_SINGLE_TAG_LEN = 65_536
 _ATOB_B64_RE = re.compile(
@@ -510,16 +510,22 @@ def _feed_bounded_tags(
                 collector.handle_data(body)
             if m_close is None:
                 break
+            end_gt = text.find(">", m_close.end() - 1)
+            if end_gt == -1:
+                break
             collector.handle_endtag("script")
-            pos = m_close.end()
+            pos = end_gt + 1
             continue
 
         if collector.style_depth > 0:
             m_close = _STYLE_CLOSE_RE.search(text, pos)
             if m_close is None:
                 break
+            end_gt = text.find(">", m_close.end() - 1)
+            if end_gt == -1:
+                break
             collector.handle_endtag("style")
-            pos = m_close.end()
+            pos = end_gt + 1
             continue
 
         lt = text.find("<", pos)
@@ -561,6 +567,36 @@ def _feed_bounded_tags(
                 if gt_cd == -1:
                     break
                 pos = gt_cd + 1
+            continue
+
+        # HTML5 bogus comments / XML PIs & declarations: never run through
+        # attribute-quote scanning (prevents '<!x a=">' / '<?x a=">' from
+        # swallowing the following tag).
+        if nxt == "?":
+            if is_svg:
+                end_pi = text.find("?>", lt + 2)
+                if end_pi != -1:
+                    pos = end_pi + 2
+                    continue
+            gt_pi = text.find(">", lt + 2)
+            if gt_pi == -1:
+                break
+            pos = gt_pi + 1
+            continue
+
+        if nxt == "!":
+            gt_decl = text.find(">", lt + 2)
+            if gt_decl == -1:
+                break
+            if is_svg:
+                lb = text.find("[", lt + 2, gt_decl)
+                if lb != -1:
+                    rb = text.find("]>", lb + 1)
+                    if rb == -1:
+                        break
+                    pos = rb + 2
+                    continue
+            pos = gt_decl + 1
             continue
 
         gt, next_pos = _find_tag_end_linear(text, lt, exhausted_quotes)
