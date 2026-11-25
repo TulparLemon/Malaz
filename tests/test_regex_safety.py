@@ -52,6 +52,7 @@ _MODULES = (
     "core/rtf_extract.py",
     "pipelines/generic_pipeline.py",
     "pipelines/pdf_pipeline.py",
+    "pipelines/pdf_streams.py",
     "security/escaping.py",
 )
 
@@ -169,6 +170,7 @@ def test_pattern_scan_covers_the_attacker_facing_modules():
         "core/rtf_extract.py",
         "pipelines/generic_pipeline.py",
         "pipelines/pdf_pipeline.py",
+        "pipelines/pdf_streams.py",
     }
     missing = required - covered
     assert not missing, f"nicht geprüfte Module: {sorted(missing)}"

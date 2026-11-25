@@ -1,26 +1,16 @@
-"""PDF analysis pipeline (pikepdf-based).
+"""Static PDF analysis pipeline.
 
-Stages, each degrading gracefully when its library is unavailable:
+Runs in four stages, each strictly bounded and non-executing:
+1. Fast byte-level keyword triage (works even on broken/encrypted PDFs).
+2. Structural analysis via ``pikepdf`` (XREF, object streams, incremental
+   saves, action-graph and link checks via :mod:`malaz.pipelines.pdf_links`).
+3. Embedded JavaScript extraction and static deobfuscation via
+   :mod:`malaz.pipelines.pdf_javascript`.
+4. Content-stream layout forensics (invisible text render mode / white-on-white).
 
-1. Quick triage — count risk-prone PDF keywords on the raw bytes (pdfid-style,
-   implemented internally so it always works, even on encrypted files).
-2. Object / stream scan — incremental saves (``%%EOF``), object streams
-   (``/ObjStm``), embedded files (pikepdf attachments API).
-3. JavaScript scan — embedded ``/JS``/``/JavaScript`` actions are pulled out of
-   the object graph structurally (including compressed streams and indirect
-   references) and inspected statically.
-4. Layout forensics — invisible text (text rendering mode ``3 Tr``) and a
-   conservative color-on-color heuristic on the page content streams.
-
-pikepdf (MPL-2.0) replaced PyMuPDF (AGPL). Under the project's
-GPL-3.0-or-later both are compatible; the change was made for size and API,
-not for licence reasons.
-
-Encrypted PDFs are handled by :meth:`_open_pdf`. Decrypting a PDF is pure
-cryptographic work over the byte streams (AES/RC4); it executes no JavaScript,
-no Launch action and no embedded payload, so it is safe for static analysis and
-cannot "break out" the way opening a document in a viewer can. Whether encrypted
-files are opened at all is governed by ``config.PDF_TRY_DEFAULT_PASSWORDS``.
+Low-level stream decompression and bomb guards live in
+:mod:`malaz.pipelines.pdf_streams`; all previously public and tested symbols
+remain bound on this facade module.
 """
 
 from __future__ import annotations
@@ -28,24 +18,11 @@ from __future__ import annotations
 import io
 import re
 from contextlib import suppress
-from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-from typing import Any
 
 from .. import config
-from ..core.binary_iocs import (
-    BINARY_IOC_BLOCKED_TITLE,
-    BLOCKLIST_UNAVAILABLE_TITLE,
-    IOC_URL,
-    host_of_url,
-    is_namespace_host,
-    split_blocked_iocs,
-)
-from ..core.js_deobf import deobfuscate_js
 from ..core.risky_types import RISKY_SUFFIXES
-from ..core.url_view import defang_url
 from ..models import (
-    CAT_IOC,
     CAT_SCRIPT,
     CAT_STEGO,
     CAT_STRUCTURE,
@@ -54,18 +31,52 @@ from ..models import (
     Severity,
 )
 from .base import Pipeline
+from .pdf_javascript import (
+    _PDF_JS_COMMON as _PDF_JS_COMMON,
+)
+from .pdf_javascript import (
+    _PDF_JS_MALICIOUS as _PDF_JS_MALICIOUS,
+)
+from .pdf_javascript import (
+    _PDF_JS_OBFUSCATION as _PDF_JS_OBFUSCATION,
+)
+from .pdf_javascript import (
+    analyze_js_text,
+    extract_pdf_js,
+    root_has_auto_action,
+    scan_pdf_javascript,
+)
+from .pdf_links import (
+    GRAPH_MAX_DEPTH,
+    GRAPH_MAX_NODES,
+    build_link_indicators,
+    decode_pdf_uri,
+    walk_action_graph,
+)
+from .pdf_links import (
+    _GraphWalk as _GraphWalk,
+)
+from .pdf_streams import (
+    _AA_KEY_RE as _AA_KEY_RE,
+)
+from .pdf_streams import (
+    MAX_STREAM_BYTES,
+    chain_expansion,
+    read_pdf_text_value,
+    read_stream_bounded,
+    warn_is_bomb,
+)
 
-# /AA as a DICTIONARY KEY only: the lookahead rejects longer names such as
-# /AAPL:xx that macOS Quartz writes into every PDF — counting those as
-# "Additional-Actions" produced false CRITICAL escalations of innocent JS.
-_AA_KEY_RE = re.compile(rb"/AA(?![A-Za-z])")
+# Compatibility bindings on the facade module (PEP-484 / Ruff F401 safe).
+_MAX_STREAM_BYTES = MAX_STREAM_BYTES
+_chain_expansion = chain_expansion
+_warn_is_bomb = warn_is_bomb
+_decode_pdf_uri = decode_pdf_uri
 
-# Upper bound for ONE decompressed stream (JS payload / content stream).
-# pikepdf's read_bytes() materialises the FULL decompressed stream — a
-# FlateDecode bomb (tiny file, gigabytes expanded) would otherwise OOM or
-# freeze the worker with a single crafted PDF.
-_MAX_STREAM_BYTES = 8 * 1024 * 1024
 
+def _read_stream_bounded(stream, pikepdf) -> tuple[bytes | None, str | None]:
+    """Facade wrapper honoring monkeypatches on ``pdf_pipeline._MAX_STREAM_BYTES``."""
+    return read_stream_bounded(stream, pikepdf, max_stream_bytes=_MAX_STREAM_BYTES)
 
 # Cumulative DECOMPRESSED budget for the layout stage. The per-stream cap
 # above bounds ONE stream; it does not bound the sum over pages. GEMESSEN
@@ -79,171 +90,6 @@ _MAX_STREAM_BYTES = 8 * 1024 * 1024
 # because "not looked at" is not "clean".
 _MAX_LAYOUT_BYTES = 32 * 1024 * 1024
 
-
-# Worst-case DECODE expansion per filter (output bytes per input byte).
-# Flate/LZW reach ~1032:1 on degenerate all-repetitive input; RunLength
-# decodes at most 64:1 (1 length byte + up to 128 data bytes per 2 input
-# bytes); ASCIIHex and ASCII85 SHRINK on decode. Unknown filters (DCT,
-# CCITT, JBIG2, custom) get the Flate-style worst case as a safe default —
-# a crafted chain like [/FlateDecode /FlateDecode] multiplies to ~1e6:1
-# and is therefore refused before anything is materialised.
-_FILTER_EXPANSION: dict[str, float] = {
-    "/FlateDecode": 1032,
-    "/LZWDecode": 1032,
-    "/RunLengthDecode": 64,
-    "/ASCIIHexDecode": 0.5,
-    "/ASCII85Decode": 0.8,
-    "/Crypt": 1.0,
-}
-_UNKNOWN_EXPANSION = 1032
-
-
-def _chain_expansion(names: list[str]) -> float:
-    """Worst-case expansion factor of a filter chain (product of stages)."""
-    factor = 1.0
-    for name in names:
-        factor *= _FILTER_EXPANSION.get(name, _UNKNOWN_EXPANSION)
-    return factor
-
-
-def _read_stream_bounded(stream, pikepdf) -> tuple[bytes | None, str | None]:
-    """Read a decompressed stream with a hard output cap.
-
-    Returns ``(payload, None)`` on success or ``(None, reason)`` when the
-    stream is refused. FlateDecode(-only) streams are decompressed here with
-    a bounded loop (the standard case for JS/content streams); any other
-    filter chain is guarded by a raw-size x ratio estimate before pikepdf
-    materialises it.
-    """
-    import zlib
-
-    try:
-        filters = stream.get(pikepdf.Name.Filter)
-    except Exception:
-        filters = None
-    names: list[str] = []
-    if filters is not None:
-        names = (
-            [str(f) for f in filters]
-            if isinstance(filters, pikepdf.Array)
-            else [str(filters)]
-        )
-    try:
-        decode_parms = stream.get(pikepdf.Name.DecodeParms)
-    except Exception:
-        decode_parms = None
-
-    if not names:
-        # No filter: the raw bytes ARE the payload. Running them through
-        # zlib would reject every unfiltered (hand-written / simple
-        # generator) stream as "beschädigt" — regression caught in review.
-        try:
-            payload = stream.read_raw_bytes()
-        except Exception as exc:
-            return None, f"Stream nicht lesbar ({type(exc).__name__})"
-        if len(payload) > _MAX_STREAM_BYTES:
-            return None, (
-                f"Stream > {_MAX_STREAM_BYTES} Bytes (Dekompressionsbombe-Verdacht)"
-            )
-        return payload, None
-
-    if names == ["/FlateDecode"] and decode_parms is None:
-        try:
-            raw = stream.read_raw_bytes()
-        except Exception as exc:
-            return None, f"Stream nicht lesbar ({type(exc).__name__})"
-        dec = zlib.decompressobj()
-        out = bytearray()
-        chunk_size = 1 << 20
-        for pos in range(0, len(raw), chunk_size):
-            try:
-                out += dec.decompress(
-                    raw[pos : pos + chunk_size], _MAX_STREAM_BYTES + 1 - len(out)
-                )
-            except zlib.error:
-                return None, "Flate-Stream beschädigt"
-            if len(out) > _MAX_STREAM_BYTES:
-                return None, (
-                    f"entpackter Stream > {_MAX_STREAM_BYTES} Bytes "
-                    "(Dekompressionsbombe-Verdacht)"
-                )
-        try:
-            out += dec.flush(_MAX_STREAM_BYTES + 1 - len(out))
-        except zlib.error:
-            return None, "Flate-Stream beschädigt"
-        if len(out) > _MAX_STREAM_BYTES:
-            return None, (
-                f"entpackter Stream > {_MAX_STREAM_BYTES} Bytes "
-                "(Dekompressionsbombe-Verdacht)"
-            )
-        if not dec.eof:
-            if not raw:
-                # Empty raw stream: some generators write empty content
-                # streams WITH a filter — nothing is truncated, there is
-                # simply no payload.
-                return b"", None
-            # The zlib stream never reached its end marker: the file is cut
-            # off mid-stream. Return the readable prefix but flag it — the
-            # analysis must not claim full coverage of a truncated payload.
-            return bytes(out), "Flate-Stream unvollständig (abgeschnittene Datei)"
-        return bytes(out), None
-
-    # Everything else (exotic filters, Flate with /DecodeParms predictors,
-    # filter chains): bound by a per-filter worst-case expansion estimate
-    # BEFORE pikepdf materialises anything, then a hard check after.
-    try:
-        raw_len = len(stream.read_raw_bytes())
-    except Exception as exc:
-        return None, f"Stream nicht lesbar ({type(exc).__name__})"
-    expansion = _chain_expansion(names)
-    if decode_parms is not None:
-        # PNG predictors add one filter byte per row; with 1-byte rows that
-        # doubles the data — 6x is a comfortable safety margin. This
-        # multiplier is deliberately conservative: LEGITIMATE streams
-        # (Flate+Predictor images) can trip the estimate without being
-        # bombs, so refusals caused by it report "unpruefbar", NOT bomb
-        # suspicion (_warn_is_bomb must not match).
-        expansion *= 6
-        if raw_len * expansion > _MAX_STREAM_BYTES:
-            return None, (
-                f"Stream mit Predictor nicht prüfbar: geschätzte Expansion "
-                f"{expansion:.0f}:1 übersteigt das Analyse-Limit"
-            )
-    elif raw_len * expansion > _MAX_STREAM_BYTES:
-        # Pure filter-chain product (e.g. [/FlateDecode /FlateDecode] on
-        # tiny raw bytes): no legitimate content trips this — treat as
-        # bomb suspicion and refuse BEFORE pikepdf materialises anything.
-        return None, (
-            f"Stream-Filterkette überschreitet Größenlimit "
-            f"(geschätzte Expansion {expansion:.0f}:1)"
-        )
-    try:
-        payload = stream.read_bytes()
-    except Exception as exc:
-        return None, f"Stream nicht lesbar ({type(exc).__name__})"
-    if len(payload) > _MAX_STREAM_BYTES:
-        return None, f"entpackter Stream > {_MAX_STREAM_BYTES} Bytes"
-    return payload, None
-
-
-
-def _warn_is_bomb(reason: str) -> bool:
-    """Classify a _read_stream_bounded refusal as bomb suspicion.
-
-    Matches the actual bomb refusal strings ("Dekompressionsbombe-Verdacht",
-    hard-limit messages, the pure filter-chain estimate). The Predictor
-    estimate reports "nicht prüfbar" instead — a legitimate stream can trip
-    that conservative multiplier without being a bomb, so it stays an
-    ordinary INFO warning.
-    """
-    # Substring checks, not startswith: in the layout forensics the
-    # reasons carry a "S. <n>: " prefix that would break any prefix match.
-    return (
-        "Bombe" in reason
-        or "entpackter Stream >" in reason
-        or "Stream > " in reason
-        or "Größenlimit" in reason
-    )
 
 # keyword -> (severity, weight or None, title)
 #
@@ -458,36 +304,6 @@ def _hat_weissen_text(inhalt: bytes) -> bool:
     return False
 
 
-_PDF_JS_MALICIOUS = (
-    "ev" + "al(",           # eval — Code aus Daten
-    "app.ev" + "al",        # app.eval
-    "exportdataobject",     # eingebettete Datei auf die Platte schreiben
-    "collab.geticon",       # bekanntes Exploit-Primitiv
-    "mail" + "msg(",        # Mail versenden
-    "execdialog",           # Menuebefehl ausfuehren
-)
-
-# In Dokumenten ueblich. Bleibt als Befund sichtbar (Gewicht 10 statt 30),
-# traegt aber KEINEN Anker.
-_PDF_JS_COMMON = (
-    "launchurl",            # Link oeffnen — jedes Formular mit Anleitung
-    "submitform",           # Formular absenden
-    "getannotation",        # Anmerkungen lesen
-    "util.stringfromstream",
-    "exportasstring",
-)
-
-# Obfuscation techniques used to hide a JS payload from keyword scanners.
-_PDF_JS_OBFUSCATION = (
-    "string.fromcharcode",
-    "fromcharcode",
-    "unescape(",
-    "charcodeat",
-    "\\u00",  # \u00xx unicode escape runs
-    "\\x",    # \xXX hex escape runs
-)
-
-
 _OBF_CACHE: dict[bytes, re.Pattern] = {}
 
 
@@ -520,84 +336,6 @@ def _count_obfuscated_names(data: bytes, keyword: bytes) -> int:
         # The cache is bounded by the fixed keyword table.
         _OBF_CACHE[keyword] = pattern
     return sum(1 for _ in pattern.finditer(data))
-
-
-@dataclass
-class _GraphWalk:
-    """Structured result of :meth:`PdfPipeline._walk_action_graph`."""
-
-    js_values: list = field(default_factory=list)
-    uri_values: list = field(default_factory=list)
-    launch_hits: int = 0
-    truncated: bool = False
-    visited: set[tuple[int, int]] = field(default_factory=set)
-    incomplete: bool = False
-
-
-# C-speed translation table stripping C0 controls (0x00..0x1F) and DEL (0x7F).
-_C0_STRIP_TABLE = str.maketrans("", "", "".join(chr(c) for c in range(0x20)) + "\x7f")
-
-
-def _decode_pdf_uri(raw: Any) -> str | None:
-    """Decode a PDF ``/URI`` string safely (UTF-16BE/LE with or without BOM).
-
-    Only accepts ``str``, ``bytes``, ``bytearray``, or ``pikepdf.String`` —
-    never coerces PDF integers (``bytes(500_000_000)`` OOM DoS) or arrays.
-    Caps raw input BEFORE decoding/scanning to bound memory and CPU.
-    """
-    max_chars = config.MAX_STRING_CAPTURE
-    max_raw_bytes = max_chars * 4  # generous bound for UTF-16 + BOM + stripped C0s
-
-    if isinstance(raw, str):
-        decoded = raw[:max_raw_bytes]
-    elif isinstance(raw, (bytes, bytearray)):
-        raw_bytes = bytes(raw[:max_raw_bytes])
-        decoded = ""
-    else:
-        try:
-            import pikepdf
-
-            if not isinstance(raw, pikepdf.String):
-                return None
-            raw_bytes = bytes(raw)[:max_raw_bytes]
-            decoded = ""
-        except Exception:
-            return None
-
-    if not isinstance(raw, str):
-        if not raw_bytes:
-            return None
-        if raw_bytes.startswith(b"\xfe\xff"):
-            body = raw_bytes[2:]
-            if len(body) % 2:
-                body = body[:-1]
-            decoded = body.decode("utf-16-be", errors="replace")
-        elif raw_bytes.startswith(b"\xff\xfe"):
-            body = raw_bytes[2:]
-            if len(body) % 2:
-                body = body[:-1]
-            decoded = body.decode("utf-16-le", errors="replace")
-        elif len(raw_bytes) >= 4:
-            even_len = len(raw_bytes) - (len(raw_bytes) % 2)
-            sample = raw_bytes[:even_len]
-            half = even_len // 2
-            even_nul = sample[0::2].count(0) / half
-            odd_nul = sample[1::2].count(0) / half
-            if even_nul > 0.40 and odd_nul < 0.05:
-                decoded = sample.decode("utf-16-be", errors="replace")
-            elif odd_nul > 0.40 and even_nul < 0.05:
-                decoded = sample.decode("utf-16-le", errors="replace")
-            else:
-                decoded = raw_bytes.decode("latin-1")
-        else:
-            decoded = raw_bytes.decode("latin-1")
-
-    cleaned = decoded.translate(_C0_STRIP_TABLE).strip()
-    if not cleaned:
-        return None
-    if len(cleaned) > max_chars:
-        cleaned = cleaned[:max_chars]
-    return cleaned
 
 
 class PdfPipeline(Pipeline):
@@ -1055,701 +793,65 @@ class PdfPipeline(Pipeline):
     # -- stage 2b: embedded JavaScript ------------------------------------- #
 
     def _javascript_scan(self, ctx: AnalysisContext, pdf) -> list[Indicator]:
-        """Extract embedded JavaScript and analyse it for abuse / obfuscation.
-
-        The keyword triage (stage 1) only counts ``/JavaScript``/``/JS`` markers
-        on the raw bytes; here the actual script code is pulled out of the PDF
-        object graph (including compressed streams and indirect references) and
-        inspected statically. Nothing is executed.
-        """
-        try:
-            chunks, stream_warnings = self._extract_js(pdf)
-        except Exception as exc:
-            # A structural failure must not silently hide ALL JavaScript
-            # findings — "could not analyse" is visibly different from "clean".
-            return [
-                self._indicator(
-                    "PDF_JS_PARSE_WARN",
-                    "JavaScript-Extraktion fehlerhaft — JS-Analyse nicht gelaufen",
-                    detail=(
-                        f"{type(exc).__name__}: {exc} — die JS-Analyse ist "
-                        "unvollständig; das Ergebnis ist nicht als 'sauber' zu werten."
-                    ),
-                    severity=Severity.MEDIUM,
-                    category=CAT_SCRIPT,
-                    # 25, not 0: the comment above was always right — the
-                    # weight was what made it a lie. SCORE_GREEN_MAX is 19, so
-                    # weight 0 scored a PDF whose JavaScript was NEVER
-                    # extracted as GREEN. The raw-byte triage cannot see JS
-                    # that lives in a compressed /ObjStm, which is exactly the
-                    # measured evasion.
-                    weight=25,
-                )
-            ]
-        # Cap the analysed text: .lower() would otherwise double the memory
-        # of an oversized (attack) payload once more.
-        js_text = "\n".join(chunks)[:_MAX_STREAM_BYTES]
-        out: list[Indicator] = []
-        if stream_warnings:
-            bomb_suspected = any(_warn_is_bomb(w) for w in stream_warnings)
-            # Runde 4: both branches are the same fact — the content of these
-            # streams was NOT analysed. Measured before the fix: a merely
-            # damaged /JS stream scored 0 (below SCORE_GREEN_MAX), the bomb 15.
-            # So a PDF whose JavaScript sat in a stream the reader refused came
-            # back GREEN, and the deliberate bomb weighed *more* than the
-            # accident. One weight class (25) for "not read" — the title and the
-            # severity distinguish the reason, no branch is the lighter one.
-            out.append(
-                self._indicator(
-                    "PDF_JS_STREAM_WARN",
-                    (
-                        "JavaScript-Stream nur teilweise gelesen (Bomben-Verdacht)"
-                        if bomb_suspected
-                        else "JavaScript nicht vollständig analysiert"
-                    ),
-                    detail=(
-                        "; ".join(stream_warnings[:3])
-                        + " — der betroffene JavaScript-Code wurde nicht "
-                        "analysiert; das Ergebnis ist nicht als 'sauber' zu werten."
-                    ),
-                    severity=Severity.MEDIUM,
-                    category=CAT_SCRIPT,
-                    weight=25,
-                )
-            )
-        if not js_text.strip():
-            return out
-        # Auto-exec context: JS wired to /OpenAction or a genuine /AA key
-        # runs on open. Raw-byte checks miss object streams and encrypted
-        # PDFs, so the object graph is consulted as well. The regex excludes
-        # /AAPL:… names that macOS writes into every Quartz PDF (they would
-        # escalate innocent JS to CRITICAL).
-        auto_exec = (
-            b"/OpenAction" in ctx.data
-            or bool(_AA_KEY_RE.search(ctx.data))
-            or self._root_has_auto_action(pdf)
+        return scan_pdf_javascript(
+            ctx,
+            pdf,
+            source=self.name,
+            max_stream_bytes=_MAX_STREAM_BYTES,
+            extract_fn=self._extract_js,
         )
-        out.extend(self._analyze_js_text(js_text, auto_exec))
-        return out
 
     @staticmethod
     def _root_has_auto_action(pdf) -> bool:
-        """Structural auto-exec context (ObjStm-safe).
+        return root_has_auto_action(pdf)
 
-        Checks the document root (/OpenAction, /AA) AND every page dict's
-        /AA — a page-open action runs JS on merely VIEWING the page, which
-        the raw-byte fallback cannot see when pages live in object streams.
-        """
-        import pikepdf
-
-        try:
-            root = pdf.Root
-        except Exception:
-            return False
-        try:
-            if pikepdf.Name.OpenAction in root:
-                return True
-        except Exception:
-            pass
-        try:
-            if root.get(pikepdf.Name.AA) is not None:
-                return True
-        except Exception:
-            pass
-        try:
-            page_iter = iter(pdf.pages)
-        except Exception:
-            return False
-        while True:
-            # Pull ONE page at a time: a corrupt page tree raises here (caught
-            # below), and no huge PDF materialises all page handles at once.
-            try:
-                page = next(page_iter)
-            except StopIteration:
-                break
-            except Exception:
-                return False
-            # Per-page try: one corrupt page dict must not hide /AA on the
-            # remaining pages (fail-tolerant, like _layout_forensics).
-            try:
-                if pikepdf.Name.AA in page:
-                    return True
-            except Exception:
-                continue
-        return False
-
-    # Bounds for the action-graph walk. Depth 16 is far beyond any real
-    # action nesting (/OpenAction, /AA, /Annots/A are 1-3 levels deep); the
-    # node budget stops a hostile object graph from turning the walk into an
-    # unbounded traversal. Both are enforced per document.
-    _GRAPH_MAX_DEPTH = 16
-    _GRAPH_MAX_NODES = 200_000
+    _GRAPH_MAX_DEPTH = GRAPH_MAX_DEPTH
+    _GRAPH_MAX_NODES = GRAPH_MAX_NODES
 
     def _walk_action_graph(
         self, pdf, *, collect_js: bool, collect_uris: bool = False
     ) -> _GraphWalk:
-        """Walk dictionaries/arrays reachable from the document action anchors.
-
-        Returns a :class:`_GraphWalk` dataclass:
-
-        * ``js_values``: value of every ``/JS``/``/JavaScript`` key found
-          (direct or indirect; stream-/string-/array-shaped);
-        * ``uri_values``: ``/URI`` targets (plus Catalog ``/URI << /Base ... >>``
-          base strings when present; ``None`` sentinel on read error);
-        * ``launch_hits``: number of Launch actions (``/S /Launch`` or a
-          ``/Launch`` key) in the graph;
-        * ``truncated``: the depth/node bound was hit, i.e. the graph was NOT
-          fully inspected;
-        * ``visited``: object ids already walked, so an indirect payload that
-          is reachable twice is only collected/analysed once;
-        * ``incomplete``: ``True`` when URIs were requested and neither the
-          page tree nor the document root could be walked.
-
-        Starting points are the page tree and the document root; the root
-        walk reaches /OpenAction, /AA, /Names (JavaScript name tree) and
-        /AcroForm, the page walk reaches /Annots. Streams are NOT traversed:
-        their bytes are payload, not an object graph (a ``/JS`` stream value
-        is still collected and read by :meth:`_js_value_text`).
-        """
-        import pikepdf
-
-        js_values: list = []
-        uri_values: list = []
-        seen_uri_objgens: set[tuple[int, int]] = set()
-        visited: set[tuple[int, int]] = set()
-        state = {"nodes": 0, "launch": 0, "truncated": False}
-
-        def _record_uri(val: object) -> None:
-            uid = _identity(val)
-            if uid is not None:
-                if uid in seen_uri_objgens:
-                    return
-                seen_uri_objgens.add(uid)
-            uri_values.append(val)
-
-        def _identity(obj):
-            try:
-                if obj.is_indirect:
-                    return obj.objgen
-            except Exception:
-                pass
-            return None
-
-        def _walk(obj, depth: int) -> None:
-            if state["truncated"]:
-                return
-            state["nodes"] += 1
-            if depth > self._GRAPH_MAX_DEPTH or state["nodes"] > self._GRAPH_MAX_NODES:
-                state["truncated"] = True
-                return
-            if isinstance(obj, pikepdf.Stream):
-                # The stream CONTENT is payload, never an object graph; only
-                # the /JS value itself is decoded later.
-                return
-            ident = _identity(obj)
-            if ident is not None:
-                if ident in visited:
-                    return
-                visited.add(ident)
-            if isinstance(obj, pikepdf.Array):
-                try:
-                    items = list(obj)
-                except Exception:
-                    return
-                for item in items:
-                    _walk(item, depth + 1)
-                return
-            # pikepdf.Page is an ObjectHelper, NOT a Dictionary subclass; its
-            # underlying page dictionary is ``page.obj``.
-            if not isinstance(obj, pikepdf.Dictionary):
-                return
-            try:
-                keys = list(obj.keys())
-            except Exception:
-                return
-            key_names = {str(key) for key in keys}
-            is_launch = "/Launch" in key_names
-            if not is_launch:
-                try:
-                    is_launch = (
-                        obj.get(pikepdf.Name("/S")) == pikepdf.Name("/Launch")
-                    )
-                except Exception:
-                    is_launch = False
-            if is_launch:
-                state["launch"] += 1
-            # Collect THIS dictionary's JS carriers before descending into
-            # its other values: the old whole-object pass checked /JS and
-            # /JavaScript first, so a shallow payload keeps being analysed
-            # before a deeply nested one (budget order stays predictable).
-            if collect_js:
-                for js_key in (pikepdf.Name.JS, pikepdf.Name.JavaScript):
-                    if js_key in keys:
-                        with suppress(Exception):
-                            js_values.append(obj.get(js_key))
-            if collect_uris and pikepdf.Name.URI in keys:
-                try:
-                    uri_obj = obj.get(pikepdf.Name.URI)
-                except Exception:
-                    # Broken indirect /URI reference must never vanish silently:
-                    # append None sentinel so _link_indicators emits PDF_PARSE_WARN.
-                    uri_values.append(None)
-                else:
-                    if isinstance(uri_obj, pikepdf.Dictionary):
-                        # ISO 32000-1 §12.6.4.7: Document Catalog /URI << /Base (...) >>
-                        # is a standard dictionary, not a malformed URI string.
-                        if pikepdf.Name.Base in uri_obj:
-                            try:
-                                base_val = uri_obj.get(pikepdf.Name.Base)
-                            except Exception:
-                                uri_values.append(None)
-                            else:
-                                _record_uri(base_val)
-                    else:
-                        _record_uri(uri_obj)
-            for key in keys:
-                try:
-                    value = obj.get(key)
-                except Exception:
-                    continue
-                # The /JS value was collected above; walking it still reaches
-                # actions below a /JavaScript NAME TREE (the key also names a
-                # container). _js_value_text ignores container shapes.
-                _walk(value, depth + 1)
-
-        # Page tree first: a page dict also carries /Annots (and its /A
-        # actions). The root walk then reaches the rest and skips every
-        # indirect page it already saw.
-        try:
-            for page in pdf.pages:
-                try:
-                    page_dict = page.obj
-                except Exception:
-                    page_dict = page
-                _walk(page_dict, 0)
-                if state["truncated"]:
-                    break
-        except Exception:
-            pass
-        if not state["truncated"]:
-            try:
-                root = pdf.Root
-            except Exception:
-                root = None
-            if root is not None:
-                _walk(root, 0)
-        graph_incomplete = bool(collect_uris and not visited and not state["truncated"])
-        return _GraphWalk(
-            js_values=js_values,
-            uri_values=uri_values,
-            launch_hits=state["launch"],
-            truncated=bool(state["truncated"]),
-            visited=visited,
-            incomplete=graph_incomplete,
+        return walk_action_graph(
+            pdf,
+            collect_js=collect_js,
+            collect_uris=collect_uris,
+            max_depth=self._GRAPH_MAX_DEPTH,
+            max_nodes=self._GRAPH_MAX_NODES,
         )
 
     def _link_indicators(self, uri_values: list) -> list[Indicator]:
-        """Decode structural PDF ``/URI`` values and check them against local blocklists."""
-        cap = config.BINARY_IOC_MAX_HITS
-        urls: list[str] = []
-        seen: set[str] = set()
-        capped = False
-        raw_capped = False
-        unreadable = 0
-
-        # Hard ceiling on raw /URI decodings even when all entries are direct
-        # duplicates, namespaces, or unreadable objects (prevents CPU amplification).
-        max_raw_entries = max(cap * 20, 4_000)
-        for idx, raw in enumerate(uri_values):
-            if idx >= max_raw_entries:
-                raw_capped = True
-                break
-            url = _decode_pdf_uri(raw)
-            if url is None:
-                unreadable += 1
-                continue
-            if is_namespace_host(url):
-                continue
-            key = url.lower()
-            if key in seen:
-                continue
-            if cap > 0 and len(urls) >= cap:
-                capped = True
-                break
-            seen.add(key)
-            urls.append(url)
-
-        out: list[Indicator] = []
-        if unreadable:
-            out.append(
-                self._indicator(
-                    "PDF_PARSE_WARN",
-                    f"Nicht lesbare PDF-Links (/URI) ({unreadable})",
-                    detail=(
-                        f"{unreadable} /URI-Eintrag/-Einträge im PDF ließen sich "
-                        "nicht dekodieren und wurden daher NICHT geprüft."
-                    ),
-                    severity=Severity.MEDIUM,
-                    category=CAT_STRUCTURE,
-                    weight=20,
-                )
-            )
-        if capped or raw_capped:
-            cap_reason = (
-                f"Das PDF enthält mehr als {max_raw_entries} rohe /URI-Einträge."
-                if raw_capped and not capped
-                else f"Das PDF enthält mehr als {cap} eindeutige Links (/URI)."
-            )
-            out.append(
-                self._indicator(
-                    "PDF_LINK_CAPPED",
-                    "PDF-Link-Prüfung durch Trefferdeckel begrenzt",
-                    detail=(
-                        f"{cap_reason} Weitere Links wurden nicht geprüft — "
-                        "das Ergebnis ist daher nicht vollständig."
-                    ),
-                    severity=Severity.INFO,
-                    category=CAT_IOC,
-                    weight=0,
-                )
-            )
-        if not urls:
-            return out
-
-        hits = [(IOC_URL, url) for url in urls]
-        blocked, plain, unavailable = split_blocked_iocs(hits)
-
-        for rule_id, detail in unavailable:
-            out.append(
-                self._indicator(
-                    rule_id,
-                    BLOCKLIST_UNAVAILABLE_TITLE,
-                    detail=detail + " Das Ergebnis ist an dieser Stelle unvollständig.",
-                    severity=Severity.INFO,
-                    category=CAT_IOC,
-                    weight=0,
-                )
-            )
-
-        if blocked:
-            shown = ", ".join(
-                f"{defang_url(url)} ({host_of_url(url) or 'Host unbekannt'})"
-                for _kind, url in blocked[:10]
-            )
-            extra = f" (+{len(blocked) - 10} weitere)" if len(blocked) > 10 else ""
-            out.append(
-                self._indicator(
-                    "BINARY_IOC_BLOCKED",
-                    f"{BINARY_IOC_BLOCKED_TITLE} ({len(blocked)})",
-                    detail=(
-                        "Link in der PDF-Struktur (/Annots -> /A -> /URI) steht "
-                        f"auf der lokalen Blocklist: {shown}{extra}"
-                    ),
-                    severity=Severity.HIGH,
-                    category=CAT_IOC,
-                    weight=30,
-                )
-            )
-
-        if plain:
-            shown = ", ".join(defang_url(url) for _kind, url in plain[:10])
-            extra = f" (+{len(plain) - 10} weitere)" if len(plain) > 10 else ""
-            qualifier = (
-                "Ein Teil der lokalen Blocklisten war nicht lesbar; dieser "
-                "Hinweis ist daher nicht vollständig."
-                if unavailable
-                else "Kein Eintrag auf einer lokalen Blocklist — Hinweis ohne Einfluss auf die Bewertung."
-            )
-            out.append(
-                self._indicator(
-                    "PDF_LINK",
-                    f"Links im PDF ({len(plain)})",
-                    detail=(
-                        f"Strukturelle Links in der PDF-Struktur (/URI): {shown}{extra}. "
-                        f"{qualifier}"
-                    ),
-                    severity=Severity.INFO,
-                    category=CAT_IOC,
-                    weight=0,
-                )
-            )
-        return out
-
-    # -- stage 2b: embedded JavaScript ------------------------------------- #
+        return build_link_indicators(uri_values, source=self.name)
 
     def _extract_js(self, pdf) -> tuple[list[str], list[str]]:
-        """Collect embedded JavaScript code from the PDF (decompressed).
-
-        Returns ``(chunks, stream_warnings)``: streams whose decompressed
-        size exceeds the bomb limit are refused with a warning instead of
-        being materialised in full (OOM protection). Collection stops as
-        soon as the accumulated text reaches the analysis budget — the
-        per-stream cap alone would not bound the SUM over many streams,
-        and the budget is shared THROUGH the recursion so a single /JS
-        array of many strings cannot bypass it either.
-
-        Direct action dictionaries (``/OpenAction << /S /JavaScript /JS … >>``,
-        annotation ``/A``, the JavaScript name tree) are part of their parent
-        object and were invisible to the old ``pdf.objects`` loop; the bounded
-        graph walk reaches them (BUG-016). The old whole-object pass stays as
-        a fallback for action objects that are NOT reachable from the root
-        (e.g. a damaged page tree), skipping everything already walked.
-        """
-        import pikepdf
-
-        chunks: list[str] = []
-        warnings: list[str] = []
-        total_ref = [0]
-        walk = self._walk_action_graph(pdf, collect_js=True)
-        js_values = walk.js_values
-        visited = walk.visited
-        for value in js_values:
-            if total_ref[0] >= _MAX_STREAM_BYTES:
-                break
-            self._js_value_text(
-                value, pikepdf, depth=0, chunks=chunks,
-                warnings=warnings, total_ref=total_ref,
-            )
-        if total_ref[0] >= _MAX_STREAM_BYTES:
-            # Budget exhaustion MUST be visible: an attacker can pad with
-            # 8 MiB of harmless JS and hide a malicious /JS behind it —
-            # silently dropping that is an evasion vector (hunt finding 3.1).
-            warnings.append(
-                f"JS-Gesamtbudget ({_MAX_STREAM_BYTES} Bytes) erschöpft "
-                "— weitere /JS-Inhalte wurden nicht analysiert; das "
-                "Ergebnis ist nicht als 'sauber' zu werten."
-            )
-            return chunks, warnings
-        for obj in pdf.objects:
-            if obj is None:
-                continue
-            try:
-                if obj.is_indirect and obj.objgen in visited:
-                    continue
-            except Exception:
-                continue
-            try:
-                keys = list(obj.keys())
-            except Exception:
-                continue
-            for key in (pikepdf.Name.JS, pikepdf.Name.JavaScript):
-                if key not in keys:
-                    continue
-                try:
-                    value = obj.get(key)
-                except Exception:
-                    continue
-                self._js_value_text(
-                    value, pikepdf, depth=0, chunks=chunks,
-                    warnings=warnings, total_ref=total_ref,
-                )
-                if total_ref[0] >= _MAX_STREAM_BYTES:
-                    # Budget exhaustion MUST be visible: an attacker can pad
-                    # with 8 MiB of harmless JS and hide a malicious /JS
-                    # behind it — silently dropping that is an evasion
-                    # vector (hunt finding 3.1).
-                    warnings.append(
-                        f"JS-Gesamtbudget ({_MAX_STREAM_BYTES} Bytes) erschöpft "
-                        "— weitere /JS-Inhalte wurden nicht analysiert; das "
-                        "Ergebnis ist nicht als 'sauber' zu werten."
-                    )
-                    return chunks, warnings
-        return chunks, warnings
+        return extract_pdf_js(
+            pdf,
+            max_stream_bytes=_MAX_STREAM_BYTES,
+            max_depth=self._GRAPH_MAX_DEPTH,
+            max_nodes=self._GRAPH_MAX_NODES,
+        )
 
     @staticmethod
     def _js_value_text(
-        value, pikepdf, depth: int, chunks: list, warnings: list, total_ref: list
+        value,
+        pikepdf,
+        depth: int,
+        chunks: list,
+        warnings: list,
+        total_ref: list,
     ) -> None:
-        """Render a ``/JS`` value (stream, string or array of those) as text.
-
-        ``total_ref[0]`` tracks the cumulative character count across the
-        whole recursion; every append respects the remaining budget.
-        """
-
-        def _as_text(raw: bytes) -> str:
-            # PDF strings may be UTF-16BE with a BOM; decoding those as
-            # latin-1 garbles every second character and loses API hits.
-            if raw.startswith(b"\xfe\xff"):
-                return raw[2:].decode("utf-16-be", errors="ignore")
-            return raw.decode("latin-1", "ignore")
-
-        if depth > 4:
-            # BUG-023: a bound that silently drops payload is an evasion
-            # vector — the caller must be able to say "not examined".
-            note = (
-                "Verschachteltes /JS jenseits der Analysetiefe 4 wurde NICHT "
-                "analysiert — das Ergebnis ist nicht als 'sauber' zu werten."
-            )
-            if note not in warnings:
-                warnings.append(note)
-            return
-        if total_ref[0] >= _MAX_STREAM_BYTES:
-            # defensive: bound recursive structures AND the shared budget
-            return
-        try:
-            if isinstance(value, pikepdf.Stream):
-                payload, warn = _read_stream_bounded(value, pikepdf)
-                if warn is not None:
-                    warnings.append(warn)
-                if payload:
-                    # Analyse the readable prefix EVEN when warned: a
-                    # truncated stream still typically contains the whole
-                    # payload, and discarding it would let an attacker hide
-                    # JS by simply cutting the stream's last bytes. The
-                    # warning keeps the "not fully analysed" caveat visible.
-                    full_text = _as_text(payload)
-                    budget_left = _MAX_STREAM_BYTES - total_ref[0]
-                    text = full_text[:budget_left]
-                    if text:
-                        chunks.append(text)
-                        total_ref[0] += len(text)
-                    if len(text) < len(full_text):
-                        # Truncatur am Budget: der Rest dieses Streams (und
-                        # alle folgenden) werden nicht analysiert — sichtbar
-                        # melden statt still verwerfen (Evasions-Vektor,
-                        # Hunt-Fund 3.1).
-                        warnings.append(
-                            f"JS-Gesamtbudget ({_MAX_STREAM_BYTES} Bytes) erschöpft "
-                            "— dieser /JS-Stream wurde gekürzt; weitere Inhalte "
-                            "wurden nicht analysiert."
-                        )
-                return
-            if isinstance(value, pikepdf.Array):
-                for item in value:
-                    if total_ref[0] >= _MAX_STREAM_BYTES:
-                        return
-                    PdfPipeline._js_value_text(
-                        item, pikepdf, depth + 1, chunks, warnings, total_ref
-                    )
-                return
-            if isinstance(value, pikepdf.String):
-                text = _as_text(bytes(value))[: _MAX_STREAM_BYTES - total_ref[0]]
-                if text:
-                    chunks.append(text)
-                    total_ref[0] += len(text)
-            # Dictionaries/other shapes are not valid JS carriers; ignore.
-        except Exception:
-            return
-
-    def _analyze_js_text(self, js_text: str, auto_exec: bool) -> list[Indicator]:
-        """Static content analysis of extracted JavaScript (no execution)."""
-        out: list[Indicator] = []
-        lowered = js_text.lower()
-        excerpt = js_text.strip()[:200]
-
-        # Informational: JS was present and inspected (no score impact — the
-        # keyword triage already signals mere presence; the value here is the
-        # content analysis below).
-        out.append(
-            self._indicator(
-                "PDF_JS_EXTRACTED",
-                f"Eingebettetes JavaScript extrahiert ({len(js_text)} Zeichen)",
-                detail="JavaScript-Code wurde aus dem PDF dekomprimiert und statisch "
-                       "geprüft (nicht ausgeführt). Anfang: " + excerpt,
-                severity=Severity.INFO,
-                category=CAT_SCRIPT,
-                weight=0,
-            )
+        read_pdf_text_value(
+            value,
+            pikepdf,
+            depth,
+            chunks,
+            warnings,
+            total_ref,
+            max_stream_bytes=_MAX_STREAM_BYTES,
         )
 
-        boese = sorted({api for api in _PDF_JS_MALICIOUS if api in lowered})
-        if boese:
-            out.append(
-                self._indicator(
-                    "PDF_JS_SUSPICIOUS",
-                    "Bösartige JavaScript-APIs: " + ", ".join(boese),
-                    detail=(
-                        "Das eingebettete JavaScript nutzt Ausführungs-/Exfiltrations- "
-                        "oder bekannte Exploit-Primitive"
-                        + (", gekoppelt an eine Auto-Start-Aktion (/OpenAction, /AA)."
-                           if auto_exec else ".")
-                    ),
-                    severity=Severity.CRITICAL if auto_exec else Severity.HIGH,
-                    category=CAT_SCRIPT,
-                    weight=50 if auto_exec else 30,
-                )
-            )
+    def _analyze_js_text(self, js_text: str, auto_exec: bool) -> list[Indicator]:
+        return analyze_js_text(js_text, auto_exec, source=self.name)
 
-        # Dokumentuebliche APIs: sichtbar, aber kein Anker. Ein Formular, das
-        # einen Link oeffnet oder sich absendet, ist kein Angriff.
-        ueblich = sorted({api for api in _PDF_JS_COMMON if api in lowered})
-        if ueblich:
-            out.append(
-                self._indicator(
-                    "PDF_JS_DOC_API",
-                    "Dokumentübliche JavaScript-APIs: " + ", ".join(ueblich),
-                    detail=(
-                        "Diese APIs sind in Formularen und verlinkten Dokumenten "
-                        "alltäglich (Link öffnen, Formular absenden, Anmerkung "
-                        "lesen). Sie allein sind kein Hinweis auf eine Schadwirkung."
-                    ),
-                    severity=Severity.INFO,
-                    category=CAT_SCRIPT,
-                    # 0: the detail text already says it — these APIs alone
-                    # are not a finding. On the VA form 21-526ez this added
-                    # 10 points to /JS and an incomplete graph walk and made
-                    # a benign form RED.
-                    weight=0,
-                )
-            )
-
-        obf_hits = sorted({o for o in _PDF_JS_OBFUSCATION if o in lowered})
-        if obf_hits:
-            out.append(
-                self._indicator(
-                    "PDF_JS_OBFUSCATED",
-                    "Verschleiertes JavaScript: " + ", ".join(obf_hits),
-                    detail="Der JavaScript-Code nutzt Verschleierung (z. B. "
-                           "String.fromCharCode/unescape), um den Payload zu verbergen.",
-                    severity=Severity.HIGH,
-                    category=CAT_SCRIPT,
-                    weight=30,
-                )
-            )
-
-        # AP13: decode the hiding primitives statically and re-check the
-        # payload. Only a MALICIOUS primitive that was not visible in the
-        # original text is a new statement; harmless form JS that uses
-        # fromCharCode for a greeting stays without this finding.
-        decoded = deobfuscate_js(js_text)
-        if decoded != js_text:
-            decoded_lower = decoded.lower()
-            revealed = sorted(
-                {
-                    api
-                    for api in _PDF_JS_MALICIOUS
-                    if api in decoded_lower and api not in lowered
-                }
-            )
-            if revealed:
-                excerpt = decoded.strip()[:200]
-                # BUG-017: obfuscation must never TURN a verdict around. The
-                # same payload scored CRITICAL/50 when written as plain
-                # ``eval(...)`` and only MEDIUM/15 when written as
-                # ``"ev"+"al(...)"`` — 15 < SCORE_GREEN_MAX (19), so hiding
-                # the primitive made the file GREEN. A primitive revealed
-                # only after decoding is at least as suspicious as the one
-                # that was readable all along: same rating as
-                # PDF_JS_SUSPICIOUS.
-                out.append(
-                    self._indicator(
-                        "PDF_JS_DEOBFUSCATED",
-                        "Verschleiertes JavaScript enthält bösartige API: "
-                        + ", ".join(revealed),
-                        detail=(
-                            "Nach statischer Dekodierung (keine Ausführung) "
-                            "wurden bislang verborgene Primitive sichtbar: "
-                            + ", ".join(revealed)
-                            + ". Dekodierter Anfang: " + excerpt
-                        ),
-                        severity=Severity.CRITICAL if auto_exec else Severity.HIGH,
-                        category=CAT_SCRIPT,
-                        weight=50 if auto_exec else 30,
-                    )
-                )
-        return out
-
-    # -- stage 3: layout forensics ----------------------------------------- #
 
     def _layout_forensics(self, ctx: AnalysisContext, pdf) -> list[Indicator]:
         import pikepdf

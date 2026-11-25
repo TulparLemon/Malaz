@@ -517,22 +517,22 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         name="pdf-link-gewicht-falsch",
-        file="src/malaz/pipelines/pdf_pipeline.py",
+        file="src/malaz/pipelines/pdf_links.py",
         old=(
-            "                    severity=Severity.INFO,\n"
-            "                    category=CAT_IOC,\n"
-            "                    weight=0,\n"
-            "                )\n"
+            "                severity=Severity.INFO,\n"
+            "                category=CAT_IOC,\n"
+            "                weight=0,\n"
             "            )\n"
-            "        return out"
+            "        )\n"
+            "    return out"
         ),
         new=(
-            "                    severity=Severity.INFO,\n"
-            "                    category=CAT_IOC,\n"
-            "                    weight=20,\n"
-            "                )\n"
+            "                severity=Severity.INFO,\n"
+            "                category=CAT_IOC,\n"
+            "                weight=20,\n"
             "            )\n"
-            "        return out"
+            "        )\n"
+            "    return out"
         ),
         test="tests/test_pdf_links.py::test_legitimate_link_stays_green",
         why=(
@@ -542,9 +542,9 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         name="pdf-link-blocklist-aus",
-        file="src/malaz/pipelines/pdf_pipeline.py",
-        old="        blocked, plain, unavailable = split_blocked_iocs(hits)\n",
-        new="        blocked, plain, unavailable = [], hits, []\n",
+        file="src/malaz/pipelines/pdf_links.py",
+        old="    blocked, plain, unavailable = split_blocked_iocs(hits)\n",
+        new="    blocked, plain, unavailable = [], hits, []\n",
         test="tests/test_pdf_links.py::test_utf16_without_bom_is_decoded",
         why=(
             "Spec 006 (PDF-001): ohne split_blocked_iocs im PDF-Link-Pfad "
@@ -553,9 +553,9 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         name="pdf-walk-incomplete-aus",
-        file="src/malaz/pipelines/pdf_pipeline.py",
-        old='        graph_incomplete = bool(collect_uris and not visited and not state["truncated"])\n',
-        new="        graph_incomplete = False\n",
+        file="src/malaz/pipelines/pdf_links.py",
+        old='    graph_incomplete = bool(collect_uris and not visited and not state["truncated"])\n',
+        new="    graph_incomplete = False\n",
         test="tests/test_pdf_links.py::test_graph_incomplete_when_pages_and_root_unreadable",
         why=(
             "Spec 006 (PDF-001): ohne graph_incomplete bleiben unlesbare "
