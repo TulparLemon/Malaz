@@ -5683,52 +5683,57 @@
   },
   "v2/svg_script_0.svg": {
     "notes": [],
-    "risk": "YELLOW",
+    "risk": "RED",
     "rules": [
       "GEN_SUSPICIOUS_STRINGS",
+      "SVG_SCRIPT",
       "YARA_Suspicious_PowerShell_Encoded"
     ],
-    "score": 45,
+    "score": 80,
     "type": "xml"
   },
   "v2/svg_script_1.svg": {
     "notes": [],
-    "risk": "YELLOW",
+    "risk": "RED",
     "rules": [
       "GEN_SUSPICIOUS_STRINGS",
+      "SVG_SCRIPT",
       "YARA_Suspicious_PowerShell_Encoded"
     ],
-    "score": 45,
+    "score": 80,
     "type": "xml"
   },
   "v2/svg_script_2.svg": {
     "notes": [],
-    "risk": "YELLOW",
+    "risk": "RED",
     "rules": [
       "GEN_SUSPICIOUS_STRINGS",
+      "SVG_SCRIPT",
       "YARA_Suspicious_PowerShell_Encoded"
     ],
-    "score": 45,
+    "score": 80,
     "type": "xml"
   },
   "v2/svg_script_3.svg": {
     "notes": [],
-    "risk": "YELLOW",
+    "risk": "RED",
     "rules": [
       "GEN_SUSPICIOUS_STRINGS",
+      "SVG_SCRIPT",
       "YARA_Suspicious_PowerShell_Encoded"
     ],
-    "score": 45,
+    "score": 80,
     "type": "xml"
   },
   "v2/svg_script_4.svg": {
     "notes": [],
-    "risk": "YELLOW",
+    "risk": "RED",
     "rules": [
       "GEN_SUSPICIOUS_STRINGS",
+      "SVG_SCRIPT",
       "YARA_Suspicious_PowerShell_Encoded"
     ],
-    "score": 45,
+    "score": 80,
     "type": "xml"
   },
   "v2/swf_0.swf": {

@@ -208,6 +208,10 @@ _INCOMPLETE_RULES = frozenset(
         "PDF_PARSE_WARN",
         "PDF_JS_PARSE_WARN",
         "PDF_LINK_CAPPED",
+        # Web & OneNote (Spec 014)
+        "WEB_PARSE_LIMIT",
+        "ONENOTE_PARSE_ERROR",
+        "ONENOTE_OBJ_ERROR",
         # Office
         "OFFICE_LIB_MISSING",
         "OFFICE_STAGE_WARN",
@@ -506,6 +510,11 @@ TYPE_LABELS: dict[str, str] = {
     "tar": "TAR-Archiv",
     "cab": "CAB-Archiv",
     "iso": "ISO-Abbild",
+    "chm": "Windows-Hilfedatei (.chm)",
+    "vhdx": "Virtuelles Laufwerk (.vhdx)",
+    "ntfs": "NTFS-Dateisystemabbild",
+    "fat": "FAT/exFAT-Dateisystemabbild",
+    "onenote": "OneNote-Dokument (.one)",
     "deb": "Debian-Paket",
     "rpm": "RPM-Paket",
     # text and scripts

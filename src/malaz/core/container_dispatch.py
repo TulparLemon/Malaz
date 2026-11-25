@@ -561,7 +561,16 @@ def scan_sevenzip_members(
     """Scan members of a RAR/7z/CAB/ISO archive via the 7-Zip binary."""
     from .sevenzip import find_7z_binary, iter_7z_members
 
-    label = "CAB/ISO-Inhalt" if suffix in (".cab", ".iso") else "RAR/7z-Inhalt"
+    if suffix == ".chm":
+        label = "CHM-Inhalt"
+    elif suffix == ".vhdx":
+        label = "VHDX-Inhalt"
+    elif suffix in (".ntfs", ".fat"):
+        label = "Dateisystem-Abbild"
+    elif suffix in (".cab", ".iso"):
+        label = "CAB/ISO-Inhalt"
+    else:
+        label = "RAR/7z-Inhalt"
 
     if not config.SEVENZIP_ENABLED:
         # A disabled stage must be visible: container content silently not
@@ -685,6 +694,26 @@ def scan_rtf_objects(
         container_title="RTF-Objekte konnten nicht gelesen werden",
         member_rule="RTF_OBJ_ERROR",
         member_title="Eingebettetes Objekt nicht lesbar",
+        budget=budget,
+        truncated_prefix=truncated_prefix,
+    )
+
+
+def scan_onenote_objects(
+    ctx: ContainerScanContext, data: bytes, depth: int, budget: _ScanBudget | None = None,
+    truncated_prefix: bool = False,
+) -> list[ScanResult]:
+    """Scan FileDataStoreObject payloads extracted from a OneNote (.one) file."""
+    from .onenote_extract import iter_onenote_objects
+
+    return scan_children(ctx,
+        iter_onenote_objects(data),
+        depth,
+        path_label="(OneNote)",
+        container_rule="ONENOTE_PARSE_ERROR",
+        container_title="OneNote-Objekte konnten nicht gelesen werden",
+        member_rule="ONENOTE_OBJ_ERROR",
+        member_title="Eingebettetes OneNote-Objekt nicht lesbar",
         budget=budget,
         truncated_prefix=truncated_prefix,
     )
