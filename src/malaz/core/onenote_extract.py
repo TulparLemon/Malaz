@@ -72,7 +72,8 @@ def _infer_ext(payload: bytes) -> str:
     if ext is not None:
         return ext
     if ftype in ("text", "html", "xml"):
-        text = payload[:32768].decode("utf-8", errors="replace")
+        utf16_text = magic.decode_utf16_if_detected(payload, max_bytes=32768)
+        text = utf16_text if utf16_text is not None else payload[:32768].decode("utf-8", errors="replace")
         low = text.lower()
         if "<hta:application" in low:
             return ".hta"

