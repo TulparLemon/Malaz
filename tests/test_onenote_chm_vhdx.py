@@ -276,3 +276,14 @@ def test_risky_suffixes_cover_all_13_new_extensions_and_not_svg_html(tmp_path: P
     p.write_bytes(eml)
     res = _dispatcher().scan_path(p)
     assert "MAIL_ATTACH_RISKY_TYPE" in _rule_ids(res)
+
+    # Verify PDF embedded-file detection for new risky suffix (.one)
+    import pikepdf
+
+    pdf_path = tmp_path / "attach_one.pdf"
+    with pikepdf.Pdf.new() as pdf:
+        pdf.add_blank_page()
+        pdf.attachments["notes.one"] = _ONENOTE_MAGIC + b"\x00" * 32
+        pdf.save(pdf_path)
+    res_pdf = _dispatcher().scan_path(pdf_path)
+    assert "PDF_EMBEDDED_EXECUTABLE" in _rule_ids(res_pdf)

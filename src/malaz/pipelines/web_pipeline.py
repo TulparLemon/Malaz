@@ -114,6 +114,10 @@ _DATA_URI_B64_RE = re.compile(
 _SCRIPT_CLOSE_RE = re.compile(
     r"</(?:[a-zA-Z_][\w.-]{0,64}:)?script\s*>", re.IGNORECASE
 )
+_STYLE_CLOSE_RE = re.compile(
+    r"</(?:[a-zA-Z_][\w.-]{0,64}:)?style\s*>", re.IGNORECASE
+)
+_OVERSIZED_EVENT_RE = re.compile(r"[\s/]on[a-z]{3,24}\s*=", re.IGNORECASE)
 _BENIGN_GEOMETRY_TAGS = frozenset({"path", "polygon", "polyline"})
 _MAX_SINGLE_TAG_LEN = 65_536
 _ATOB_B64_RE = re.compile(
@@ -263,6 +267,7 @@ class _WebTagCollector(HTMLParser):
         self.tag_limit_exceeded = False
 
         self.script_depth = 0
+        self.style_depth = 0
         self.foreign_depth = 0
         self.object_hhctrl_depth = 0
 
@@ -319,7 +324,7 @@ class _WebTagCollector(HTMLParser):
             local_attr = k.rsplit(":", 1)[-1]
             if local_attr in ("href", "src", "action", "data", "values", "to", "from"):
                 uri_parts = v.split(";") if local_attr == "values" else (v,)
-                for raw_part in uri_parts[:32]:
+                for raw_part in uri_parts[:256]:
                     cleaned = _clean_uri_scheme(raw_part)
                     if cleaned.startswith(("javascript:", "vbscript:")):
                         if len(self.js_uris) < 16:
@@ -340,6 +345,8 @@ class _WebTagCollector(HTMLParser):
         if local == "script":
             self.has_script_tag = True
             self.script_depth += 1
+        elif local == "style":
+            self.style_depth += 1
 
         if local == "foreignobject":
             self.foreign_depth += 1
@@ -396,6 +403,8 @@ class _WebTagCollector(HTMLParser):
         local = self._local_name(tag)
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
+        elif local == "style" and self.style_depth > 0:
+            self.style_depth -= 1
         elif local == "foreignobject" and self.foreign_depth > 0:
             self.foreign_depth -= 1
         elif local == "object" and self.object_hhctrl_depth > 0:
@@ -407,6 +416,8 @@ class _WebTagCollector(HTMLParser):
         local = self._local_name(tag)
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
+        elif local == "style" and self.style_depth > 0:
+            self.style_depth -= 1
         elif local == "foreignobject" and self.foreign_depth > 0:
             self.foreign_depth -= 1
         elif local == "object" and self.object_hhctrl_depth > 0:
@@ -426,28 +437,48 @@ class _WebTagCollector(HTMLParser):
             self.script_texts.append(data[6:])
 
 
-def _find_tag_end_linear(text: str, lt: int) -> tuple[int, int]:
-    """Strictly O(N) quote-aware tag-end scanner starting at ``text[lt] == '<'``.
+def _find_tag_end_linear(
+    text: str, lt: int, exhausted_quotes: set[str]
+) -> tuple[int, int]:
+    """Strictly O(N) HTML5-aware tag-end scanner starting at ``text[lt] == '<'``.
 
-    Returns ``(gt, next_pos)``:
-    * ``gt >= 0``: matched closing ``'>'`` outside quotes; ``next_pos = gt + 1``.
-    * ``gt == -1``: malformed/unclosed tag; caller MUST jump directly to ``next_pos``
-      so every index is visited at most once (provably O(N) even on ``'<a '*N + '>'``).
+    * Treats ``'`` / ``"`` as attribute quote delimiters ONLY immediately after
+      ``=`` (+ optional whitespace), so unquoted HTML5 attributes such as
+      ``content=O'Brien`` never open a quoted string.
+    * If a quote character has no closing match anywhere in the remainder, it is
+      recorded in ``exhausted_quotes`` (searched at most once -> O(N)) and
+      treated as a literal character so later tags are never silently swallowed.
+    * On an unquoted ``'<'`` before ``'>'``, returns ``(-1, i)`` so the caller
+      jumps directly to ``i`` without rescanning any index.
     """
     n = len(text)
     i = lt + 1
+    after_eq = False
     while i < n:
         ch = text[i]
         if ch == ">":
             return i, i + 1
         if ch == "<":
             return -1, i
-        if ch in ('"', "'"):
-            q_end = text.find(ch, i + 1)
-            if q_end == -1:
-                return -1, n
-            i = q_end + 1
+        if ch == "=":
+            after_eq = True
+            i += 1
             continue
+        if ch in " \t\r\n\f":
+            i += 1
+            continue
+        if after_eq and ch in ('"', "'"):
+            after_eq = False
+            if ch not in exhausted_quotes:
+                q_end = text.find(ch, i + 1)
+                if q_end == -1:
+                    exhausted_quotes.add(ch)
+                    i += 1
+                    continue
+                i = q_end + 1
+                continue
+        else:
+            after_eq = False
         i += 1
     return -1, n
 
@@ -462,10 +493,13 @@ def _extract_tag_local_name(text: str, lt: int, gt: int) -> str:
     return text[start:i].rsplit(":", 1)[-1].lower()
 
 
-def _feed_bounded_tags(collector: _WebTagCollector, text: str) -> None:
+def _feed_bounded_tags(
+    collector: _WebTagCollector, text: str, *, is_svg: bool = False
+) -> None:
     """Feed bounded ``<...>`` tokens to ``_WebTagCollector`` in strictly O(N) time."""
     n = len(text)
     pos = 0
+    exhausted_quotes: set[str] = set()
     while pos < n and not collector.tag_limit_exceeded:
         if collector.script_depth > 0:
             m_close = _SCRIPT_CLOSE_RE.search(text, pos)
@@ -480,23 +514,56 @@ def _feed_bounded_tags(collector: _WebTagCollector, text: str) -> None:
             pos = m_close.end()
             continue
 
-        lt = text.find("<", pos)
-        if lt == -1:
-            break
-        if text.startswith("<!--", lt):
-            end_c = text.find("-->", lt + 4)
-            if end_c == -1:
+        if collector.style_depth > 0:
+            m_close = _STYLE_CLOSE_RE.search(text, pos)
+            if m_close is None:
                 break
-            pos = end_c + 3
-            continue
-        if text.startswith("<![CDATA[", lt):
-            end_cd = text.find("]]>", lt + 9)
-            if end_cd == -1:
-                break
-            pos = end_cd + 3
+            collector.handle_endtag("style")
+            pos = m_close.end()
             continue
 
-        gt, next_pos = _find_tag_end_linear(text, lt)
+        lt = text.find("<", pos)
+        if lt == -1 or lt + 1 >= n:
+            break
+
+        # HTML5: '<' only starts a tag/declaration if followed by [A-Za-z/!?].
+        # Literal '<' in text (e.g. 'If x < 5 and it's fine') is skipped cleanly.
+        nxt = text[lt + 1]
+        if not (nxt.isalpha() or nxt in "/!?"):
+            pos = lt + 1
+            continue
+
+        # HTML5 comments: handle abrupt '<!-->' / '<!--->' and both '-->' / '--!>'.
+        if text.startswith("<!--", lt):
+            if text.startswith("<!-->", lt):
+                pos = lt + 5
+                continue
+            if text.startswith("<!--->", lt):
+                pos = lt + 6
+                continue
+            end_std = text.find("-->", lt + 4)
+            end_bang = text.find("--!>", lt + 4)
+            if end_std == -1 and end_bang == -1:
+                break
+            pos = end_std + 3 if end_std != -1 and (end_bang == -1 or end_std < end_bang) else end_bang + 4
+            continue
+
+        # CDATA only exists in XML/SVG; in HTML5 '<![CDATA[...>' is a bogus comment
+        # terminated at the very first '>'.
+        if text.startswith("<![CDATA[", lt):
+            if is_svg:
+                end_cd = text.find("]]>", lt + 9)
+                if end_cd == -1:
+                    break
+                pos = end_cd + 3
+            else:
+                gt_cd = text.find(">", lt + 9)
+                if gt_cd == -1:
+                    break
+                pos = gt_cd + 1
+            continue
+
+        gt, next_pos = _find_tag_end_linear(text, lt, exhausted_quotes)
         if gt == -1:
             pos = next_pos
             continue
@@ -511,9 +578,13 @@ def _feed_bounded_tags(collector: _WebTagCollector, text: str) -> None:
                     if len(collector.data_uri_attrs) >= _MAX_B64_CANDIDATES:
                         break
                     collector.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
-            is_benign_geom = local in _BENIGN_GEOMETRY_TAGS and not any(
-                tok in low_slice
-                for tok in ("on", "javascript:", "vbscript:", "data:text/html", "<script")
+            is_benign_geom = (
+                local in _BENIGN_GEOMETRY_TAGS
+                and _OVERSIZED_EVENT_RE.search(tag_slice) is None
+                and not any(
+                    tok in low_slice
+                    for tok in ("javascript:", "vbscript:", "data:text/html", "<script", "&#")
+                )
             )
             if not is_benign_geom:
                 collector.tag_limit_exceeded = True
@@ -554,7 +625,7 @@ class WebContentPipeline(Pipeline):
     ) -> list[Indicator]:
         collector = _WebTagCollector()
         with contextlib.suppress(Exception):
-            _feed_bounded_tags(collector, text)
+            _feed_bounded_tags(collector, text, is_svg=is_svg)
 
         found: dict[str, Indicator] = {}
 
