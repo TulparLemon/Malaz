@@ -267,9 +267,9 @@ class _WebTagCollector(HTMLParser):
     def set_cdata_mode(self, elem: str, *, escapable: bool = False) -> None:
         return
 
-    def __init__(self, *, is_svg: bool = False) -> None:
+    def __init__(self, *, xml_mode: bool = False) -> None:
         super().__init__(convert_charrefs=True)
-        self.is_svg = is_svg
+        self.xml_mode = xml_mode
         self.tag_count = 0
         self.tag_limit_exceeded = False
 
@@ -352,7 +352,7 @@ class _WebTagCollector(HTMLParser):
         if local == "script":
             self.has_script_tag = True
             self.script_depth += 1
-        elif local == "style" or (not self.is_svg and local in _RAWTEXT_CLOSE_RES):
+        elif local == "style" or (not self.xml_mode and local in _RAWTEXT_CLOSE_RES):
             self.rawtext_tag = local
 
         if local == "foreignobject":
@@ -407,6 +407,10 @@ class _WebTagCollector(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
+        if not self.xml_mode:
+            # In WHATWG HTML5, trailing '/' on non-void elements (<script/>,
+            # <textarea/>, <style/>, <object/>, ...) does NOT close them.
+            return
         local = self._local_name(tag)
         if local == "script" and self.script_depth > 0:
             self.script_depth -= 1
@@ -501,7 +505,7 @@ def _extract_tag_local_name(text: str, lt: int, gt: int) -> str:
 
 
 def _feed_bounded_tags(
-    collector: _WebTagCollector, text: str, *, is_svg: bool = False
+    collector: _WebTagCollector, text: str, *, xml_mode: bool = False
 ) -> None:
     """Feed bounded ``<...>`` tokens to ``_WebTagCollector`` in strictly O(N) time."""
     n = len(text)
@@ -509,6 +513,8 @@ def _feed_bounded_tags(
     exhausted_quotes: set[str] = set()
     no_std_comment = False
     no_bang_comment = False
+    next_std_comment = -1
+    next_bang_comment = -1
     no_pi_close = False
     while pos < n and not collector.tag_limit_exceeded:
         if collector.script_depth > 0:
@@ -558,23 +564,28 @@ def _feed_bounded_tags(
             if text.startswith("<!--->", lt):
                 pos = lt + 6
                 continue
-            end_std = -1 if no_std_comment else text.find("-->", lt + 4)
-            if end_std == -1:
-                no_std_comment = True
-                end_bang = -1 if no_bang_comment else text.find("--!>", lt + 4)
-                if end_bang == -1:
+            if not no_std_comment and next_std_comment < lt + 4:
+                next_std_comment = text.find("-->", lt + 4)
+                if next_std_comment == -1:
+                    no_std_comment = True
+            if not no_bang_comment and next_bang_comment < lt + 4:
+                next_bang_comment = text.find("--!>", lt + 4)
+                if next_bang_comment == -1:
                     no_bang_comment = True
-                    break
-                pos = end_bang + 4
-            else:
-                end_bang = -1 if no_bang_comment else text.find("--!>", lt + 4, end_std)
-                pos = end_bang + 4 if end_bang != -1 else end_std + 3
+            if no_std_comment and no_bang_comment:
+                break
+            pos = (
+                next_std_comment + 3
+                if not no_std_comment
+                and (no_bang_comment or next_std_comment < next_bang_comment)
+                else next_bang_comment + 4
+            )
             continue
 
         # CDATA only exists in XML/SVG; in HTML5 '<![CDATA[...>' is a bogus comment
         # terminated at the very first '>'.
         if text.startswith("<![CDATA[", lt):
-            if is_svg:
+            if xml_mode:
                 end_cd = text.find("]]>", lt + 9)
                 if end_cd == -1:
                     break
@@ -590,7 +601,7 @@ def _feed_bounded_tags(
         # attribute-quote scanning (prevents '<!x a=">' / '<?x a=">' from
         # swallowing the following tag).
         if nxt == "?":
-            if is_svg and not no_pi_close:
+            if xml_mode and not no_pi_close:
                 end_pi = text.find("?>", lt + 2)
                 if end_pi != -1:
                     pos = end_pi + 2
@@ -606,7 +617,7 @@ def _feed_bounded_tags(
             gt_decl = text.find(">", lt + 2)
             if gt_decl == -1:
                 break
-            if is_svg:
+            if xml_mode:
                 lb = text.find("[", lt + 2, gt_decl)
                 if lb != -1:
                     rb = text.find("]>", lb + 1)
@@ -677,9 +688,10 @@ class WebContentPipeline(Pipeline):
         is_html: bool,
         depth: int,
     ) -> list[Indicator]:
-        collector = _WebTagCollector(is_svg=is_svg)
+        xml_mode = is_svg and not is_html
+        collector = _WebTagCollector(xml_mode=xml_mode)
         with contextlib.suppress(Exception):
-            _feed_bounded_tags(collector, text, is_svg=is_svg)
+            _feed_bounded_tags(collector, text, xml_mode=xml_mode)
 
         found: dict[str, Indicator] = {}
 

