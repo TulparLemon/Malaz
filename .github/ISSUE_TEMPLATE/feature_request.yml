@@ -1,0 +1,27 @@
+name: Feature Request
+description: Propose a new file format analyzer, detection improvement, or workflow enhancement.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What threat vector, file format, or workflow gap does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the expected static analysis, CLI/GUI integration, or reporting output.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: principles_confirm
+    attributes:
+      label: Project principles alignment
+      options:
+        - label: I understand Malaz is strictly offline-by-default (no cloud telemetry or unsolicited network lookups) and licensed under GPL-3.0-or-later.
+          required: true

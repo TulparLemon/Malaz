@@ -85,10 +85,6 @@ For archives and emails with attachments, parent items inherit elevated child ri
 
 ---
 
-## 5. Measured Performance Highlights
+## 5. Benchmarks & Reproducible Quality Metrics
 
-Measured statically (`Dispatcher()` without external AV subprocesses) across a **1,922-file / 43-type** multi-format benchmark corpus ([`scripts/benchmark.py`](../scripts/benchmark.py)):
-
-- **Throughput:** 1,922 files scanned in **283.1 s** (**147 ms/file** mean, 0 crashes).
-- **Typical Median (`p50`) Latency:** `3–9 ms` for `PNG`/`JSON`/`LNK`/`SWF`/`ZIP`/`TAR`/`GZIP`, `18 ms` for `PDF`, `47–88 ms` for `DOC`/`DOCX`/`XLSX`, `287 ms` warm for `PE` (`notepad.exe`).
-- **ClamAV Daemon Speedup:** Persistent loopback `clamd` reduces ClamAV scan overhead from **18.8 s** (`clamscan` cold DB load) to **41 ms** per file (~455× faster).
+Deterministic static corpus coverage (across `scripts/make_test_corpus_extended.py`, `scripts/make_benign_corpus.py`, and `scripts/make_corpus_v2.py`), throughput/latency reference figures (`scripts/benchmark.py`), and local reproduction commands are maintained in [docs/BENCHMARKS.md](BENCHMARKS.md) and checked for drift in CI via `python scripts/run_corpus.py --check-doc docs/BENCHMARKS.md`.

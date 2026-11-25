@@ -1,0 +1,73 @@
+name: Bug Report
+description: Report a crash, incorrect verdict handling, or UI/CLI defect in Malaz.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug!
+        **Privacy & OpSec notice:** Never attach confidential/personal documents, real malware samples, or unredacted JSON/HTML exports, stack traces, or logs containing local paths (such as `C:\Users\<name>\...`) or original filenames.
+
+  - type: input
+    id: version
+    attributes:
+      label: Malaz version
+      description: Run `Malaz.exe --version` or `python -m malaz --version`.
+      placeholder: e.g. 1.2.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Installation method
+      options:
+        - Portable Release ZIP
+        - Run from Source
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: Windows version
+      placeholder: e.g. Windows 11 23H2 (x64)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: engines
+    attributes:
+      label: Active engines / scan mode
+      options:
+        - label: Windows Defender (default)
+        - label: ClamAV / clamd
+        - label: 7-Zip
+        - label: Detect It Easy (DIE)
+        - label: capa (opt-in)
+        - label: "--static-only mode"
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Describe the exact steps and minimal synthetic input needed to reproduce the issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs. actual behavior
+      description: Include redacted error messages or rule IDs only (no personal paths or raw exports).
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: privacy_confirm
+    attributes:
+      label: Privacy & safety confirmation
+      options:
+        - label: I confirm this report contains no confidential documents, no unredacted personal paths/raw exports, and no live malware samples.
+          required: true

@@ -82,6 +82,7 @@ STEPS: tuple[Step, ...] = (
     Step("mutations", ("scripts/check_tests_bite.py",), timeout=10800),
     Step("golden-snapshot", ("scripts/make_golden_snapshot.py", "--check"), timeout=3600),
     Step("golden-images", ("scripts/make_golden_images.py", "--check"), timeout=1800),
+    Step("benchmark-doc", ("scripts/run_corpus.py", "--check-doc", "docs/BENCHMARKS.md"), timeout=1800),
     Step("doc-claims", ("scripts/check_doc_claims.py",)),
     Step("duplicate-logic", ("scripts/check_duplicate_logic.py",)),
 )
