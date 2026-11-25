@@ -268,6 +268,48 @@ def decode_utf16_if_detected(data: bytes, max_bytes: int | None = None) -> str |
     return None
 
 
+def skip_xml_doctype_end(text: str, pos: int) -> int:
+    """Strictly linear O(N) XML 1.0 ``<!DOCTYPE ...>`` / ``<!...>`` end finder.
+
+    Honors quoted PUBLIC/SYSTEM/ENTITY literals, XML comments (``<!--...-->``),
+    processing instructions (``<?...?>``), optional internal subset ``[...]``,
+    and optional whitespace between ``]`` and ``>`` per XML 1.0 §2.8 [28].
+    Returns the index immediately after the closing ``>``, or ``-1`` if unclosed.
+    """
+    n = len(text)
+    i = pos + 2
+    in_subset = False
+    while i < n:
+        if text.startswith("<!--", i):
+            end_c = text.find("-->", i + 4)
+            if end_c == -1:
+                return -1
+            i = end_c + 3
+            continue
+        if text.startswith("<?", i):
+            end_p = text.find("?>", i + 2)
+            if end_p == -1:
+                return -1
+            i = end_p + 2
+            continue
+        ch = text[i]
+        if ch in ('"', "'"):
+            q_end = text.find(ch, i + 1)
+            if q_end == -1:
+                return -1
+            i = q_end + 1
+            continue
+        if not in_subset:
+            if ch == "[":
+                in_subset = True
+            elif ch == ">":
+                return i + 1
+        elif ch == "]":
+            in_subset = False
+        i += 1
+    return -1
+
+
 def skip_xml_prolog_pos(text: str) -> int:
     """Linear O(N) prolog skip over BOM, whitespace, ``<?...?>``, ``<!--...-->`` and ``<!DOCTYPE ...>``."""
     n = len(text)
@@ -292,18 +334,10 @@ def skip_xml_prolog_pos(text: str) -> int:
             pos = end + 2
             continue
         if text[pos : pos + 9].lower() == "<!doctype":
-            # Handle optional internal subset [...] linearly.
-            gt = text.find(">", pos + 9)
-            if gt == -1:
+            end_dt = skip_xml_doctype_end(text, pos)
+            if end_dt == -1:
                 return n
-            lb = text.find("[", pos + 9, gt)
-            if lb != -1:
-                rb = text.find("]>", lb + 1)
-                if rb == -1:
-                    return n
-                pos = rb + 2
-            else:
-                pos = gt + 1
+            pos = end_dt
             continue
         break
     return pos

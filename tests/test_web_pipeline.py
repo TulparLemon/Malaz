@@ -1141,3 +1141,46 @@ def test_xml_svg_script_cdata_and_comment_containing_closing_script(tmp_path: Pa
     )
     ids_c = _rule_ids(_scan(tmp_path, "svg_cmt_close.svg", svg_comment))
     assert {"SVG_SCRIPT", "SVG_EXTERNAL_REDIRECT", "SVG_FOREIGN_OBJECT", "HTML_CREDENTIAL_FORM"} <= ids_c
+
+
+def test_svg_xml10_doctype_internal_subset_variants(tmp_path: Path):
+    """r17 Blocker 1: XML 1.0 DOCTYPE subsets with '] >', comment/entity ']>' and '>' in literal."""
+    cases = [
+        (
+            "dt_ws.svg",
+            (
+                b'<?xml version="1.0"?><!DOCTYPE svg [ <!ENTITY a "b"> ] >'
+                b'<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'
+            ),
+        ),
+        (
+            "dt_cmt.svg",
+            (
+                b'<?xml version="1.0"?><!DOCTYPE svg [ <!-- ]> --> <!ENTITY x "]><!--"> ]>'
+                b'<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'
+            ),
+        ),
+        (
+            "dt_pub.svg",
+            (
+                b'<?xml version="1.0"?><!DOCTYPE svg PUBLIC "-//a>b" "x" [ <!ENTITY a "b"> ]>'
+                b'<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'
+            ),
+        ),
+    ]
+    for name, data in cases:
+        assert "SVG_SCRIPT" in _rule_ids(_scan(tmp_path, name, data)), f"Bypassed on {name}"
+
+
+def test_svg_prefixed_root_after_large_html_comment_stays_in_xml_mode(tmp_path: Path):
+    """r17 Major 2: >64 KiB '<!-- <html ... -->' before <svg:svg> must still use xml_mode."""
+    pad = b"A" * 70_000
+    payload = (
+        b"<!-- <html>" + pad + b" -->"
+        b'<svg:svg xmlns:svg="http://www.w3.org/2000/svg">'
+        b"<svg:script>window.location='https://evil.example'</svg:script>"
+        b"</svg:svg>"
+    )
+    for fname in ("disguised_svg.svg", "disguised_svg.txt"):
+        ids = _rule_ids(_scan(tmp_path, fname, payload))
+        assert {"SVG_SCRIPT", "SVG_EXTERNAL_REDIRECT"} <= ids, f"Failed for {fname}: {ids}"

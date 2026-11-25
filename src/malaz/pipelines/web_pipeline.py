@@ -941,17 +941,17 @@ def _feed_bounded_tags(
             continue
 
         if nxt == "!":
+            if xml_mode:
+                end_dt = magic.skip_xml_doctype_end(text, lt)
+                if end_dt == -1:
+                    collector.tag_limit_exceeded = True
+                    collector.parse_limit_reason = "Unvollständige XML-Deklaration"
+                    break
+                pos = end_dt
+                continue
             gt_decl = text.find(">", lt + 2)
             if gt_decl == -1:
                 break
-            if xml_mode:
-                lb = text.find("[", lt + 2, gt_decl)
-                if lb != -1:
-                    rb = text.find("]>", lb + 1)
-                    if rb == -1:
-                        break
-                    pos = rb + 2
-                    continue
             pos = gt_decl + 1
             continue
 
@@ -1019,7 +1019,9 @@ class WebContentPipeline(Pipeline):
         text = _decode_web_text(ctx.data)
         suffix = ctx.path.suffix.lower() if ctx.path.suffix else ""
         is_svg = magic.is_svg_root(text)
-        is_html = ctx.detected_type == "html" or suffix in _WEB_HTML_SUFFIXES
+        is_html = suffix in _WEB_HTML_SUFFIXES or (
+            ctx.detected_type == "html" and not is_svg
+        )
 
         # Plain XML (e.g. rechnung.xml, OOXML members) without <svg> or HTML suffix.
         if not is_svg and not is_html:
