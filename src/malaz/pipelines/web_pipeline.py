@@ -189,7 +189,9 @@ def _preprocess_js(text: str) -> tuple[str, bool]:
     work = _CONCAT_RE.sub("", text)
     limit_hit = False
     if ".join(" in work:
-        work, _changed, limit_hit = merge_js_array_joins(work)
+        work, _changed, limit_hit = merge_js_array_joins(
+            work, max_output=max(512 * 1024, len(work) + 65_536)
+        )
     return work, limit_hit
 
 

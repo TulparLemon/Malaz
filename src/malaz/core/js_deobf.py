@@ -387,17 +387,27 @@ def _resolve_js_string_tables(
     limit_reason = ""
     n = len(text)
 
+    next_rb = -1
+    next_lb = -1
     for m in _JS_TABLE_DECL_RE.finditer(text):
         ident = m.group(1)
         if ident not in tables and len(tables) >= MAX_JS_TABLES:
             limit_hit = True
             limit_reason = REASON_TABLE_LIMIT
             break
-        rb = text.find("]", m.end(), min(n, m.end() + 262_144))
-        if rb == -1:
+        m_end = m.end()
+        if m_end > next_rb:
+            next_rb = text.find("]", m_end)
+            if next_rb == -1:
+                break
+        if m_end > next_lb:
+            next_lb = text.find("[", m_end)
+        # Skip in O(1) when another '[' precedes the matching ']' (not a flat string array)
+        if next_lb != -1 and next_lb < next_rb:
             continue
+        rb = next_rb
         items, arr_lim = _parse_js_string_array_inner(
-            text[m.end() : rb],
+            text[m_end:rb],
             max_items=MAX_JS_ARRAY_ITEMS,
             max_item_chars=MAX_JS_ITEM_CHARS,
         )

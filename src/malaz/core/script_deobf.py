@@ -556,6 +556,8 @@ def _decode_ps_char_arrays(
 ) -> tuple[str, bool, bool, bool]:
     """Decode PowerShell ``[char[]]@(...)``, ``-join [char[]](...)`` and ``[char]N``.
 
+    Strictly linear O(N): caches next ``)`` and ``(`` indices so nested or
+    unclosed ``[char[]](`` runs never re-scan or copy overlapping spans.
     Returns ``(new_text, changed, high_confidence, limit_hit)``.
     """
     low = text.lower()
@@ -571,21 +573,33 @@ def _decode_ps_char_arrays(
     out_len = 0
     pos = 0
     n = len(text)
+    next_close = -1
+    next_open = -1
+
     for m in _PS_CHAR_ARRAY_HEAD_RE.finditer(text):
         start = m.start()
         if start < pos:
             continue
-        is_int_arr = m.group(0).lower().startswith("[int[]]")
-        close = text.find(")", m.end())
-        if close == -1:
+        m_end = m.end()
+        if m_end > next_close:
+            next_close = text.find(")", m_end)
+            if next_close == -1:
+                break
+        if m_end > next_open:
+            next_open = text.find("(", m_end)
+        # Skip in O(1) if another '(' sits before the matching ')' (cannot be flat int list)
+        if next_open != -1 and next_open < next_close:
             continue
+
+        close = next_close
+        is_int_arr = m.group(0).lower().startswith("[int[]]")
         if is_int_arr:
             before_ok = bool(_PS_INT_CTX_BEFORE_RE.search(text[max(0, start - 32) : start]))
             after_ok = bool(_PS_INT_CTX_AFTER_RE.search(text[close + 1 : close + 64]))
             if not (before_ok or after_ok):
                 continue
 
-        body = text[m.end() : close]
+        body = text[m_end:close]
         raw_parts = body.split(",")
         if len(raw_parts) > MAX_CHAR_ITEMS:
             limit_hit = True
@@ -611,7 +625,6 @@ def _decode_ps_char_arrays(
         if not valid_array or not chars:
             continue
 
-        # Consume trailing `-join ''` / `-join ""` if present.
         end_pos = close + 1
         jm = _PS_JOIN_TAIL_RE.match(text[end_pos : end_pos + 32])
         if jm:
@@ -642,16 +655,17 @@ def _decode_ps_char_arrays(
     # 2. Single [char]NN casts
     if "[char]" in work.lower():
         single_count = 0
+        single_changed = False
 
         def _repl_char(match: re.Match) -> str:
-            nonlocal changed, single_count
+            nonlocal single_changed, single_count
             try:
                 cp = int(match.group(1), 0)
             except ValueError:
                 return match.group(0)
             if not (0 <= cp <= 0x10FFFF):
                 return match.group(0)
-            changed = True
+            single_changed = True
             if 0x20 <= cp <= 0x7E or cp in (9, 10, 13):
                 single_count += 1
             return _ps_quote(chr(cp))
@@ -659,6 +673,8 @@ def _decode_ps_char_arrays(
         candidate = _PS_SINGLE_CHAR_RE.sub(_repl_char, work)
         if len(candidate) <= max_out:
             work = candidate
+            if single_changed:
+                changed = True
             if single_count >= 8:
                 high_conf = True
         else:
@@ -667,11 +683,18 @@ def _decode_ps_char_arrays(
     return work, changed, high_conf, limit_hit
 
 
-def _read_ps_string_literal(text: str, start: int) -> tuple[str, int] | None:
-    """Read one PowerShell single- or double-quoted literal starting at ``start``."""
+def _read_ps_string_literal(text: str, start: int) -> tuple[str | None, int, bool]:
+    """Read one PowerShell single- or double-quoted literal linearly.
+
+    Returns ``(value_or_none, end_pos, closed)``:
+    - ``closed=False`` means EOF was reached without a closing quote (``end_pos == len(text)``);
+      callers mark that quote type exhausted so no later quote re-scans to EOF (strict O(N)).
+    - ``closed=True, value=None`` means a double-quoted string contained ``$`` interpolation;
+      callers skip verbatim to ``end_pos`` without re-scanning interior quotes.
+    """
     n = len(text)
     if start >= n or text[start] not in ("'", '"'):
-        return None
+        return None, start, False
     q = text[start]
     i = start + 1
     buf: list[str] = []
@@ -682,43 +705,46 @@ def _read_ps_string_literal(text: str, start: int) -> tuple[str, int] | None:
                     buf.append("'")
                     i += 2
                     continue
-                return "".join(buf), i + 1
+                return "".join(buf), i + 1, True
             buf.append(text[i])
             i += 1
-        return None
-    # Double-quoted string: do not evaluate variable interpolation (`$var`).
+        return None, n, False
+
+    has_dollar = False
     while i < n:
         c = text[i]
         if c == "`" and i + 1 < n:
             nxt = text[i + 1]
-            if nxt in ('"', "`", "$"):
-                buf.append(nxt)
-            elif nxt == "n":
-                buf.append("\n")
-            elif nxt == "r":
-                buf.append("\r")
-            elif nxt == "t":
-                buf.append("\t")
-            else:
-                buf.append(nxt)
+            if not has_dollar:
+                if nxt in ('"', "`", "$"):
+                    buf.append(nxt)
+                elif nxt == "n":
+                    buf.append("\n")
+                elif nxt == "r":
+                    buf.append("\r")
+                elif nxt == "t":
+                    buf.append("\t")
+                else:
+                    buf.append(nxt)
             i += 2
             continue
         if c == '"':
             if i + 1 < n and text[i + 1] == '"':
-                buf.append('"')
+                if not has_dollar:
+                    buf.append('"')
                 i += 2
                 continue
-            return "".join(buf), i + 1
+            return (None if has_dollar else "".join(buf)), i + 1, True
         if c == "$":
-            # Skip interpolation-bearing double-quoted strings to avoid mangling.
-            return None
-        buf.append(c)
+            has_dollar = True
+        elif not has_dollar:
+            buf.append(c)
         i += 1
-    return None
+    return None, n, False
 
 
 def _merge_ps_concat(text: str, max_out: int) -> tuple[str, bool, bool]:
-    """Linear O(N) merger for PowerShell ``'a' + 'b'`` string concatenations."""
+    """Strictly linear O(N) merger for PowerShell ``'a' + 'b'`` string concatenations."""
     if "+" not in text or ("'" not in text and '"' not in text):
         return text, False, False
 
@@ -728,18 +754,25 @@ def _merge_ps_concat(text: str, max_out: int) -> tuple[str, bool, bool]:
     i = 0
     changed = False
     limit_hit = False
+    exhausted: set[str] = set()
 
     while i < n:
         ch = text[i]
-        if ch in ("'", '"'):
-            first = _read_ps_string_literal(text, i)
-            if first is None:
+        if ch in ("'", '"') and ch not in exhausted:
+            val, end, closed = _read_ps_string_literal(text, i)
+            if not closed:
+                exhausted.add(ch)
                 out.append(ch)
                 out_len += 1
                 i += 1
                 continue
-            parts = [first[0]]
-            end = first[1]
+            if val is None:
+                seg = text[i:end]
+                out.append(seg)
+                out_len += len(seg)
+                i = end
+                continue
+            parts = [val]
             while True:
                 j = end
                 while j < n and text[j] in " \t\r\n":
@@ -748,11 +781,15 @@ def _merge_ps_concat(text: str, max_out: int) -> tuple[str, bool, bool]:
                     j += 1
                     while j < n and text[j] in " \t\r\n":
                         j += 1
-                    nxt = _read_ps_string_literal(text, j)
-                    if nxt is not None:
-                        parts.append(nxt[0])
-                        end = nxt[1]
-                        continue
+                    if j < n and text[j] in ("'", '"') and text[j] not in exhausted:
+                        nval, nend, nclosed = _read_ps_string_literal(text, j)
+                        if not nclosed:
+                            exhausted.add(text[j])
+                            break
+                        if nval is not None:
+                            parts.append(nval)
+                            end = nend
+                            continue
                 break
             if len(parts) >= 2:
                 merged = _ps_quote("".join(parts))
@@ -783,7 +820,7 @@ def _merge_ps_concat(text: str, max_out: int) -> tuple[str, bool, bool]:
 def _eval_ps_format_f(
     text: str, max_out: int
 ) -> tuple[str, bool, bool, bool]:
-    """Safe linear PowerShell ``-f`` format-operator evaluator (never ``str.format``).
+    """Safe linear O(N) PowerShell ``-f`` format-operator evaluator (never ``str.format``).
 
     Returns ``(new_text, changed, high_confidence, limit_hit)``.
     """
@@ -798,146 +835,171 @@ def _eval_ps_format_f(
     changed = False
     high_conf = False
     limit_hit = False
+    exhausted: set[str] = set()
 
     while i < n:
-        # Optional enclosing '(' around "template" -f arg0, arg1
         paren_wrapped = False
         lit_start = i
         if text[i] == "(":
             j = i + 1
             while j < n and text[j] in " \t\r\n":
                 j += 1
-            if j < n and text[j] in ("'", '"'):
+            if j < n and text[j] in ("'", '"') and text[j] not in exhausted:
                 paren_wrapped = True
                 lit_start = j
 
-        if text[lit_start] in ("'", '"'):
-            tmpl_parsed = _read_ps_string_literal(text, lit_start)
-            if tmpl_parsed is not None:
-                tmpl, after_tmpl = tmpl_parsed
-                j = after_tmpl
-                while j < n and text[j] in " \t\r\n":
-                    j += 1
-                if (
-                    j + 2 <= n
-                    and text[j] == "-"
-                    and text[j + 1] in ("f", "F")
-                    and (j + 2 == n or text[j + 2] in " \t\r\n'\"(")
-                ):
-                    k = j + 2
-                    args: list[str] = []
-                    args_ok = True
-                    while True:
-                        while k < n and text[k] in " \t\r\n":
-                            k += 1
-                        arg_lit = _read_ps_string_literal(text, k)
-                        if arg_lit is None:
-                            args_ok = False
-                            break
-                        args.append(arg_lit[0])
-                        k = arg_lit[1]
-                        if len(args) > MAX_PS_FORMAT_ARGS:
-                            limit_hit = True
-                            args_ok = False
-                            break
-                        m_pos = k
-                        while m_pos < n and text[m_pos] in " \t\r\n":
-                            m_pos += 1
-                        if m_pos < n and text[m_pos] == ",":
-                            k = m_pos + 1
-                            continue
+        if text[lit_start] in ("'", '"') and text[lit_start] not in exhausted:
+            tmpl, after_tmpl, closed = _read_ps_string_literal(text, lit_start)
+            if not closed:
+                exhausted.add(text[lit_start])
+                out.append(text[i])
+                out_len += 1
+                i += 1
+                continue
+            if tmpl is None:
+                seg = text[i:after_tmpl]
+                out.append(seg)
+                out_len += len(seg)
+                i = after_tmpl
+                continue
+
+            j = after_tmpl
+            while j < n and text[j] in " \t\r\n":
+                j += 1
+            if (
+                j + 2 <= n
+                and text[j] == "-"
+                and text[j + 1] in ("f", "F")
+                and (j + 2 == n or text[j + 2] in " \t\r\n'\"(")
+            ):
+                k = j + 2
+                args: list[str] = []
+                args_ok = True
+                while True:
+                    while k < n and text[k] in " \t\r\n":
+                        k += 1
+                    if k >= n or text[k] not in ("'", '"') or text[k] in exhausted:
+                        args_ok = False
                         break
+                    aval, aend, aclosed = _read_ps_string_literal(text, k)
+                    if not aclosed:
+                        exhausted.add(text[k])
+                        args_ok = False
+                        break
+                    if aval is None:
+                        args_ok = False
+                        break
+                    args.append(aval)
+                    k = aend
+                    if len(args) > MAX_PS_FORMAT_ARGS:
+                        limit_hit = True
+                        args_ok = False
+                        break
+                    m_pos = k
+                    while m_pos < n and text[m_pos] in " \t\r\n":
+                        m_pos += 1
+                    if m_pos < n and text[m_pos] == ",":
+                        k = m_pos + 1
+                        continue
+                    break
 
-                    end_expr = k
-                    if paren_wrapped and args_ok:
-                        m_pos = k
-                        while m_pos < n and text[m_pos] in " \t\r\n":
-                            m_pos += 1
-                        if m_pos < n and text[m_pos] == ")":
-                            end_expr = m_pos + 1
-                        else:
-                            # Keep opening '(' outside replacement
-                            out.append(text[i:lit_start])
-                            out_len += lit_start - i
-                            paren_wrapped = False
+                end_expr = k
+                open_prefix = ""
+                if paren_wrapped and args_ok:
+                    m_pos = k
+                    while m_pos < n and text[m_pos] in " \t\r\n":
+                        m_pos += 1
+                    if m_pos < n and text[m_pos] == ")":
+                        end_expr = m_pos + 1
+                    else:
+                        open_prefix = text[i:lit_start]
 
-                    if args_ok and args:
-                        res_parts: list[str] = []
-                        res_len = 0
-                        indices: list[int] = []
-                        adj_run = 0
-                        max_adj_run = 0
-                        t_idx = 0
-                        t_len = len(tmpl)
-                        tmpl_ok = True
-                        placeholder_count = 0
-                        while t_idx < t_len:
-                            c = tmpl[t_idx]
-                            if c == "{":
-                                if t_idx + 1 < t_len and tmpl[t_idx + 1] == "{":
-                                    res_parts.append("{")
-                                    res_len += 1
-                                    adj_run = 0
-                                    t_idx += 2
-                                    continue
-                                close_b = tmpl.find("}", t_idx + 1)
-                                if close_b == -1:
-                                    tmpl_ok = False
-                                    break
-                                inside = tmpl[t_idx + 1 : close_b]
-                                if not inside.isdigit():
-                                    # Reject format specifiers like {0,-9999999}
-                                    tmpl_ok = False
-                                    break
-                                placeholder_count += 1
-                                if placeholder_count > MAX_PS_FORMAT_ARGS:
-                                    limit_hit = True
-                                    tmpl_ok = False
-                                    break
-                                idx_num = int(inside)
-                                if idx_num >= len(args):
-                                    tmpl_ok = False
-                                    break
-                                val = args[idx_num]
-                                if out_len + res_len + len(val) + 2 > max_out:
-                                    limit_hit = True
-                                    tmpl_ok = False
-                                    break
-                                res_parts.append(val)
-                                res_len += len(val)
-                                indices.append(idx_num)
-                                adj_run += 1
-                                if adj_run > max_adj_run:
-                                    max_adj_run = adj_run
-                                t_idx = close_b + 1
-                                continue
-                            if c == "}" and t_idx + 1 < t_len and tmpl[t_idx + 1] == "}":
-                                res_parts.append("}")
+                if args_ok and args:
+                    res_parts: list[str] = []
+                    res_len = 0
+                    indices: list[int] = []
+                    adj_run = 0
+                    max_adj_run = 0
+                    t_idx = 0
+                    t_len = len(tmpl)
+                    tmpl_ok = True
+                    placeholder_count = 0
+                    while t_idx < t_len:
+                        c = tmpl[t_idx]
+                        if c == "{":
+                            if t_idx + 1 < t_len and tmpl[t_idx + 1] == "{":
+                                res_parts.append("{")
                                 res_len += 1
                                 adj_run = 0
                                 t_idx += 2
                                 continue
-                            res_parts.append(c)
+                            close_b = tmpl.find("}", t_idx + 1)
+                            if close_b == -1:
+                                tmpl_ok = False
+                                break
+                            inside = tmpl[t_idx + 1 : close_b]
+                            if not (inside.isascii() and inside.isdigit()):
+                                tmpl_ok = False
+                                break
+                            placeholder_count += 1
+                            if placeholder_count > MAX_PS_FORMAT_ARGS:
+                                limit_hit = True
+                                tmpl_ok = False
+                                break
+                            idx_num = int(inside)
+                            if idx_num >= len(args):
+                                tmpl_ok = False
+                                break
+                            val = args[idx_num]
+                            if out_len + len(open_prefix) + res_len + len(val) + 2 > max_out:
+                                limit_hit = True
+                                tmpl_ok = False
+                                break
+                            res_parts.append(val)
+                            res_len += len(val)
+                            indices.append(idx_num)
+                            adj_run += 1
+                            if adj_run > max_adj_run:
+                                max_adj_run = adj_run
+                            t_idx = close_b + 1
+                            continue
+                        if c == "}" and t_idx + 1 < t_len and tmpl[t_idx + 1] == "}":
+                            res_parts.append("}")
                             res_len += 1
                             adj_run = 0
-                            t_idx += 1
+                            t_idx += 2
+                            continue
+                        res_parts.append(c)
+                        res_len += 1
+                        adj_run = 0
+                        t_idx += 1
 
-                        if tmpl_ok and indices:
-                            quoted = _ps_quote("".join(res_parts))
-                            if out_len + len(quoted) > max_out:
-                                limit_hit = True
-                            else:
-                                out.append(quoted)
-                                out_len += len(quoted)
-                                changed = True
-                                non_mono = any(
-                                    indices[p] > indices[p + 1]
-                                    for p in range(len(indices) - 1)
-                                )
-                                if non_mono or max_adj_run >= 3:
-                                    high_conf = True
-                                i = end_expr
-                                continue
+                    if tmpl_ok and indices:
+                        quoted = _ps_quote("".join(res_parts))
+                        if out_len + len(open_prefix) + len(quoted) > max_out:
+                            limit_hit = True
+                        else:
+                            if open_prefix:
+                                out.append(open_prefix)
+                                out_len += len(open_prefix)
+                            out.append(quoted)
+                            out_len += len(quoted)
+                            changed = True
+                            non_mono = any(
+                                indices[p] > indices[p + 1]
+                                for p in range(len(indices) - 1)
+                            )
+                            if non_mono or max_adj_run >= 3:
+                                high_conf = True
+                            i = end_expr
+                            continue
+
+            # Not a valid -f expression: advance past the already-scanned template literal!
+            seg = text[i:after_tmpl]
+            out.append(seg)
+            out_len += len(seg)
+            i = after_tmpl
+            continue
 
         out.append(text[i])
         out_len += 1
