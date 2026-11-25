@@ -144,13 +144,13 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         name="drain-materialisiert-unbegrenzt",
-        file="src/malaz/core/dispatcher.py",
+        file="src/malaz/core/container_dispatch.py",
         old=(
-            "                    tail_unread = True\n"
-            "                    break\n"
-            "                budget -= len(payload) if payload else 0\n"
+            "                tail_unread = True\n"
+            "                break\n"
+            "            budget -= len(payload) if payload else 0\n"
         ),
-        new="                    tail_unread = True\n                    break\n                pass\n",
+        new="                tail_unread = True\n                break\n            pass\n",
         test="tests/test_dispatcher.py::test_drain_bounds_the_materialized_payload",
         why=(
             "Runde 3: der Nachlauf zog bis ans Iterator-Ende und holte jedes "
@@ -160,39 +160,39 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         name="skip-ohne-gewicht",
-        file="src/malaz/core/dispatcher.py",
+        file="src/malaz/core/container_dispatch.py",
         old=(
-            '                        rule_id="ARCH_MEMBER_SKIP",\n'
-            '                        title="Mitglieder nicht gescannt — Inhalt ungeprüft",\n'
-            '                        detail=(\n'
-            '                            f"Limit {config.MAX_RECURSIVE_MEMBERS} rekursiv "\n'
-            '                            "gescannter Mitglieder erreicht; der Rest dieses "\n'
-            '                            "Containers wurde NICHT analysiert. Der Inhalt ist "\n'
-            '                            "unbekannt, nicht sauber — ein schädliches Mitglied "\n'
-            '                            "hinter dieser Grenze bleibt unentdeckt."\n'
-            '                        ),\n'
-            '                        # Weight, not 0: skipping members removes the whole\n'
-            '                        # content stage from the verdict. With weight 0 a\n'
-            '                        # payload placed behind enough harmless entries scored\n'
-            '                        # GREEN — measured: the same archive scored RED 90 with\n'
-            '                        # the payload first and YELLOW 30 with it last.\n'
-            '                        severity=Severity.MEDIUM,\n'
-            '                        category=CAT_ARCHIVE,\n'
-            '                        weight=25,'
+            '                    rule_id="ARCH_MEMBER_SKIP",\n'
+            '                    title="Mitglieder nicht gescannt — Inhalt ungeprüft",\n'
+            '                    detail=(\n'
+            '                        f"Limit {config.MAX_RECURSIVE_MEMBERS} rekursiv "\n'
+            '                        "gescannter Mitglieder erreicht; der Rest dieses "\n'
+            '                        "Containers wurde NICHT analysiert. Der Inhalt ist "\n'
+            '                        "unbekannt, nicht sauber — ein schädliches Mitglied "\n'
+            '                        "hinter dieser Grenze bleibt unentdeckt."\n'
+            '                    ),\n'
+            '                    # Weight, not 0: skipping members removes the whole\n'
+            '                    # content stage from the verdict. With weight 0 a\n'
+            '                    # payload placed behind enough harmless entries scored\n'
+            '                    # GREEN — measured: the same archive scored RED 90 with\n'
+            '                    # the payload first and YELLOW 30 with it last.\n'
+            '                    severity=Severity.MEDIUM,\n'
+            '                    category=CAT_ARCHIVE,\n'
+            '                    weight=25,'
         ),
         new=(
-            '                        rule_id="ARCH_MEMBER_SKIP",\n'
-            '                        title="Mitglieder nicht gescannt — Inhalt ungeprüft",\n'
-            '                        detail=(\n'
-            '                            f"Limit {config.MAX_RECURSIVE_MEMBERS} rekursiv "\n'
-            '                            "gescannter Mitglieder erreicht; der Rest dieses "\n'
-            '                            "Containers wurde NICHT analysiert. Der Inhalt ist "\n'
-            '                            "unbekannt, nicht sauber — ein schädliches Mitglied "\n'
-            '                            "hinter dieser Grenze bleibt unentdeckt."\n'
-            '                        ),\n'
-            '                        severity=Severity.MEDIUM,\n'
-            '                        category=CAT_ARCHIVE,\n'
-            '                        weight=0,'
+            '                    rule_id="ARCH_MEMBER_SKIP",\n'
+            '                    title="Mitglieder nicht gescannt — Inhalt ungeprüft",\n'
+            '                    detail=(\n'
+            '                        f"Limit {config.MAX_RECURSIVE_MEMBERS} rekursiv "\n'
+            '                        "gescannter Mitglieder erreicht; der Rest dieses "\n'
+            '                        "Containers wurde NICHT analysiert. Der Inhalt ist "\n'
+            '                        "unbekannt, nicht sauber — ein schädliches Mitglied "\n'
+            '                        "hinter dieser Grenze bleibt unentdeckt."\n'
+            '                    ),\n'
+            '                    severity=Severity.MEDIUM,\n'
+            '                    category=CAT_ARCHIVE,\n'
+            '                    weight=0,'
         ),
         test="tests/test_dispatcher.py::test_skipped_members_are_not_green",
         why=(
