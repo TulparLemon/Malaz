@@ -859,13 +859,7 @@ class Dispatcher:
                     indicators,
                 )
             elif ftype.type in _SEVENZIP_TYPES:
-                raw_suffix = path.suffix.lower()
-                canonical_suffix = f".{ftype.type}"
-                sz_suffix = (
-                    canonical_suffix
-                    if ftype.type in ("chm", "vhdx", "ntfs", "fat") or raw_suffix != canonical_suffix
-                    else raw_suffix
-                )
+                sz_suffix = f".{ftype.type}"
                 result.children = self._guarded_members(
                     "Archiv-Inhalt (7-Zip)",
                     lambda: self._scan_sevenzip_members(

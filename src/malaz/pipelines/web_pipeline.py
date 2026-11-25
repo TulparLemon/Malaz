@@ -276,6 +276,7 @@ class _WebTagCollector(HTMLParser):
         self.script_depth = 0
         self.rawtext_tag: str | None = None
         self.foreign_depth = 0
+        self.foreign_ns_depth = 0
         self.object_hhctrl_depth = 0
 
         self.has_script_tag = False
@@ -349,10 +350,16 @@ class _WebTagCollector(HTMLParser):
                     if m and len(self.data_uri_attrs) < _MAX_B64_CANDIDATES:
                         self.data_uri_attrs.append((m.group(1).lower(), m.group(2)))
 
+        if local in ("svg", "math"):
+            self.foreign_ns_depth += 1
+
+        in_html_ns = not self.xml_mode and (
+            self.foreign_ns_depth == 0 or self.foreign_depth > 0
+        )
         if local == "script":
             self.has_script_tag = True
             self.script_depth += 1
-        elif local == "style" or (not self.xml_mode and local in _RAWTEXT_CLOSE_RES):
+        elif local == "style" or (in_html_ns and local in _RAWTEXT_CLOSE_RES):
             self.rawtext_tag = local
 
         if local == "foreignobject":
@@ -407,9 +414,9 @@ class _WebTagCollector(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
-        if not self.xml_mode:
-            # In WHATWG HTML5, trailing '/' on non-void elements (<script/>,
-            # <textarea/>, <style/>, <object/>, ...) does NOT close them.
+        # In WHATWG HTML5, trailing '/' closes elements ONLY in XML mode or
+        # inside foreign content (<svg>/<math> §13.2.6.5), never HTML non-voids.
+        if not (self.xml_mode or self.foreign_ns_depth > 0):
             return
         local = self._local_name(tag)
         if local == "script" and self.script_depth > 0:
@@ -420,6 +427,8 @@ class _WebTagCollector(HTMLParser):
             self.foreign_depth -= 1
         elif local == "object" and self.object_hhctrl_depth > 0:
             self.object_hhctrl_depth -= 1
+        if local in ("svg", "math") and self.foreign_ns_depth > 0:
+            self.foreign_ns_depth -= 1
 
     def handle_endtag(self, tag: str) -> None:
         if self.tag_limit_exceeded:
@@ -433,6 +442,8 @@ class _WebTagCollector(HTMLParser):
             self.foreign_depth -= 1
         elif local == "object" and self.object_hhctrl_depth > 0:
             self.object_hhctrl_depth -= 1
+        if local in ("svg", "math") and self.foreign_ns_depth > 0:
+            self.foreign_ns_depth -= 1
 
     def handle_data(self, data: str) -> None:
         if self.tag_limit_exceeded:
@@ -451,48 +462,69 @@ class _WebTagCollector(HTMLParser):
 def _find_tag_end_linear(
     text: str, lt: int, exhausted_quotes: set[str]
 ) -> tuple[int, int]:
-    """Strictly O(N) HTML5-aware tag-end scanner starting at ``text[lt] == '<'``.
+    """Strictly O(N) WHATWG HTML5 6-state tag-attribute scanner starting at ``lt``.
 
-    * Treats ``'`` / ``"`` as attribute quote delimiters ONLY immediately after
-      ``=`` (+ optional whitespace), so unquoted HTML5 attributes such as
-      ``content=O'Brien`` never open a quoted string.
-    * If a quote character has no closing match anywhere in the remainder, it is
-      recorded in ``exhausted_quotes`` (searched at most once -> O(N)) and
-      treated as a literal character so later tags are never silently swallowed.
-    * On an unquoted ``'<'`` before ``'>'``, returns ``(-1, i)`` so the caller
-      jumps directly to ``i`` without rescanning any index.
+    Follows WHATWG HTML5 §13.2.5.32-38 so leading ``=`` (``<a =">``, ``<a/=">``)
+    starts an attribute name, duplicate ``=`` (``<a x==">``) starts an unquoted
+    value, and ``'``/``"`` opens a quoted value ONLY in ``BEFORE_ATTR_VAL``.
+    Each index is visited at most once; unclosed quotes are memoized in
+    ``exhausted_quotes`` so later tags are never swallowed.
     """
     n = len(text)
     i = lt + 1
-    after_eq = False
+    # States: 0=TAG_NAME, 1=BEFORE_ATTR_NAME, 2=ATTR_NAME,
+    #         3=AFTER_ATTR_NAME, 4=BEFORE_ATTR_VAL, 5=UNQUOTED_VAL
+    state = 0
     while i < n:
         ch = text[i]
         if ch == ">":
             return i, i + 1
         if ch == "<":
             return -1, i
-        if ch == "=":
-            after_eq = True
-            i += 1
-            continue
-        if ch in " \t\r\n\f":
-            i += 1
-            continue
-        if after_eq and ch in ('"', "'"):
-            after_eq = False
-            if ch not in exhausted_quotes:
-                q_end = text.find(ch, i + 1)
-                if q_end == -1:
-                    exhausted_quotes.add(ch)
-                    i += 1
-                    continue
-                i = q_end + 1
-                continue
-        else:
-            after_eq = False
+
+        is_ws = ch in " \t\r\n\f"
+        if state == 0:  # TAG_NAME
+            if is_ws or ch == "/":
+                state = 1
+        elif state == 1:  # BEFORE_ATTR_NAME
+            if not is_ws and ch != "/":
+                state = 2  # including '=' per WHATWG §13.2.5.33
+        elif state == 2:  # ATTR_NAME
+            if ch == "=":
+                state = 4
+            elif is_ws:
+                state = 3
+            elif ch == "/":
+                state = 1
+        elif state == 3:  # AFTER_ATTR_NAME
+            if ch == "=":
+                state = 4
+            elif ch == "/":
+                state = 1
+            elif not is_ws:
+                state = 2
+        elif state == 4:  # BEFORE_ATTR_VAL
+            if is_ws:
+                pass
+            elif ch in ('"', "'"):
+                if ch not in exhausted_quotes:
+                    q_end = text.find(ch, i + 1)
+                    if q_end == -1:
+                        exhausted_quotes.add(ch)
+                        state = 5
+                    else:
+                        i = q_end + 1
+                        state = 1
+                        continue
+                else:
+                    state = 5
+            else:
+                state = 5  # including '=' per WHATWG §13.2.5.38
+        else:  # 5 = UNQUOTED_VAL
+            if is_ws:
+                state = 1
         i += 1
     return -1, n
-
 
 def _extract_tag_local_name(text: str, lt: int, gt: int) -> str:
     i = lt + 1

