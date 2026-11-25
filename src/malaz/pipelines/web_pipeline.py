@@ -354,11 +354,11 @@ class _WebTagCollector(HTMLParser):
         # WHATWG §13.2.5.42: CDATA is allowed whenever the adjusted current node
         # is NOT in the HTML namespace (includes SVG/MathML integration points
         # themselves until an HTML child element is pushed on top).
-        return self.current_ns in ("svg", "math", "svg_ip", "math_ip")
+        return self.current_ns in ("svg", "math", "svg_ip", "math_ip", "html_ip")
 
     def _push_ns(self, local: str, ns: str) -> None:
         self._ns_stack.append((local, ns))
-        if ns in ("svg_ip", "math_ip"):
+        if ns in ("svg_ip", "math_ip", "html_ip"):
             # WHATWG §13.2.4.2: SVG/MathML integration points are scope boundaries;
             # outer HTML end tags cannot pop past them.
             self._ns_scope_counts.append({local: 1})
@@ -376,7 +376,7 @@ class _WebTagCollector(HTMLParser):
             scope.pop(tag, None)
         else:
             scope[tag] = cnt
-        if ns in ("svg_ip", "math_ip") and len(self._ns_scope_counts) > 1:
+        if ns in ("svg_ip", "math_ip", "html_ip") and len(self._ns_scope_counts) > 1:
             self._ns_scope_counts.pop()
         if tag == "foreignobject" and ns == "svg_ip" and self.foreign_depth > 0:
             self.foreign_depth -= 1
@@ -490,22 +490,23 @@ class _WebTagCollector(HTMLParser):
             elif prev_ns == "svg" and local in _SVG_HTML_INTEGRATION_TAGS:
                 self._push_ns(local, "svg_ip")
                 self._last_pushed_ns = True
-            elif prev_ns == "math" and (
-                local in _MATH_TEXT_INTEGRATION_TAGS
-                or (
-                    local == "annotation-xml"
-                    and attr_map.get("encoding", "").strip().lower()
-                    in ("text/html", "application/xhtml+xml")
-                )
-            ):
+            elif prev_ns == "math" and local in _MATH_TEXT_INTEGRATION_TAGS:
                 self._push_ns(local, "math_ip")
+                self._last_pushed_ns = True
+            elif (
+                prev_ns == "math"
+                and local == "annotation-xml"
+                and attr_map.get("encoding", "").strip().lower()
+                in ("text/html", "application/xhtml+xml")
+            ):
+                self._push_ns(local, "html_ip")
                 self._last_pushed_ns = True
             elif prev_ns == "math_ip" and local in ("mglyph", "malignmark"):
                 self._push_ns(local, "math")
                 self._last_pushed_ns = True
             else:
                 if (
-                    prev_ns in ("svg_ip", "math_ip", "html")
+                    prev_ns in ("svg_ip", "math_ip", "html_ip", "html")
                     and local not in _HTML_VOID_TAGS
                 ):
                     self._push_ns(local, "html")
@@ -726,7 +727,9 @@ def _extract_tag_local_name(
     return raw.rsplit(":", 1)[-1].lower() if xml_mode else raw.lower()
 
 
-def _find_html_script_end(text: str, pos: int) -> tuple[int, int] | None:
+def _find_html_script_end(
+    text: str, pos: int, exhausted_quotes: set[str]
+) -> tuple[int, int] | None:
     """Linear O(N) WHATWG §13.2.5.17-31 HTML5 script-end scanner (handles double-escaped)."""
     state = 0  # 0=NORMAL, 1=ESCAPED (after <!--), 2=DOUBLE_ESCAPED (after <!--<script)
     for m in _HTML_SCRIPT_TOKEN_RE.finditer(text, pos):
@@ -747,10 +750,12 @@ def _find_html_script_end(text: str, pos: int) -> tuple[int, int] | None:
             if state == 2:
                 state = 1
             else:
-                end_gt = text.find(">", m.end())
+                end_gt, end_next = _find_tag_end_linear(
+                    text, m.start() + 2, exhausted_quotes
+                )
                 if end_gt == -1:
                     return None
-                return m.start(), end_gt + 1
+                return m.start(), end_next
     return None
 
 
@@ -776,7 +781,7 @@ def _feed_bounded_tags(
                     end_gt = text.find(">", m_close.end() - 1)
                     script_end = None if end_gt == -1 else (m_close.start(), end_gt + 1)
             else:
-                script_end = _find_html_script_end(text, pos)
+                script_end = _find_html_script_end(text, pos, exhausted_quotes)
             body = text[pos:] if script_end is None else text[pos : script_end[0]]
             if body:
                 if "<![CDATA[" in body:
@@ -793,11 +798,13 @@ def _feed_bounded_tags(
             m_close = _RAWTEXT_CLOSE_RES[rt_tag].search(text, pos)
             if m_close is None:
                 break
-            end_gt = text.find(">", m_close.end() - 1)
+            end_gt, end_next = _find_tag_end_linear(
+                text, m_close.start() + 2, exhausted_quotes
+            )
             if end_gt == -1:
                 break
             collector.handle_endtag(rt_tag)
-            pos = end_gt + 1
+            pos = end_next
             continue
 
         lt = text.find("<", pos)

