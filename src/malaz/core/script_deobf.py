@@ -756,20 +756,32 @@ def _merge_ps_concat(text: str, max_out: int) -> tuple[str, bool, bool]:
     limit_hit = False
     exhausted: set[str] = set()
 
+    def _emit(seg: str) -> bool:
+        nonlocal out_len, limit_hit
+        if out_len + len(seg) > max_out:
+            limit_hit = True
+            rem = max(0, max_out - out_len)
+            if rem:
+                out.append(seg[:rem])
+                out_len += rem
+            return False
+        out.append(seg)
+        out_len += len(seg)
+        return True
+
     while i < n:
         ch = text[i]
         if ch in ("'", '"') and ch not in exhausted:
             val, end, closed = _read_ps_string_literal(text, i)
             if not closed:
                 exhausted.add(ch)
-                out.append(ch)
-                out_len += 1
+                if not _emit(ch):
+                    break
                 i += 1
                 continue
             if val is None:
-                seg = text[i:end]
-                out.append(seg)
-                out_len += len(seg)
+                if not _emit(text[i:end]):
+                    break
                 i = end
                 continue
             parts = [val]
@@ -793,28 +805,22 @@ def _merge_ps_concat(text: str, max_out: int) -> tuple[str, bool, bool]:
                 break
             if len(parts) >= 2:
                 merged = _ps_quote("".join(parts))
-                if out_len + len(merged) > max_out:
-                    limit_hit = True
-                    out.append(text[i : i + max(0, max_out - out_len)])
-                    i = n
+                if not _emit(merged):
                     break
-                out.append(merged)
-                out_len += len(merged)
                 changed = True
                 i = end
                 continue
-            seg = text[i:end]
-            out.append(seg)
-            out_len += len(seg)
+            if not _emit(text[i:end]):
+                break
             i = end
             continue
-        out.append(ch)
-        out_len += 1
+        if not _emit(ch):
+            break
         i += 1
 
-    if not changed:
-        return text, False, limit_hit
-    return "".join(out), True, limit_hit
+    if not changed and not limit_hit:
+        return text, False, False
+    return "".join(out), changed, limit_hit
 
 
 def _eval_ps_format_f(
@@ -837,6 +843,19 @@ def _eval_ps_format_f(
     limit_hit = False
     exhausted: set[str] = set()
 
+    def _emit(seg: str) -> bool:
+        nonlocal out_len, limit_hit
+        if out_len + len(seg) > max_out:
+            limit_hit = True
+            rem = max(0, max_out - out_len)
+            if rem:
+                out.append(seg[:rem])
+                out_len += rem
+            return False
+        out.append(seg)
+        out_len += len(seg)
+        return True
+
     while i < n:
         paren_wrapped = False
         lit_start = i
@@ -852,14 +871,13 @@ def _eval_ps_format_f(
             tmpl, after_tmpl, closed = _read_ps_string_literal(text, lit_start)
             if not closed:
                 exhausted.add(text[lit_start])
-                out.append(text[i])
-                out_len += 1
+                if not _emit(text[i]):
+                    break
                 i += 1
                 continue
             if tmpl is None:
-                seg = text[i:after_tmpl]
-                out.append(seg)
-                out_len += len(seg)
+                if not _emit(text[i:after_tmpl]):
+                    break
                 i = after_tmpl
                 continue
 
@@ -976,38 +994,30 @@ def _eval_ps_format_f(
 
                     if tmpl_ok and indices:
                         quoted = _ps_quote("".join(res_parts))
-                        if out_len + len(open_prefix) + len(quoted) > max_out:
-                            limit_hit = True
-                        else:
-                            if open_prefix:
-                                out.append(open_prefix)
-                                out_len += len(open_prefix)
-                            out.append(quoted)
-                            out_len += len(quoted)
-                            changed = True
-                            non_mono = any(
-                                indices[p] > indices[p + 1]
-                                for p in range(len(indices) - 1)
-                            )
-                            if non_mono or max_adj_run >= 3:
-                                high_conf = True
-                            i = end_expr
-                            continue
+                        if not _emit(open_prefix + quoted):
+                            break
+                        changed = True
+                        non_mono = any(
+                            indices[p] > indices[p + 1]
+                            for p in range(len(indices) - 1)
+                        )
+                        if non_mono or max_adj_run >= 3:
+                            high_conf = True
+                        i = end_expr
+                        continue
 
-            # Not a valid -f expression: advance past the already-scanned template literal!
-            seg = text[i:after_tmpl]
-            out.append(seg)
-            out_len += len(seg)
+            if not _emit(text[i:after_tmpl]):
+                break
             i = after_tmpl
             continue
 
-        out.append(text[i])
-        out_len += 1
+        if not _emit(text[i]):
+            break
         i += 1
 
-    if not changed:
-        return text, False, False, limit_hit
-    return "".join(out), True, high_conf, limit_hit
+    if not changed and not limit_hit:
+        return text, False, False, False
+    return "".join(out), changed, high_conf, limit_hit
 
 
 _PS_FROM_B64_RE = re.compile(
@@ -1218,7 +1228,9 @@ def deobfuscate_powershell(
         else:
             work = text
     else:
-        work = text[: MAX_TOTAL_DECODED_CHARS]
+        if len(text) > MAX_TOTAL_DECODED_CHARS:
+            input_truncated = True
+        work = text[:MAX_TOTAL_DECODED_CHARS]
 
     chunk_input_len = len(work)
     baseline_enc = set(decode_powershell_encoded(work))
@@ -1471,6 +1483,8 @@ def _expand_batch_segment(
 ) -> tuple[str, bool, set[str], set[str], bool]:
     """Expand ``%var%``, ``!var!``, slicing, and replacement in one segment."""
     if "%" not in seg and "!" not in seg:
+        if len(seg) > max_remaining:
+            return seg[: max(0, max_remaining)], False, set(), set(), True
         return seg, False, set(), set(), False
 
     out: list[str] = []
@@ -1545,6 +1559,9 @@ def _expand_batch_segment(
                                 adj_short_slices = 0
                                 i = close + 1
                                 continue
+        if out_len >= max_remaining:
+            limit_hit = True
+            break
         out.append(ch)
         out_len += 1
         adj_short_slices = 0
@@ -1576,10 +1593,25 @@ def _expand_batch_vars_pass(
     limit_hit = False
     limit_reason = ""
 
+    def _append_chunk(buf: list[str], chunk: str) -> bool:
+        nonlocal out_len, limit_hit, limit_reason
+        if out_len + len(chunk) > max_out:
+            limit_hit = True
+            if not limit_reason:
+                limit_reason = REASON_OUTPUT_LIMIT
+            rem = max(0, max_out - out_len)
+            if rem:
+                buf.append(chunk[:rem])
+                out_len += rem
+            return False
+        buf.append(chunk)
+        out_len += len(chunk)
+        return True
+
     for line in text.splitlines(keepends=True):
         if _BATCH_COMMENT_RE.match(line):
-            out_lines.append(line)
-            out_len += len(line)
+            if not _append_chunk(out_lines, line):
+                break
             continue
 
         nl = ""
@@ -1598,9 +1630,8 @@ def _expand_batch_vars_pass(
                 rest = seg[m_set.end() :]
                 low_rest = rest.lstrip().lower()
                 if low_rest.startswith(("/a", "/p")):
-                    rebuilt_parts.append(seg)
-                    rebuilt_parts.append(sep)
-                    out_len += len(seg) + len(sep)
+                    if not _append_chunk(rebuilt_parts, seg + sep):
+                        break
                     continue
 
                 quoted_assign = rest.startswith('"')
@@ -1627,7 +1658,6 @@ def _expand_batch_vars_pass(
                             changed = True
                             techs.update(r_t)
                             hi_techs.update(r_hi)
-                        # Self-reference guard (e.g. set PATH=%PATH%;C:\Tools)
                         low_rhs = rhs_exp.lower()
                         if f"%{vname}%" in low_rhs or f"!{vname}!" in low_rhs:
                             vars_map.pop(vname, None)
@@ -1647,30 +1677,30 @@ def _expand_batch_vars_pass(
                             if r_chg
                             else seg
                         )
-                        rebuilt_parts.append(rebuilt_seg)
-                        rebuilt_parts.append(sep)
-                        out_len += len(rebuilt_seg) + len(sep)
+                        if not _append_chunk(rebuilt_parts, rebuilt_seg + sep):
+                            break
                         continue
 
             rem = max(0, max_out - out_len)
             exp_seg, s_chg, s_t, s_hi, s_lim = _expand_batch_segment(
                 seg, vars_map, allow_std_bare=False, max_remaining=rem
             )
-            if s_lim:
-                limit_hit = True
-                limit_reason = REASON_OUTPUT_LIMIT
-                rebuilt_parts.append(exp_seg)
-                break
             if s_chg:
                 changed = True
                 techs.update(s_t)
                 hi_techs.update(s_hi)
-            rebuilt_parts.append(exp_seg)
-            rebuilt_parts.append(sep)
-            out_len += len(exp_seg) + len(sep)
+            if s_lim:
+                limit_hit = True
+                limit_reason = REASON_OUTPUT_LIMIT
+                if exp_seg:
+                    _append_chunk(rebuilt_parts, exp_seg)
+                break
+            if not _append_chunk(rebuilt_parts, exp_seg + sep):
+                break
 
-        out_lines.append("".join(rebuilt_parts) + nl)
-        out_len += len(nl)
+        if not limit_hit and nl:
+            _append_chunk(rebuilt_parts, nl)
+        out_lines.append("".join(rebuilt_parts))
         if limit_hit:
             break
 
@@ -1706,6 +1736,8 @@ def deobfuscate_batch(
         else:
             work = text
     else:
+        if len(text) > MAX_TOTAL_DECODED_CHARS:
+            input_truncated = True
         work = text[:MAX_TOTAL_DECODED_CHARS]
 
     chunk_input_len = len(work)

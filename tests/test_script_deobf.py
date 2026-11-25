@@ -599,3 +599,39 @@ def test_review_r1_regressions_dos_unicode_paren_large_html_and_obf_sink(tmp_pat
     )
     res_sink = _scan(tmp_path, "obf_sink.html", obf_sink_html)
     assert "HTML_CREDENTIAL_FORM" in _scan_rule_ids(res_sink)
+
+
+def test_review_r2_regressions_m1_expansion_plus_tail_and_n1():
+    """Regression tests for Spec 016 code-review r2 findings (M1 & N1)."""
+    cap = script_deobf.MAX_TOTAL_DECODED_CHARS
+
+    # M1a: Batch expansion + plain tail must NEVER exceed MAX_TOTAL_DECODED_CHARS
+    bat_tail = (
+        "set a="
+        + ("A" * 2000)
+        + "\r\necho "
+        + ("%a%" * 200)
+        + "\r\n"
+        + ("echo plain_padding_line_without_percent_or_bang\r\n" * 8_500)
+    )
+    rb = script_deobf.deobfuscate_batch(bat_tail, explicit_script=True)
+    assert len(rb.text) <= cap
+    assert rb.limit_hit is True
+
+    # M1b: PowerShell -f expansion + plain tail must NEVER exceed MAX_TOTAL_DECODED_CHARS
+    ps_fmt_tail = '("' + ("{0}" * 64) + '" -f "' + ("A" * 1000) + '")\n' + ("B" * 500_000)
+    rf = script_deobf.deobfuscate_powershell(ps_fmt_tail, explicit_script=True)
+    assert len(rf.text) <= cap
+    assert rf.limit_hit is True
+
+    # M1c: PowerShell concat quote-doubling expansion + plain tail must NEVER exceed cap
+    ps_cat_tail = '"' + ("'" * 50_000) + '" + "x"\n' + ("A" * 450_000)
+    rc = script_deobf.deobfuscate_powershell(ps_cat_tail, explicit_script=True)
+    assert len(rc.text) <= cap
+    assert rc.limit_hit is True
+
+    # N1: charge_input=False with oversized text sets limit_hit=True
+    big = "A" * (cap + 1024)
+    assert script_deobf.deobfuscate_powershell(big, explicit_script=True, charge_input=False).limit_hit
+    assert script_deobf.deobfuscate_batch(big, explicit_script=True, charge_input=False).limit_hit
+    assert js_deobf.deobfuscate_js_detailed(big, explicit_script=True, charge_input=False).limit_hit

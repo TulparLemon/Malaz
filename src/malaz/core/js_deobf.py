@@ -709,6 +709,8 @@ def deobfuscate_js_detailed(
         else:
             work = text
     else:
+        if len(text) > MAX_TOTAL_DECODED_CHARS:
+            input_truncated = True
         work = text[:MAX_TOTAL_DECODED_CHARS]
 
     chunk_input_len = len(work)
