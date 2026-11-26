@@ -985,6 +985,8 @@ def _build_edges() -> list[Fixture]:
         Fixture("edge_xml.xml", b"<root/>", "edge", "any", "edge"),
         Fixture("edge_svg.svg", b"<svg/>", "edge", "any", "edge"),
         Fixture("edge_iso.iso", ext.iso_image(), "edge", "any", "edge"),
+        Fixture("edge_chm.chm", b"ITSF\x03\x00\x00\x00" + b"\x00" * 48, "edge", "any", "edge"),
+        Fixture("edge_vhdx.vhdx", b"vhdxfile" + b"\x00" * 56, "edge", "any", "edge"),
     ]
     for index in range(17):
         out.append(
