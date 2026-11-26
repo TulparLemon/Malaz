@@ -2233,6 +2233,15 @@
     "score": 0,
     "type": "text"
   },
+  "v2/edge_chm.chm": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "chm"
+  },
   "v2/edge_double_extension.pdf.exe": {
     "notes": [],
     "risk": "RED",
@@ -2528,6 +2537,15 @@
     "rules": [],
     "score": 0,
     "type": "text"
+  },
+  "v2/edge_vhdx.vhdx": {
+    "notes": [],
+    "risk": "YELLOW",
+    "rules": [
+      "ARCH_7Z_MISSING"
+    ],
+    "score": 20,
+    "type": "vhdx"
   },
   "v2/edge_xml.xml": {
     "notes": [],

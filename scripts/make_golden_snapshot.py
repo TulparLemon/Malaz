@@ -118,7 +118,7 @@ def build(tmp: Path) -> dict[str, dict[str, object]]:
             # fuer diese Typen niemandem auf.
             ("benign", benign.build_type_coverage),
             ("malicious", ext.build_extended_corpus),
-            # Expanded corpus: 456 additional fixtures across scripts, PDF,
+            # Expanded corpus: 458 additional fixtures across scripts, PDF,
             # office, PE, images, archives, mail, LNK/RTF/SWF and edge cases.
             # Same shipped-rule, AV-off profile as the rest of the snapshot.
             ("v2", corpus_v2.write_corpus),

@@ -367,8 +367,8 @@ def merge_js_array_joins(
         out_len += len(seg)
         pos = idx + len(marker)
 
-    if not changed:
-        return text, False, limit_hit
+    if not changed and not limit_hit:
+        return text, False, False
     return "".join(out), True, limit_hit
 
 
@@ -505,7 +505,7 @@ def _decode_js_atob_calls(
         # Ensure word boundary or window./self./globalThis. prefix before 'atob'
         call_start = idx
         valid_prefix = True
-        if idx > pos:
+        if idx > 0:
             prev_ch = text[idx - 1]
             if prev_ch.isalnum() or prev_ch in ("_", "$"):
                 valid_prefix = False

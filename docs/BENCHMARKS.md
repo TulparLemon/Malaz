@@ -35,7 +35,7 @@ The block below is generated and verified automatically by `python scripts/run_c
 | Benign fixtures (`scripts/make_benign_corpus.py`) | 28 | 0 | 0 | 28 | 0 | 0 | 0.0% `RED` FP, 0.0% `YELLOW` |
 | Broad corpus v2 - malicious (`scripts/make_corpus_v2.py`) | 283 | 168 | 115 | 0 | 0 | 0 | 100.0% flagged (`RED+YELLOW`), 59.4% `RED` |
 | Broad corpus v2 - benign (`scripts/make_corpus_v2.py`) | 136 | 0 | 0 | 136 | 0 | 0 | 0.0% `RED` FP, 0.0% `YELLOW` |
-| Broad corpus v2 - edge cases (`scripts/make_corpus_v2.py`) | 37 | 1 | 24 | 12 | 0 | 0 | 67.6% flagged (`RED+YELLOW`), 2.7% `RED` |
+| Broad corpus v2 - edge cases (`scripts/make_corpus_v2.py`) | 39 | 1 | 26 | 12 | 0 | 0 | 69.2% flagged (`RED+YELLOW`), 2.6% `RED` |
 <!-- BENCHMARK_STATS_END -->
 
 ---
