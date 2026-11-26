@@ -635,3 +635,27 @@ def test_review_r2_regressions_m1_expansion_plus_tail_and_n1():
     assert script_deobf.deobfuscate_powershell(big, explicit_script=True, charge_input=False).limit_hit
     assert script_deobf.deobfuscate_batch(big, explicit_script=True, charge_input=False).limit_hit
     assert js_deobf.deobfuscate_js_detailed(big, explicit_script=True, charge_input=False).limit_hit
+
+
+def test_js_deobf_boundary_and_merge_limit_regressions():
+    """Cover atobatob() boundary check (idx > 0) and merge_js_array_joins(changed=False, limit_hit=True)."""
+    # 1. atobatob('...') must NOT decode the second 'atob' (preceded by 'b' at idx-1 == 3)
+    src = "atobatob('ZXZhbCgxKQ==')"
+    r_atob = js_deobf.deobfuscate_js_detailed(src, explicit_script=True)
+    assert r_atob.text == src
+    assert r_atob.changed is False
+
+    # 2. merge_js_array_joins hitting max_output without any merge must return (bounded, False, True)
+    plain = "var x = 'hello world'; arr.join(', '); " + ("Z" * 100)
+    merged, changed, limit_hit = js_deobf.merge_js_array_joins(plain, max_output=40)
+    assert changed is False
+    assert limit_hit is True
+    assert len(merged) == 40
+    assert merged == plain[:40]
+
+    # 3. merge_js_array_joins hitting max_items without any merge must return (text, False, True)
+    too_many = "[" + ",".join(f"'a{i}'" for i in range(10)) + "].join('')"
+    merged2, changed2, limit_hit2 = js_deobf.merge_js_array_joins(too_many, max_items=5)
+    assert changed2 is False
+    assert limit_hit2 is True
+    assert merged2 == too_many

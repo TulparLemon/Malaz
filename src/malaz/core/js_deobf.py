@@ -369,7 +369,7 @@ def merge_js_array_joins(
 
     if not changed and not limit_hit:
         return text, False, False
-    return "".join(out), True, limit_hit
+    return "".join(out), changed, limit_hit
 
 
 def _resolve_js_string_tables(
