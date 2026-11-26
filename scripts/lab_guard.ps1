@@ -51,6 +51,7 @@ param(
     [string]$VmName = "",
     [string]$CheckpointName = "",
     [switch]$SkipEicar,
+    [switch]$SandboxGuest,
     [string]$JsonOut = ""
 )
 
@@ -228,7 +229,67 @@ function Get-LiveState {
     return [pscustomobject]$state
 }
 
-$source = if ($StatePath) { 'simulated' } else { 'live' }
+
+function Get-SandboxGuestLiveState {
+    $state = [ordered]@{}
+
+    try {
+        $adapters = @(Get-NetAdapter -ErrorAction Stop |
+            Where-Object {
+                $_.Status -eq 'Up' -and
+                $_.InterfaceDescription -notmatch 'Loopback'
+            } |
+            ForEach-Object {
+                [ordered]@{ name = $_.Name; status = $_.Status }
+            })
+        $state.adapters = ,$adapters
+    } catch { }
+
+    try {
+        $routes = @()
+        foreach ($prefix in @('0.0.0.0/0', '::/0')) {
+            $routes += @(Get-NetRoute -DestinationPrefix $prefix -ErrorAction SilentlyContinue |
+                ForEach-Object { "$($_.DestinationPrefix)->$($_.NextHop)" })
+        }
+        $state.default_routes = ,$routes
+    } catch { }
+
+    try {
+        $dns = @(Get-DnsClientServerAddress -ErrorAction Stop |
+            ForEach-Object { $_.ServerAddresses } |
+            Where-Object { $_ })
+        $state.dns_servers = ,$dns
+    } catch { }
+
+    try {
+        $null = [System.Net.Dns]::GetHostEntry('example.com')
+        $state.dns_resolves = $true
+    } catch {
+        $state.dns_resolves = $false
+    }
+
+    try {
+        $shares = @(Get-SmbShare -ErrorAction Stop |
+            Where-Object { $_.Name -notin @('IPC$', 'ADMIN$', 'C$', 'D$') } |
+            ForEach-Object { [string]$_.Name })
+        $state.shared_folders = ,$shares
+    } catch { }
+
+    try {
+        $usb = @(Get-CimInstance -ClassName Win32_DiskDrive -ErrorAction Stop |
+            Where-Object { $_.InterfaceType -eq 'USB' } |
+            ForEach-Object { [string]$_.Model })
+        $state.usb_storage = ,$usb
+    } catch { }
+
+    $state.username = [string]$env:USERNAME
+    if ($SkipEicar) {
+        $state.eicar = 'skip'
+    }
+    return [pscustomobject]$state
+}
+
+$source = if ($SandboxGuest) { if ($StatePath) { 'sandbox_simulated' } else { 'sandbox_live' } } else { if ($StatePath) { 'simulated' } else { 'live' } }
 if ($StatePath) {
     if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
         Add-Check 'state' $false "State-Datei fehlt: $StatePath"
@@ -244,7 +305,7 @@ if ($StatePath) {
     }
 } else {
     try {
-        $state = Get-LiveState
+        $state = if ($SandboxGuest) { Get-SandboxGuestLiveState } else { Get-LiveState }
         Add-Check 'state' $true 'Live-Abfrage abgeschlossen'
     } catch {
         Add-Check 'state' $false "Live-Abfrage fehlgeschlagen: $($_.Exception.Message)"
@@ -292,6 +353,7 @@ if ($null -eq $shares) {
         "Freigaben: $(Format-Items $shares)"
 }
 
+if (-not $SandboxGuest) {
 $clipboard = Get-StateValue $state 'clipboard_text'
 if ($null -eq $clipboard) {
     Add-Check 'clipboard_clear' $false 'Zwischenablage nicht ermittelbar'
@@ -314,6 +376,8 @@ if ($null -eq $dragDrop) {
         "drag_and_drop=$dragDrop enhanced_session=$enhanced drive_redirection=$driveRedir"
 }
 
+}
+
 $usb = Get-StateValue $state 'usb_storage'
 if ($null -eq $usb) {
     Add-Check 'no_usb_storage' $false 'USB-Geraete nicht ermittelbar'
@@ -322,6 +386,14 @@ if ($null -eq $usb) {
         "USB-Massenspeicher: $(Format-Items $usb)"
 }
 
+if ($SandboxGuest) {
+    $uname = Get-StateValue $state 'username'
+    if ($null -eq $uname -or [string]::IsNullOrWhiteSpace([string]$uname)) {
+        Add-Check 'sandbox_account' $false 'Benutzername nicht ermittelbar'
+    } else {
+        Add-Check 'sandbox_account' ([string]$uname -eq 'WDAGUtilityAccount') "username=$uname"
+    }
+} else {
 $isAdmin = Get-StateValue $state 'is_admin'
 if ($null -eq $isAdmin) {
     Add-Check 'not_admin' $false 'Rechte nicht ermittelbar'
@@ -353,6 +425,8 @@ if ($null -ne $stateVm) {
     }
 }
 Add-Check 'vm_identity' $identityOk $identityDetail
+
+}
 
 # -- Manifest and output ------------------------------------------------------
 if (-not $ManifestPath -or -not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
@@ -411,7 +485,12 @@ if ($JsonOut) {
     if ($parent -and -not (Test-Path -LiteralPath $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
-    Set-Content -LiteralPath $JsonOut -Value $json -Encoding UTF8
+    if ($SandboxGuest) {
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($JsonOut, $json, $utf8NoBom)
+    } else {
+        Set-Content -LiteralPath $JsonOut -Value $json -Encoding UTF8
+    }
 }
 Write-Output $json
 
