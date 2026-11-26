@@ -122,7 +122,8 @@ def test_archive_types_skipped_entirely():
     from malaz.pipelines.generic_pipeline import _ENTROPY_ARCHIVE_TYPES
 
     assert sorted(_ENTROPY_ARCHIVE_TYPES) == [
-        "7z", "cab", "deb", "iso", "rar", "rpm", "tar", "zip",
+        "7z", "cab", "chm", "deb", "fat", "iso", "ntfs", "onenote",
+        "rar", "rpm", "tar", "vhdx", "zip",
     ]
     for ftype in _ENTROPY_ARCHIVE_TYPES:
         assert GenericPipeline()._entropy(_ctx(_HIGH_ENTROPY, ftype)) == [], ftype

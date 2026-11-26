@@ -8,6 +8,7 @@ import os
 import stat
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -19,6 +20,13 @@ if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
 import lab_ingest  # noqa: E402
+
+
+@pytest.fixture
+def tmp_path():
+    """Always stage outside the repo even when CI runs pytest with --basetemp=.pytest-tmp/ci."""
+    with tempfile.TemporaryDirectory(prefix="malaz_lab_test_") as td:
+        yield Path(td)
 
 from malaz import config  # noqa: E402
 from malaz.lab.manifest import load_manifest, sha256_file  # noqa: E402

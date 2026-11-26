@@ -173,7 +173,7 @@ def _decode_from_char_code(text: str) -> tuple[str, bool, bool]:
         raw_parts = match.group(1).split(",")
         if len(raw_parts) > MAX_CHAR_ITEMS:
             limit_hit = True
-            return match.group(0)
+            raw_parts = raw_parts[:MAX_CHAR_ITEMS]
         chars: list[str] = []
         for part in raw_parts:
             tok = part.strip()

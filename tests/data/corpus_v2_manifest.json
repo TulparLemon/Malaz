@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 456,
+  "count": 458,
   "families": [
     "archives",
     "edge",
@@ -18,7 +18,7 @@
   "kinds": {
     "benign": 136,
     "malicious": 283,
-    "edge": 37
+    "edge": 39
   },
   "fixtures": [
     {
@@ -33,14 +33,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 61
+      "size": 63
     },
     {
       "name": "script_ps_encoded_0_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 61
+      "size": 63
     },
     {
       "name": "script_ps_encoded_0_vbs.vbs",
@@ -54,7 +54,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 60
+      "size": 61
     },
     {
       "name": "script_ps_cradle_1_ps1.ps1",
@@ -68,14 +68,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 94
+      "size": 96
     },
     {
       "name": "script_ps_cradle_1_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 94
+      "size": 96
     },
     {
       "name": "script_ps_cradle_1_vbs.vbs",
@@ -89,7 +89,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 93
+      "size": 94
     },
     {
       "name": "script_certutil_2_ps1.ps1",
@@ -103,14 +103,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 72
+      "size": 74
     },
     {
       "name": "script_certutil_2_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 72
+      "size": 74
     },
     {
       "name": "script_certutil_2_vbs.vbs",
@@ -124,7 +124,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 71
+      "size": 72
     },
     {
       "name": "script_mshta_3_ps1.ps1",
@@ -138,14 +138,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 47
+      "size": 49
     },
     {
       "name": "script_mshta_3_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 47
+      "size": 49
     },
     {
       "name": "script_mshta_3_vbs.vbs",
@@ -159,7 +159,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 46
+      "size": 47
     },
     {
       "name": "script_regsvr32_4_ps1.ps1",
@@ -173,14 +173,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 74
+      "size": 76
     },
     {
       "name": "script_regsvr32_4_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 74
+      "size": 76
     },
     {
       "name": "script_regsvr32_4_vbs.vbs",
@@ -194,7 +194,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 73
+      "size": 74
     },
     {
       "name": "script_bitsadmin_5_ps1.ps1",
@@ -208,14 +208,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 77
+      "size": 79
     },
     {
       "name": "script_bitsadmin_5_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 77
+      "size": 79
     },
     {
       "name": "script_bitsadmin_5_vbs.vbs",
@@ -229,7 +229,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 76
+      "size": 77
     },
     {
       "name": "script_wmic_6_ps1.ps1",
@@ -243,14 +243,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 81
+      "size": 83
     },
     {
       "name": "script_wmic_6_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 81
+      "size": 83
     },
     {
       "name": "script_wmic_6_vbs.vbs",
@@ -264,7 +264,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 80
+      "size": 81
     },
     {
       "name": "script_run_key_7_ps1.ps1",
@@ -278,14 +278,14 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 133
+      "size": 135
     },
     {
       "name": "script_run_key_7_cmd.cmd",
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 133
+      "size": 135
     },
     {
       "name": "script_run_key_7_vbs.vbs",
@@ -299,7 +299,7 @@
       "family": "scripts",
       "kind": "malicious",
       "expected": "flag",
-      "size": 132
+      "size": 133
     },
     {
       "name": "benign_script_0_0.ps1",
@@ -617,27 +617,6 @@
       "size": 203
     },
     {
-      "name": "pdf_uri_0.pdf",
-      "family": "pdf",
-      "kind": "benign",
-      "expected": "green",
-      "size": 584
-    },
-    {
-      "name": "pdf_uri_1.pdf",
-      "family": "pdf",
-      "kind": "benign",
-      "expected": "green",
-      "size": 584
-    },
-    {
-      "name": "pdf_uri_2.pdf",
-      "family": "pdf",
-      "kind": "benign",
-      "expected": "green",
-      "size": 584
-    },
-    {
       "name": "pdf_obfuscated_0.pdf",
       "family": "pdf",
       "kind": "malicious",
@@ -755,6 +734,27 @@
       "kind": "malicious",
       "expected": "flag",
       "size": 244
+    },
+    {
+      "name": "pdf_uri_0.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 584
+    },
+    {
+      "name": "pdf_uri_1.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 584
+    },
+    {
+      "name": "pdf_uri_2.pdf",
+      "family": "pdf",
+      "kind": "benign",
+      "expected": "green",
+      "size": 584
     },
     {
       "name": "benign_pdf_0.pdf",
@@ -1041,35 +1041,35 @@
       "family": "office",
       "kind": "malicious",
       "expected": "flag",
-      "size": 1720
+      "size": 1715
     },
     {
       "name": "ooxml_macro_1.docm",
       "family": "office",
       "kind": "malicious",
       "expected": "flag",
-      "size": 1720
+      "size": 1715
     },
     {
       "name": "ooxml_macro_2.docm",
       "family": "office",
       "kind": "malicious",
       "expected": "flag",
-      "size": 1720
+      "size": 1715
     },
     {
       "name": "ooxml_macro_3.docm",
       "family": "office",
       "kind": "malicious",
       "expected": "flag",
-      "size": 1721
+      "size": 1716
     },
     {
       "name": "ooxml_macro_4.docm",
       "family": "office",
       "kind": "malicious",
       "expected": "flag",
-      "size": 1721
+      "size": 1716
     },
     {
       "name": "legacy_vba_0.doc",
@@ -3079,6 +3079,20 @@
       "kind": "edge",
       "expected": "any",
       "size": 38912
+    },
+    {
+      "name": "edge_chm.chm",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 56
+    },
+    {
+      "name": "edge_vhdx.vhdx",
+      "family": "edge",
+      "kind": "edge",
+      "expected": "any",
+      "size": 64
     },
     {
       "name": "edge_random_0.bin",

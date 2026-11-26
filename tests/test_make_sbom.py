@@ -83,4 +83,4 @@ def test_sbom_ignores_setuptools_vendored_sys_path():
     components = make_sbom.collect(ROOT / "requirements.txt")
     names = {c["name"].lower() for c in components}
     assert "autocommand" not in names
-    assert len(components) == 47
+    assert len(components) == 48
