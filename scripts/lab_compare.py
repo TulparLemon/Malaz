@@ -35,6 +35,7 @@ from malaz.lab.report import wilson_interval  # noqa: E402
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+_SAFE_ENGINES_RE = re.compile(r"^[A-Za-z0-9_.,-]{1,64}$")
 
 
 class CompareInputError(ValueError):
@@ -247,12 +248,12 @@ def render_public_summary(comp: dict[str, Any]) -> str:
 
     if not _DATE_RE.fullmatch(run_date):
         raise CompareInputError("Ungültiges run_date_utc für public-summary")
-    for field_name, val in (
-        ("split", split),
-        ("engine_profile", engine_profile),
-        ("av_engines", av_engines),
+    for field_name, val, pattern in (
+        ("split", split, _SAFE_TOKEN_RE),
+        ("engine_profile", engine_profile, _SAFE_TOKEN_RE),
+        ("av_engines", av_engines, _SAFE_ENGINES_RE),
     ):
-        if not _SAFE_TOKEN_RE.fullmatch(val):
+        if not pattern.fullmatch(val):
             raise CompareInputError(f"Ungültiger Wert für {field_name} in public-summary")
 
     lines = [
@@ -333,12 +334,23 @@ def compare_runs(
     delta_missing = curr_m["missing_results"] - base_m["missing_results"]
     delta_ingest_rejected = curr_m["ingest_rejected"] - base_m["ingest_rejected"]
 
+    raw_fp_pp = (
+        (curr_m["fp_red"] - base_m["fp_red"]) * 100.0
+        if base_m["fp_red"] is not None and curr_m["fp_red"] is not None
+        else None
+    )
+    raw_recall_pp = (
+        (curr_m["recall_red"] - base_m["recall_red"]) * 100.0
+        if base_m["recall_red"] is not None and curr_m["recall_red"] is not None
+        else None
+    )
+
     reasons: list[str] = []
-    if fp_red_pp is not None and fp_red_pp > 0.0:
-        reasons.append(f"fp_red_pp={fp_red_pp:+.2f} pp (> 0)")
-    if recall_red_pp is not None and recall_red_pp < -max_recall_drop:
+    if raw_fp_pp is not None and raw_fp_pp > 1e-12:
+        reasons.append(f"fp_red_pp={raw_fp_pp:+.4f} pp (> 0)")
+    if raw_recall_pp is not None and raw_recall_pp < -(max_recall_drop + 1e-12):
         reasons.append(
-            f"recall_red_pp={recall_red_pp:+.2f} pp (< -{max_recall_drop:.2f} pp)"
+            f"recall_red_pp={raw_recall_pp:+.4f} pp (< -{max_recall_drop:.2f} pp)"
         )
     if delta_unchecked > 0:
         reasons.append(f"delta_unchecked={delta_unchecked:+d} (> 0)")

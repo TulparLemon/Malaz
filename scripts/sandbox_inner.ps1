@@ -102,8 +102,14 @@ function Test-SevenZipPreExtract {
         [string]$ZipPath,
         [string]$Password
     )
-    $lines = & $SevenZipExe l -slt "-p$Password" -- $ZipPath 2>&1
-    $rc = $LASTEXITCODE
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $lines = & $SevenZipExe l -slt "-p$Password" -- $ZipPath 2>&1
+        $rc = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
     if ($rc -ne 0) {
         return "7z l -slt failed with exit code $rc"
     }
@@ -353,11 +359,18 @@ try {
         New-Item -ItemType Directory -Path $tmpOne -Force | Out-Null
         try {
             # NO -snld flag (strict default in 7-Zip 25.01+, avoids exit 7 in older versions)
-            & $sevenZipExe e -y -bd -aou "-p$zipPassword" "-o$tmpOne" -- $zf.FullName | Out-Null
-            if ($LASTEXITCODE -ne 0) {
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            try {
+                & $sevenZipExe e -y -bd -aou "-p$zipPassword" "-o$tmpOne" -- $zf.FullName 2>&1 | Out-Null
+                $extractRc = $LASTEXITCODE
+            } finally {
+                $ErrorActionPreference = $prevEap
+            }
+            if ($extractRc -ne 0) {
                 $status = 'custody_failed'
                 $exitCode = 3
-                $errorDetail = "7z extract failed for $($zf.Name) (rc=$LASTEXITCODE)"
+                $errorDetail = "7z extract failed for $($zf.Name) (rc=$extractRc)"
                 throw $errorDetail
             }
 

@@ -71,6 +71,7 @@ class _StagedEntry:
     split: str
     first_seen: str
     src_path: Path  # original benign file or ZIP path
+    size_bytes: int = 0
 
 
 def _is_reparse_or_symlink(path: Path) -> bool:
@@ -386,12 +387,12 @@ def main(argv: list[str] | None = None) -> int:
     password_bytes = pw_text.encode("utf-8")
 
     # Staging path safety: must not be symlink/reparse point and must be outside ROOT
-    staging: Path = args.staging_dir
-    if staging.exists() and _is_reparse_or_symlink(staging):
+    staging = Path(os.path.abspath(str(args.staging_dir)))
+    if os.path.lexists(str(staging)) and _is_reparse_or_symlink(staging):
         print("FEHLER: --staging-dir darf kein Symlink/Reparse-Point sein.", file=sys.stderr)
         return 2
     for parent in staging.parents:
-        if parent.exists() and _is_reparse_or_symlink(parent):
+        if os.path.lexists(str(parent)) and _is_reparse_or_symlink(parent):
             print("FEHLER: Elternpfad von --staging-dir ist ein Symlink/Reparse-Point.", file=sys.stderr)
             return 2
     if _is_inside_repo(staging):
@@ -463,9 +464,21 @@ def main(argv: list[str] | None = None) -> int:
     staged_benign: list[_StagedEntry] = []
     label_conflicts = 0
 
-    for bp in sorted(args.benign_dir.rglob("*"), key=lambda p: str(p).lower()):
-        if bp.is_dir():
-            continue
+    benign_files: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(args.benign_dir, topdown=True, followlinks=False):
+        dirnames.sort(key=str.lower)
+        safe_dirs: list[str] = []
+        for dname in dirnames:
+            dpath = Path(dirpath) / dname
+            if _is_reparse_or_symlink(dpath):
+                rejected["unreadable_benign"] += 1
+                continue
+            safe_dirs.append(dname)
+        dirnames[:] = safe_dirs
+        for fname in sorted(filenames, key=str.lower):
+            benign_files.append(Path(dirpath) / fname)
+
+    for bp in benign_files:
         if _is_reparse_or_symlink(bp):
             rejected["unreadable_benign"] += 1
             continue
@@ -501,6 +514,7 @@ def main(argv: list[str] | None = None) -> int:
                 split=split,
                 first_seen=today,
                 src_path=bp,
+                size_bytes=bbytes,
             )
         )
 
@@ -524,6 +538,7 @@ def main(argv: list[str] | None = None) -> int:
     bad_zips_sha256: dict[str, str] = {}
 
     for idx, (zp, entries, zbytes) in enumerate(staged_zips, 1):
+        dest_path: Path | None = None
         try:
             zsha = sha256_file(zp)
             dest_name = f"{idx:04d}_{zsha[:12]}.zip"
@@ -534,8 +549,8 @@ def main(argv: list[str] | None = None) -> int:
                 dest_path.unlink(missing_ok=True)
                 raise PermissionError("ZIP copy hash mismatch")
         except OSError as exc:
-            # Roll back this ZIP cleanly
-            if "dest_path" in locals():
+            # Roll back only this ZIP cleanly (never touch previous ZIPs)
+            if dest_path is not None:
                 dest_path.unlink(missing_ok=True)
             total_unpacked_bytes = max(0, total_unpacked_bytes - zbytes)
             for ent in entries:
@@ -552,6 +567,7 @@ def main(argv: list[str] | None = None) -> int:
             shutil.copy2(bent.src_path, dest)
         except OSError:
             dest.unlink(missing_ok=True)
+            total_unpacked_bytes = max(0, total_unpacked_bytes - bent.size_bytes)
             rejected["unreadable_benign"] += 1
             continue
         final_benign.append(bent)

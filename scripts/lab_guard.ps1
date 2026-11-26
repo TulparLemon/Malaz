@@ -242,7 +242,7 @@ function Get-SandboxGuestLiveState {
             ForEach-Object {
                 [ordered]@{ name = $_.Name; status = $_.Status }
             })
-        $state.adapters = ,$adapters
+        $state.adapters = $adapters
     } catch { }
 
     try {
@@ -251,14 +251,14 @@ function Get-SandboxGuestLiveState {
             $routes += @(Get-NetRoute -DestinationPrefix $prefix -ErrorAction SilentlyContinue |
                 ForEach-Object { "$($_.DestinationPrefix)->$($_.NextHop)" })
         }
-        $state.default_routes = ,$routes
+        $state.default_routes = $routes
     } catch { }
 
     try {
         $dns = @(Get-DnsClientServerAddress -ErrorAction Stop |
             ForEach-Object { $_.ServerAddresses } |
             Where-Object { $_ })
-        $state.dns_servers = ,$dns
+        $state.dns_servers = $dns
     } catch { }
 
     try {
@@ -272,14 +272,14 @@ function Get-SandboxGuestLiveState {
         $shares = @(Get-SmbShare -ErrorAction Stop |
             Where-Object { $_.Name -notin @('IPC$', 'ADMIN$', 'C$', 'D$') } |
             ForEach-Object { [string]$_.Name })
-        $state.shared_folders = ,$shares
+        $state.shared_folders = $shares
     } catch { }
 
     try {
         $usb = @(Get-CimInstance -ClassName Win32_DiskDrive -ErrorAction Stop |
             Where-Object { $_.InterfaceType -eq 'USB' } |
             ForEach-Object { [string]$_.Model })
-        $state.usb_storage = ,$usb
+        $state.usb_storage = $usb
     } catch { }
 
     $state.username = [string]$env:USERNAME

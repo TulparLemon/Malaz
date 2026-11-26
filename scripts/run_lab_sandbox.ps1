@@ -129,7 +129,7 @@ function Write-Utf8NoBom {
 
 function Test-IsReparsePointPath {
     param([string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     $cur = [System.IO.Path]::GetFullPath($Path)
     while ($cur) {
         if (Test-Path -LiteralPath $cur) {
@@ -303,12 +303,21 @@ function Test-LabOutputDir {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $null; Reason = "Missing mandatory DONE.json or guard.json" }
     }
 
+    function Get-JsonProp {
+        param($Obj, [string]$Name)
+        if ($null -eq $Obj) { return $null }
+        $p = $Obj.PSObject.Properties[$Name]
+        if ($null -eq $p) { return $null }
+        return $p.Value
+    }
+
     try {
         $guardObj = $present['guard.json'].TrimStart([char]0xFEFF) | ConvertFrom-Json
     } catch {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $null; Reason = "Invalid JSON in guard.json" }
     }
-    if ($guardObj.ok -ne $true) {
+    $guardOk = Get-JsonProp $guardObj 'ok'
+    if ($guardOk -ne $true) {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $guardObj; Reason = "guard.json.ok is not true" }
     }
 
@@ -317,16 +326,22 @@ function Test-LabOutputDir {
     } catch {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $guardObj; Reason = "Invalid JSON in DONE.json" }
     }
-    $doneSha = if ($null -ne $doneObj.manifest_sha256) { ([string]$doneObj.manifest_sha256).ToLowerInvariant() } else { '' }
+    if ($null -eq $doneObj) {
+        return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $guardObj; Reason = "DONE.json is null" }
+    }
+    $rawDoneSha = Get-JsonProp $doneObj 'manifest_sha256'
+    $doneSha = if ($null -ne $rawDoneSha) { ([string]$rawDoneSha).ToLowerInvariant() } else { '' }
     if ($doneSha -ne $ExpectedManifestSha.ToLowerInvariant()) {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $doneObj; Guard = $guardObj; Reason = "DONE.json.manifest_sha256 mismatch" }
     }
-    if ([string]$doneObj.engine_profile -ne 'static_only') {
+    $rawEngineProfile = Get-JsonProp $doneObj 'engine_profile'
+    if ([string]$rawEngineProfile -ne 'static_only') {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $doneObj; Guard = $guardObj; Reason = "DONE.json.engine_profile must be 'static_only'" }
     }
 
     # 4. Status check
-    $dStatus = if ($null -ne $doneObj.status) { [string]$doneObj.status } else { '' }
+    $rawStatus = Get-JsonProp $doneObj 'status'
+    $dStatus = if ($null -ne $rawStatus) { [string]$rawStatus } else { '' }
     if ($dStatus -eq 'ok') {
         if (-not $present.ContainsKey('results.csv') -or -not $present.ContainsKey('eval.json')) {
             return [ordered]@{ Passed = $false; ExitCode = 4; Done = $doneObj; Guard = $guardObj; Reason = "DONE.json.status=ok but results.csv or eval.json missing" }
@@ -444,8 +459,8 @@ if (@(Get-ChildItem -LiteralPath $OutputDir -Force).Count -gt 0) {
     [Console]::Error.WriteLine("FEHLER: OutputDir muss vor Laufbeginn leer sein: $OutputDir")
     exit 2
 }
-if ((Test-PathInside $WsbPath $script:RepoRoot) -or (Test-PathInside $WsbPath $OutputDir)) {
-    [Console]::Error.WriteLine("FEHLER: WsbPath darf nicht im Repository oder in OutputDir liegen.")
+if ((Test-PathInside $WsbPath $script:RepoRoot) -or (Test-PathInside $WsbPath $OutputDir) -or (Test-IsReparsePointPath $WsbPath)) {
+    [Console]::Error.WriteLine("FEHLER: WsbPath darf nicht im Repository, in OutputDir oder unter einem Reparse-Point liegen.")
     exit 2
 }
 
@@ -521,8 +536,9 @@ $stagedGuard = Join-Path $inputRo 'lab_guard.ps1'
 $stagedCfg = Join-Path $inputRo 'sandbox_cfg.json'
 $simStateFile = ''
 
-$finalExit = 0
+$finalExit = 1
 try {
+    do {
     Copy-Item -LiteralPath $srcInner -Destination $stagedInner -Force
     Copy-Item -LiteralPath $srcGuard -Destination $stagedGuard -Force
     $cfgObj = [ordered]@{
@@ -560,7 +576,7 @@ try {
         if ($LASTEXITCODE -ne 0) {
             [Console]::Error.WriteLine("FEHLER: DryRun lab_guard -SandboxGuest fehlgeschlagen.")
             $finalExit = 4
-            return
+            break
         }
 
         $manifestObj = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -596,13 +612,20 @@ try {
     } else {
         # Live Windows Sandbox execution
         $proc = Start-Process -FilePath 'WindowsSandbox.exe' -ArgumentList @($WsbPath) -PassThru
-        $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+        $startedAt = Get-Date
+        $deadline = $startedAt.AddMinutes($TimeoutMinutes)
         $doneFile = Join-Path $OutputDir 'DONE.json'
         while ((Get-Date) -lt $deadline) {
             if (Test-Path -LiteralPath $doneFile -PathType Leaf) {
                 break
             }
-            if ($proc.HasExited) {
+            # WindowsSandbox.exe may act as a thin launcher spawning WindowsSandboxClient.exe:
+            # only exit early once NO WindowsSandbox* process remains after startup grace.
+            if (
+                $proc.HasExited `
+                -and (((Get-Date) - $startedAt).TotalSeconds -ge 15) `
+                -and (@(Get-Process -Name 'WindowsSandbox*' -ErrorAction SilentlyContinue).Count -eq 0)
+            ) {
                 break
             }
             Start-Sleep -Seconds 2
@@ -612,7 +635,7 @@ try {
         if (-not $allExited) {
             [Console]::Error.WriteLine("FEHLER: WindowsSandbox-Prozess laeuft noch — Fail-Closed Exit 4 (OutputDir wird nicht gelesen).")
             $finalExit = 4
-            return
+            break
         }
     }
 
@@ -621,7 +644,7 @@ try {
     if ($ver.ExitCode -eq 4) {
         [Console]::Error.WriteLine("FEHLER: Post-Exit-Output-Filter abgelehnt (Exit 4): $($ver.Reason)")
         $finalExit = 4
-        return
+        break
     }
 
     $runDateUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
@@ -641,7 +664,7 @@ try {
     if ($ver.ExitCode -eq 3) {
         [Console]::Error.WriteLine("FEHLER: Gastlauf fehlgeschlagen (status=$($ver.Done.status)) — kein report.json erzeugt.")
         $finalExit = 3
-        return
+        break
     }
 
     # Host post-processing: realworld_report.py + triage_misses.py --split dev
@@ -653,17 +676,18 @@ try {
     if ($LASTEXITCODE -ne 0) {
         [Console]::Error.WriteLine("FEHLER: realworld_report.py fehlgeschlagen (rc=$LASTEXITCODE)")
         $finalExit = 3
-        return
+        break
     }
 
     & $PythonExe $triageScript $resultsCsv --manifest $manifestPath --split dev --json (Join-Path $OutputDir 'misses.json') --markdown (Join-Path $OutputDir 'misses.md')
     if ($LASTEXITCODE -ne 0) {
         [Console]::Error.WriteLine("FEHLER: triage_misses.py fehlgeschlagen (rc=$LASTEXITCODE)")
         $finalExit = 3
-        return
+        break
     }
 
     $finalExit = 0
+    } while ($false)
 } finally {
     foreach ($tmpF in @($stagedCfg, $stagedInner, $stagedGuard, $simStateFile)) {
         if ($tmpF -and (Test-Path -LiteralPath $tmpF)) {

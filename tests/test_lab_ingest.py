@@ -462,3 +462,92 @@ def test_ingest_rejects_benign_symlink_or_junction(tmp_path):
     assert rc == 2
     # Clean up junction cleanly
     os.rmdir(junc_path)
+
+
+def test_ingest_phase2_zip_error_does_not_delete_previous_zip(tmp_path, monkeypatch):
+    """M2 regression: Phase 2 OSError on ZIP #2 must NOT unlink already-committed ZIP #1."""
+    bad_dir = tmp_path / "bad_zips"
+    ben_dir = tmp_path / "benign"
+    staging = tmp_path / "staging"
+    bad_dir.mkdir()
+    ben_dir.mkdir()
+
+    _make_aes_zip(bad_dir / "01_first.zip", [("a.bin", b"first sample bytes")])
+    _make_aes_zip(bad_dir / "02_second.zip", [("b.bin", b"second sample bytes")])
+    (ben_dir / "clean.txt").write_bytes(b"benign text")
+
+    real_sha = lab_ingest.sha256_file
+
+    def _flaky_sha(p: Path) -> str:
+        if p.name == "02_second.zip":
+            raise PermissionError("simulated WinError 225 host AV quarantine")
+        return real_sha(p)
+
+    monkeypatch.setattr(lab_ingest, "sha256_file", _flaky_sha)
+
+    rc = lab_ingest.main(
+        [
+            "--bad-zips",
+            str(bad_dir),
+            "--benign-dir",
+            str(ben_dir),
+            "--staging-dir",
+            str(staging),
+            "--corpus-id",
+            "t1-m2",
+        ]
+    )
+    assert rc == 0
+    summary = json.loads((staging / "input_ro/ingest_summary.json").read_text(encoding="utf-8"))
+    assert summary["accepted_malicious"] == 1
+    assert summary["rejected"]["host_av"] == 1
+
+    zmap = json.loads((staging / "input_ro/bad_zips_sha256.json").read_text(encoding="utf-8"))
+    assert len(zmap) == 1
+    only_zip_name = next(iter(zmap))
+    assert (staging / "input_ro/bad_zips" / only_zip_name).is_file()
+
+
+def test_ingest_prunes_benign_directory_junction_and_counts_rejected(tmp_path):
+    """M3 regression: NTFS junction under --benign-dir is pruned & counted in unreadable_benign."""
+    import subprocess
+
+    bad_dir = tmp_path / "bad_zips"
+    ben_dir = tmp_path / "benign"
+    outside = tmp_path / "outside_secret"
+    staging = tmp_path / "staging"
+    bad_dir.mkdir()
+    ben_dir.mkdir()
+    outside.mkdir()
+
+    secret_bytes = b"outside junction secret must never be staged"
+    (outside / "secret.txt").write_bytes(secret_bytes)
+    (ben_dir / "legit.txt").write_bytes(b"legitimate benign document")
+
+    junc = ben_dir / "linked_dir"
+    r = subprocess.run(
+        ["cmd.exe", "/c", "mklink", "/J", str(junc), str(outside)],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+
+    rc = lab_ingest.main(
+        [
+            "--bad-zips",
+            str(bad_dir),
+            "--benign-dir",
+            str(ben_dir),
+            "--staging-dir",
+            str(staging),
+            "--corpus-id",
+            "t1-m3",
+        ]
+    )
+    assert rc == 0
+    summary = json.loads((staging / "input_ro/ingest_summary.json").read_text(encoding="utf-8"))
+    assert summary["accepted_benign"] == 1
+    assert summary["rejected"]["unreadable_benign"] >= 1
+    manifest = json.loads((staging / "input_ro/manifest.json").read_text(encoding="utf-8"))
+    secret_sha = hashlib.sha256(secret_bytes).hexdigest()
+    assert all(f["sha256"] != secret_sha for f in manifest["files"])

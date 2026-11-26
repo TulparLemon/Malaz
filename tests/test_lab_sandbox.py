@@ -636,3 +636,146 @@ public class Program {
     assert rc_bt == 3
     assert done_bt["status"] == "custody_failed"
     assert done_bt["hash_mismatches"] >= 1
+
+
+def test_run_lab_sandbox_try_error_exits_nonzero_and_cleans_up(tmp_path):
+    """B1 regression: failure inside top-level try/do exits 3 (NOT 0) and cleans staged files."""
+    staging, _msha = _create_staged_corpus(tmp_path, name="b1")
+    out_dir = tmp_path / "out_b1"
+    out_dir.mkdir()
+    wsb_path = tmp_path / "b1.wsb"
+
+    # Compile a tiny stub exe that returns exit code 7 so realworld_report.py fails inside try
+    fail_exe = tmp_path / "fail_py.exe"
+    _compile_stub_exe(
+        "public class FailPy { public static int Main() { return 7; } }",
+        fail_exe,
+    )
+    r = _run_ps(
+        RUN_SANDBOX,
+        [
+            "-StagingDir",
+            str(staging),
+            "-OutputDir",
+            str(out_dir),
+            "-WsbPath",
+            str(wsb_path),
+            "-PythonExe",
+            str(fail_exe),
+            "-DryRun",
+        ],
+    )
+    assert r.returncode == 3, f"expected exit 3, got {r.returncode}: {r.stdout} {r.stderr}"
+    input_ro = staging / "input_ro"
+    assert not (input_ro / "sandbox_cfg.json").exists()
+    assert not (input_ro / "sandbox_inner.ps1").exists()
+    assert not (input_ro / "lab_guard.ps1").exists()
+
+
+def test_lab_guard_live_state_arrays_are_flat_not_nested():
+    """B2 regression: Get-SandboxGuestLiveState must assign flat arrays (never @(@()))."""
+    script_text = LAB_GUARD.read_text(encoding="utf-8")
+    assert "= ,$" not in script_text
+
+    # Parse Get-SandboxGuestLiveState via AST and invoke it in isolated PowerShell
+    ps_snippet = (
+        "$tokens = $null; $errs = $null; "
+        "$ast = [System.Management.Automation.Language.Parser]::ParseFile("
+        f"'{LAB_GUARD}', [ref]$tokens, [ref]$errs); "
+        "$pred = { param($n) "
+        "$n -is [System.Management.Automation.Language.FunctionDefinitionAst] "
+        "-and $n.Name -eq 'Get-SandboxGuestLiveState' }; "
+        "$fn = $ast.Find($pred, $true); "
+        "Invoke-Expression $fn.Extent.Text; "
+        "$s = Get-SandboxGuestLiveState; "
+        "foreach ($k in @('adapters','default_routes','dns_servers',"
+        "'shared_folders','usb_storage')) { "
+        "  $v = $s[$k]; "
+        "  foreach ($el in $v) { "
+        "    if ($el -is [System.Array]) { throw ('Nested array in ' + $k) } "
+        "  } "
+        "}; "
+        "Write-Output 'FLAT_OK'"
+    )
+    env = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}
+    r = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_snippet],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    assert r.returncode == 0, f"{r.stdout}\n{r.stderr}"
+    assert "FLAT_OK" in r.stdout
+
+
+def test_verify_output_only_missing_json_fields_and_null_exit_4_under_strict_mode(tmp_path):
+    """M1 regression: missing keys or JSON null in guard.json / DONE.json exit 4 (not 1)."""
+    staging, msha = _create_staged_corpus(tmp_path, name="m1")
+    good_done = json.dumps(
+        {
+            "schema_version": 1,
+            "status": "ok",
+            "engine_profile": "static_only",
+            "exit_code": 0,
+            "manifest_sha256": msha,
+            "samples_extracted": 1,
+            "hash_mismatches": 0,
+            "started_utc": "2026-11-26T00:00:00Z",
+            "finished_utc": "2026-11-26T00:00:01Z",
+            "error": "",
+        }
+    )
+    cases = [
+        ("guard_empty_obj", "{}", good_done),
+        ("guard_null", "null", good_done),
+        ("done_empty_obj", '{"ok":true}', "{}"),
+        ("done_null", '{"ok":true}', "null"),
+    ]
+    for name, guard_txt, done_txt in cases:
+        od = tmp_path / f"od_{name}"
+        od.mkdir()
+        (od / "guard.json").write_text(guard_txt, encoding="utf-8")
+        (od / "DONE.json").write_text(done_txt, encoding="utf-8")
+        (od / "results.csv").write_text(
+            "Gruppe,Datei,Typ,Urteil,Score,Top-Findings,Ungeprueft,Datei_ID\n",
+            encoding="utf-8",
+        )
+        (od / "eval.json").write_text('{"schema_version":1}', encoding="utf-8")
+        (od / "sandbox.log").write_text("ok\n", encoding="utf-8")
+        r = _run_ps(
+            RUN_SANDBOX,
+            ["-StagingDir", str(staging), "-OutputDir", str(od), "-VerifyOutputOnly"],
+        )
+        assert r.returncode == 4, f"{name}: expected 4, got {r.returncode}: {r.stdout} {r.stderr}"
+
+
+def test_run_lab_sandbox_rejects_wsb_path_under_junction(tmp_path):
+    """N1 regression: non-existent WsbPath under a directory junction must exit 2."""
+    staging, _msha = _create_staged_corpus(tmp_path, name="n1")
+    out_dir = tmp_path / "out_n1"
+    out_dir.mkdir()
+    real_dir = tmp_path / "real_wsb_dir"
+    real_dir.mkdir()
+    junc_dir = tmp_path / "junc_wsb_dir"
+    mk = subprocess.run(
+        ["cmd.exe", "/c", "mklink", "/J", str(junc_dir), str(real_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert mk.returncode == 0, mk.stderr
+
+    r = _run_ps(
+        RUN_SANDBOX,
+        [
+            "-StagingDir",
+            str(staging),
+            "-OutputDir",
+            str(out_dir),
+            "-WsbPath",
+            str(junc_dir / "new_file.wsb"),
+            "-DryRun",
+        ],
+    )
+    assert r.returncode == 2, f"expected 2, got {r.returncode}: {r.stdout} {r.stderr}"
+    assert not (real_dir / "new_file.wsb").exists()

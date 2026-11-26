@@ -382,3 +382,83 @@ def test_triage_misses_split_filtering_and_fail_closed(tmp_path):
     assert rep["total_malicious"] == 1
     assert rep["misses"] == 1
     assert [r["name"] for r in rep["miss_rows"]] == ["dev_miss.pdf"]
+
+
+def test_compare_public_summary_allows_comma_av_engines_and_blocks_opsec_leak(tmp_path, monkeypatch):
+    """M4 + N3 regression: av_engines='defender,clamav' passes; CLI OPSEC leak exits 2."""
+    msha = "e" * 64
+    files = [
+        {"sha256": "1" * 64, "label": "malicious", "status": "detected", "verdict": "RED", "split": "test"}
+    ]
+    base_dir = tmp_path / "base_av"
+    curr_dir = tmp_path / "curr_av"
+    _write_run(
+        base_dir,
+        files,
+        manifest_sha256=msha,
+        engine_profile="with_av",
+        av_engines="defender,clamav",
+    )
+    _write_run(
+        curr_dir,
+        files,
+        manifest_sha256=msha,
+        engine_profile="with_av",
+        av_engines="defender,clamav",
+    )
+
+    pub_ok = tmp_path / "pub_av.md"
+    rc_ok = lab_compare.main(
+        [
+            "--baseline",
+            str(base_dir),
+            "--current",
+            str(curr_dir),
+            "--public-summary",
+            str(pub_ok),
+        ]
+    )
+    assert rc_ok == 0
+    assert "- **AV Engines:** `defender,clamav`" in pub_ok.read_text(encoding="utf-8")
+
+    # Simulate env leak where COMPUTERNAME appears verbatim in the rendered summary
+    monkeypatch.setenv("COMPUTERNAME", "with_av")
+    pub_blocked = tmp_path / "pub_blocked.md"
+    rc_leak = lab_compare.main(
+        [
+            "--baseline",
+            str(base_dir),
+            "--current",
+            str(curr_dir),
+            "--public-summary",
+            str(pub_blocked),
+        ]
+    )
+    assert rc_leak == 2
+    assert not pub_blocked.exists()
+
+
+def test_compare_unrounded_regression_catches_sub_001_pp_drift(tmp_path):
+    """N3 regression: 1-sample FP drift on >20000 benign samples must not round away to 0.00."""
+    msha = "f" * 64
+    n = 20001
+    base_files = [
+        {"sha256": f"{i:064x}", "label": "benign", "status": "clean", "verdict": "GREEN", "split": "test"}
+        for i in range(n)
+    ]
+    curr_files = list(base_files)
+    curr_files[0] = {
+        "sha256": f"{0:064x}",
+        "label": "benign",
+        "status": "flagged",
+        "verdict": "RED",
+        "split": "test",
+    }
+    base_dir = tmp_path / "b_big"
+    curr_dir = tmp_path / "c_big"
+    _write_run(base_dir, base_files, manifest_sha256=msha)
+    _write_run(curr_dir, curr_files, manifest_sha256=msha)
+
+    comp = lab_compare.compare_runs(base_dir, curr_dir, split="test")
+    assert comp["regressed"] is True
+    assert any("fp_red_pp=" in r for r in comp["regression_reasons"])
