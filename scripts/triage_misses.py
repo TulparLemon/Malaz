@@ -208,11 +208,18 @@ def render_markdown(report: dict[str, Any], source: str) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _families_from_manifest(path: Path) -> dict[str, str]:
+def _manifest_metadata(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     from malaz.lab.manifest import load_manifest
 
     manifest = load_manifest(path)
-    return {entry.name: entry.family for entry in manifest.entries}
+    families = {entry.name: entry.family for entry in manifest.entries}
+    splits = {entry.name: entry.split for entry in manifest.entries}
+    return families, splits
+
+
+def _families_from_manifest(path: Path) -> dict[str, str]:
+    families, _ = _manifest_metadata(path)
+    return families
 
 
 def _validate_output(path: Path | None) -> bool:
@@ -229,7 +236,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, default=None, help="JSON-Bericht")
     parser.add_argument("--manifest", type=Path, default=None,
                         help="optionales Lab-Manifest für Familiennamen")
+    parser.add_argument(
+        "--split",
+        choices=("all", "dev", "test"),
+        default="all",
+        help="nur Einträge dieses Splits auswerten (dev/test erfordert --manifest)",
+    )
     args = parser.parse_args(argv)
+
+    if args.split != "all" and args.manifest is None:
+        print(
+            f"FEHLER: --split {args.split} erfordert --manifest (fail-closed).",
+            file=sys.stderr,
+        )
+        return 2
 
     if not args.input.is_file():
         print(f"FEHLER: Eingabe fehlt: {args.input}", file=sys.stderr)
@@ -242,12 +262,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FEHLER: {exc}", file=sys.stderr)
         return 1
     families: dict[str, str] = {}
+    splits: dict[str, str] = {}
     if args.manifest is not None:
         try:
-            families = _families_from_manifest(args.manifest)
+            families, splits = _manifest_metadata(args.manifest)
         except Exception as exc:
             print(f"FEHLER: Manifest nicht lesbar: {exc}", file=sys.stderr)
             return 1
+    if args.split != "all":
+        rows = [row for row in rows if splits.get(row.name) == args.split]
 
     report = triage(rows, families)
     if report["total_malicious"] == 0:

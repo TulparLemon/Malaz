@@ -31,6 +31,7 @@ CURRENT_DOCS = (
     "docs/BENCHMARKS.md",
     "docs/SECURITY_MODEL.md",
     "docs/VERIFYING_RELEASES.md",
+    "docs/LAB_WORKFLOW.md",
 )
 
 HISTORICAL_DOCS = ("CHANGELOG.md",)
