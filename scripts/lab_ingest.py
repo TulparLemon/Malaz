@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import lzma
 import math
 import os
 import re
@@ -24,6 +25,7 @@ import shutil
 import stat
 import sys
 import zipfile
+import zlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -184,7 +186,7 @@ def _inspect_zip_atomic(
         zf_ctx = pyzipper.AESZipFile(zip_path, "r")
     except OSError as exc:
         return [], 0, 0, ("host_av" if _is_host_av_error(exc) else "corrupt")
-    except (zipfile.BadZipFile, RuntimeError, ValueError):
+    except (zipfile.BadZipFile, zlib.error, lzma.LZMAError, RuntimeError, ValueError):
         return [], 0, 0, "corrupt"
 
     local_entries: list[_StagedEntry] = []
@@ -254,7 +256,7 @@ def _inspect_zip_atomic(
                     if _is_wrong_password_error(exc):
                         return [], 0, 0, "wrong_password"
                     return [], 0, 0, "corrupt"
-                except (zipfile.BadZipFile, ValueError, EOFError):
+                except (zipfile.BadZipFile, zlib.error, lzma.LZMAError, ValueError, EOFError):
                     return [], 0, 0, "corrupt"
 
                 digest = hasher.hexdigest()
@@ -289,7 +291,7 @@ def _inspect_zip_atomic(
         if _is_wrong_password_error(exc):
             return [], 0, 0, "wrong_password"
         return [], 0, 0, "corrupt"
-    except (zipfile.BadZipFile, ValueError):
+    except (zipfile.BadZipFile, zlib.error, lzma.LZMAError, ValueError):
         return [], 0, 0, "corrupt"
 
     if regular_members == 0:
@@ -400,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     input_ro = staging / "input_ro"
-    if input_ro.exists():
+    if os.path.lexists(str(input_ro)):
         if _is_reparse_or_symlink(input_ro) or not input_ro.is_dir():
             print("FEHLER: input_ro ist ungültig.", file=sys.stderr)
             return 2

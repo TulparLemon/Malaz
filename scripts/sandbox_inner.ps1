@@ -165,7 +165,7 @@ function Test-SevenZipPreExtract {
         }
         if ($blk.ContainsKey('Attributes')) {
             $attr = [string]$blk['Attributes']
-            if ($attr -match '(?i)(?:^|\s)l[rwxstST-]{9}' -or $attr -match '^[A-Z.]*L') {
+            if ($attr -match '(?i)(?:^|\s)l[rwxstST-]{9}' -or $attr -cmatch '^[A-Z.]*L') {
                 return "symlink/reparse attribute rejected ($attr): $mPath"
             }
         }

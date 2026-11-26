@@ -551,3 +551,121 @@ def test_ingest_prunes_benign_directory_junction_and_counts_rejected(tmp_path):
     manifest = json.loads((staging / "input_ro/manifest.json").read_text(encoding="utf-8"))
     secret_sha = hashlib.sha256(secret_bytes).hexdigest()
     assert all(f["sha256"] != secret_sha for f in manifest["files"])
+
+
+def test_ingest_corrupt_deflate_stream_is_rejected_atomically(tmp_path):
+    """M1 regression: zlib.error inside encrypted ZIP stream must reject as corrupt, not crash."""
+    import struct
+    import zlib
+
+    bad_dir = tmp_path / "bad_zips"
+    ben_dir = tmp_path / "benign"
+    staging = tmp_path / "staging"
+    bad_dir.mkdir()
+    ben_dir.mkdir()
+
+    # Build a ZipCrypto archive whose 12-byte encryption header passes password check,
+    # while the encrypted deflate stream decrypts to invalid block type 3 (raises zlib.error).
+    corrupt_zip = bad_dir / "corrupt_deflate.zip"
+    password = b"infected"
+    crc = 0x12345678
+
+    # Encrypt 12-byte header + invalid raw deflate bytes (\xff\xff\xff...) with ZipCrypto cipher
+    k0, k1, k2 = 0x12345678, 0x23456789, 0x34567890
+
+    def _upd(b: int) -> None:
+        nonlocal k0, k1, k2
+        k0 = (k0 >> 8) ^ _CRC_TABLE[(k0 ^ b) & 0xFF]
+        k1 = ((k1 + (k0 & 0xFF)) * 134775813 + 1) & 0xFFFFFFFF
+        k2 = (k2 >> 8) ^ _CRC_TABLE[(k2 ^ ((k1 >> 24) & 0xFF)) & 0xFF]
+
+    for pb in password:
+        _upd(pb)
+    plain = bytes([(i * 17 + 3) & 0xFF for i in range(11)]) + bytes([(crc >> 24) & 0xFF]) + (b"\xff" * 16)
+    enc = bytearray(len(plain))
+    for i, b in enumerate(plain):
+        t = (k2 | 2) & 0xFFFF
+        c = b ^ (((t * (t ^ 1)) >> 8) & 0xFF)
+        _upd(b)
+        enc[i] = c
+
+    name_b = b"broken_deflate.bin"
+    local_hdr = (
+        struct.pack(
+            "<IHHHHHIIIHH",
+            0x04034B50,
+            20,
+            0x0001,
+            8,
+            0,
+            0,
+            crc,
+            len(enc),
+            64,
+            len(name_b),
+            0,
+        )
+        + name_b
+        + bytes(enc)
+    )
+    cd_offset = len(local_hdr)
+    cd_hdr = (
+        struct.pack(
+            "<IHHHHHHIIIHHHHHII",
+            0x02014B50,
+            20,
+            20,
+            0x0001,
+            8,
+            0,
+            0,
+            crc,
+            len(enc),
+            64,
+            len(name_b),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        + name_b
+    )
+    eocd = struct.pack(
+        "<IHHHHIIH",
+        0x06054B50,
+        0,
+        0,
+        1,
+        1,
+        len(cd_hdr),
+        cd_offset,
+        0,
+    )
+    corrupt_zip.write_bytes(local_hdr + cd_hdr + eocd)
+
+    # Prove the fixture genuinely triggers zlib.error in pyzipper (test bites!)
+    with pytest.raises(zlib.error), pyzipper.AESZipFile(corrupt_zip, "r") as zf:
+        zf.open("broken_deflate.bin", "r", pwd=password).read()
+
+    (ben_dir / "ok.txt").write_bytes(b"valid benign file")
+
+    rc = lab_ingest.main(
+        [
+            "--bad-zips",
+            str(bad_dir),
+            "--benign-dir",
+            str(ben_dir),
+            "--staging-dir",
+            str(staging),
+            "--corpus-id",
+            "t1-m1-zlib",
+        ]
+    )
+    assert rc == 0
+    summary = json.loads((staging / "input_ro/ingest_summary.json").read_text(encoding="utf-8"))
+    assert summary["accepted_malicious"] == 0
+    assert summary["accepted_benign"] == 1
+    assert summary["rejected"]["corrupt"] == 1
+    assert list((staging / "input_ro/bad_zips").glob("*.zip")) == []

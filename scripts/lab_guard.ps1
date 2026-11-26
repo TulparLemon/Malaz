@@ -487,7 +487,8 @@ if ($JsonOut) {
     }
     if ($SandboxGuest) {
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText($JsonOut, $json, $utf8NoBom)
+        $resolvedJsonOut = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($JsonOut)
+        [System.IO.File]::WriteAllText($resolvedJsonOut, $json, $utf8NoBom)
     } else {
         Set-Content -LiteralPath $JsonOut -Value $json -Encoding UTF8
     }

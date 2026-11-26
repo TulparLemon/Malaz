@@ -317,7 +317,7 @@ function Test-LabOutputDir {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $null; Reason = "Invalid JSON in guard.json" }
     }
     $guardOk = Get-JsonProp $guardObj 'ok'
-    if ($guardOk -ne $true) {
+    if (($guardOk -isnot [bool]) -or (-not $guardOk)) {
         return [ordered]@{ Passed = $false; ExitCode = 4; Done = $null; Guard = $guardObj; Reason = "guard.json.ok is not true" }
     }
 
@@ -352,9 +352,12 @@ function Test-LabOutputDir {
             return [ordered]@{ Passed = $false; ExitCode = 4; Done = $doneObj; Guard = $guardObj; Reason = "Unexpected CSV header: $firstLine" }
         }
         try {
-            $null = $present['eval.json'].TrimStart([char]0xFEFF) | ConvertFrom-Json
+            $evalObj = $present['eval.json'].TrimStart([char]0xFEFF) | ConvertFrom-Json
         } catch {
             return [ordered]@{ Passed = $false; ExitCode = 4; Done = $doneObj; Guard = $guardObj; Reason = "Invalid JSON in eval.json" }
+        }
+        if ($null -eq $evalObj) {
+            return [ordered]@{ Passed = $false; ExitCode = 4; Done = $doneObj; Guard = $guardObj; Reason = "eval.json is empty or null" }
         }
         return [ordered]@{ Passed = $true; ExitCode = 0; Done = $doneObj; Guard = $guardObj; Reason = 'ok' }
     }
@@ -496,8 +499,14 @@ if (-not $DryRun) {
         [Console]::Error.WriteLine("FEHLER: MalazBundleDir ungueltig: $MalazBundleDir")
         exit 2
     }
-    $hasMalaz = Test-Path -LiteralPath (Join-Path $MalazBundleDir 'Malaz.exe') -PathType Leaf
-    $has7z = ((Test-Path -LiteralPath (Join-Path $MalazBundleDir '7z.exe') -PathType Leaf) -and (Test-Path -LiteralPath (Join-Path $MalazBundleDir '7z.dll') -PathType Leaf)) -or (Test-Path -LiteralPath (Join-Path $MalazBundleDir '7za.exe') -PathType Leaf)
+    $malazExePath = Join-Path $MalazBundleDir 'Malaz.exe'
+    $sevenZExePath = Join-Path $MalazBundleDir '7z.exe'
+    $sevenZDllPath = Join-Path $MalazBundleDir '7z.dll'
+    $sevenZaExePath = Join-Path $MalazBundleDir '7za.exe'
+    $hasMalaz = (Test-Path -LiteralPath $malazExePath -PathType Leaf) -and (-not (Test-IsReparsePointPath $malazExePath))
+    $has7zPair = (Test-Path -LiteralPath $sevenZExePath -PathType Leaf) -and (-not (Test-IsReparsePointPath $sevenZExePath)) -and (Test-Path -LiteralPath $sevenZDllPath -PathType Leaf) -and (-not (Test-IsReparsePointPath $sevenZDllPath))
+    $has7za = (Test-Path -LiteralPath $sevenZaExePath -PathType Leaf) -and (-not (Test-IsReparsePointPath $sevenZaExePath))
+    $has7z = $has7zPair -or $has7za
     if (-not $hasMalaz -or -not $has7z) {
         [Console]::Error.WriteLine("FEHLER: MalazBundleDir muss Malaz.exe sowie 7z.exe+7z.dll oder 7za.exe enthalten.")
         exit 2

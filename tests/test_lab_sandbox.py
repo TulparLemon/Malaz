@@ -673,12 +673,21 @@ def test_run_lab_sandbox_try_error_exits_nonzero_and_cleans_up(tmp_path):
 
 
 def test_lab_guard_live_state_arrays_are_flat_not_nested():
-    """B2 regression: Get-SandboxGuestLiveState must assign flat arrays (never @(@()))."""
+    """B2 + M2 regression: Get-SandboxGuestLiveState returns flat empty arrays under StrictMode."""
     script_text = LAB_GUARD.read_text(encoding="utf-8")
     assert "= ,$" not in script_text
 
-    # Parse Get-SandboxGuestLiveState via AST and invoke it in isolated PowerShell
+    # Parse Get-SandboxGuestLiveState via AST, stub all 5 probe cmdlets to @(), and verify
+    # under Set-StrictMode + ErrorActionPreference='Stop' that every list property has Count 0.
     ps_snippet = (
+        "$ErrorActionPreference = 'Stop'; "
+        "Set-StrictMode -Version Latest; "
+        "$SkipEicar = $true; "
+        "function Get-NetAdapter { @() }; "
+        "function Get-NetRoute { @() }; "
+        "function Get-DnsClientServerAddress { @() }; "
+        "function Get-SmbShare { @() }; "
+        "function Get-CimInstance { @() }; "
         "$tokens = $null; $errs = $null; "
         "$ast = [System.Management.Automation.Language.Parser]::ParseFile("
         f"'{LAB_GUARD}', [ref]$tokens, [ref]$errs); "
@@ -690,10 +699,14 @@ def test_lab_guard_live_state_arrays_are_flat_not_nested():
         "$s = Get-SandboxGuestLiveState; "
         "foreach ($k in @('adapters','default_routes','dns_servers',"
         "'shared_folders','usb_storage')) { "
-        "  $v = $s[$k]; "
-        "  foreach ($el in $v) { "
-        "    if ($el -is [System.Array]) { throw ('Nested array in ' + $k) } "
-        "  } "
+        "  $prop = $s.PSObject.Properties[$k]; "
+        "  if ($null -eq $prop) { throw ('Missing property ' + $k) }; "
+        "  $v = $prop.Value; "
+        "  if ($null -eq $v) { throw ('Null value for ' + $k) }; "
+        "  if ($v -isnot [System.Array]) { throw ('Non-array for ' + $k) }; "
+        "  if ($v.Count -ne 0) { "
+        "    throw ('Expected flat empty array for ' + $k + ', got count=' + $v.Count) "
+        "  }; "
         "}; "
         "Write-Output 'FLAT_OK'"
     )
@@ -706,6 +719,7 @@ def test_lab_guard_live_state_arrays_are_flat_not_nested():
         timeout=60,
     )
     assert r.returncode == 0, f"{r.stdout}\n{r.stderr}"
+    assert r.stderr.strip() == "", f"Unexpected stderr: {r.stderr}"
     assert "FLAT_OK" in r.stdout
 
 
@@ -727,12 +741,16 @@ def test_verify_output_only_missing_json_fields_and_null_exit_4_under_strict_mod
         }
     )
     cases = [
-        ("guard_empty_obj", "{}", good_done),
-        ("guard_null", "null", good_done),
-        ("done_empty_obj", '{"ok":true}', "{}"),
-        ("done_null", '{"ok":true}', "null"),
+        ("guard_empty_obj", "{}", good_done, '{"schema_version":1}'),
+        ("guard_null", "null", good_done, '{"schema_version":1}'),
+        ("guard_str_true", '{"ok":"true"}', good_done, '{"schema_version":1}'),
+        ("guard_int_one", '{"ok":1}', good_done, '{"schema_version":1}'),
+        ("done_empty_obj", '{"ok":true}', "{}", '{"schema_version":1}'),
+        ("done_null", '{"ok":true}', "null", '{"schema_version":1}'),
+        ("eval_null", '{"ok":true}', good_done, "null"),
+        ("eval_empty", '{"ok":true}', good_done, ""),
     ]
-    for name, guard_txt, done_txt in cases:
+    for name, guard_txt, done_txt, eval_txt in cases:
         od = tmp_path / f"od_{name}"
         od.mkdir()
         (od / "guard.json").write_text(guard_txt, encoding="utf-8")
@@ -741,7 +759,7 @@ def test_verify_output_only_missing_json_fields_and_null_exit_4_under_strict_mod
             "Gruppe,Datei,Typ,Urteil,Score,Top-Findings,Ungeprueft,Datei_ID\n",
             encoding="utf-8",
         )
-        (od / "eval.json").write_text('{"schema_version":1}', encoding="utf-8")
+        (od / "eval.json").write_text(eval_txt, encoding="utf-8")
         (od / "sandbox.log").write_text("ok\n", encoding="utf-8")
         r = _run_ps(
             RUN_SANDBOX,
