@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -20,6 +21,13 @@ if str(ROOT / "scripts") not in sys.path:
 
 import lab_compare  # noqa: E402
 import lab_ingest  # noqa: E402
+
+
+@pytest.fixture
+def tmp_path():
+    """Always stage outside the repo even when CI runs pytest with --basetemp=.pytest-tmp/ci."""
+    with tempfile.TemporaryDirectory(prefix="malaz_lab_test_") as td:
+        yield Path(td)
 
 LAB_GUARD = ROOT / "scripts" / "lab_guard.ps1"
 RUN_SANDBOX = ROOT / "scripts" / "run_lab_sandbox.ps1"
