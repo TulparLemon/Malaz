@@ -885,6 +885,7 @@
     ],
     "risk": "RED",
     "rules": [
+      "GEN_BIDI_NAME",
       "GEN_FILENAME_IOC",
       "MAIL_ATTACH_DOUBLE_EXT",
       "MAIL_ATTACH_NAME_TRICK",
@@ -2228,9 +2229,11 @@
   },
   "v2/edge_bidi_‮evil.txt": {
     "notes": [],
-    "risk": "GREEN",
-    "rules": [],
-    "score": 0,
+    "risk": "RED",
+    "rules": [
+      "GEN_BIDI_NAME"
+    ],
+    "score": 50,
     "type": "text"
   },
   "v2/edge_chm.chm": {

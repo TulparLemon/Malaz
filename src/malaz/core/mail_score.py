@@ -36,7 +36,6 @@ from dataclasses import dataclass, field
 # search-ms, jar und ms-officecmd mit 0, waehrend summarize_links sie als
 # MAIL_LINK_DANGEROUS_SCHEME meldete (Audit BUG-069).
 from .eml_analysis import _DANGEROUS_URI_SCHEMES, LinkFacts
-from .mail_view import AUTH_LABELS
 
 # --------------------------------------------------------------------------- #
 # Absender-Vertrauen
@@ -132,19 +131,6 @@ def sender_score(
     score = max(0, min(100, score))
     return SenderScore(score=score, label=_sender_label(score), reasons=reasons)
 
-
-def mechanism_label(verdict: str, *, claimed: bool = False) -> str:
-    """Beschriftung eines einzelnen Mechanismus fuer die Anzeige.
-
-    ``claimed=True`` bei einer Behauptung OHNE Deckung in der Empfangskette.
-    Dann darf dort nicht "bestanden" stehen: die Kopfzeile behauptet es, ein
-    Urteil ist es nicht. Genau dieser Widerspruch stand im E-Mail-Panel —
-    "Absender nicht belegt" direkt ueber "SPF bestanden".
-    """
-    text = AUTH_LABELS.get(verdict, "unbekannt")
-    if claimed and verdict in ("pass", "fail"):
-        return f"behauptet: {text}"
-    return text
 
 
 _AUTH_REASON = {

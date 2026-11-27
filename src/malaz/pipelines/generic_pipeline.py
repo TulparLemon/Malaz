@@ -314,6 +314,7 @@ class GenericPipeline(Pipeline):
         indicators.extend(self._entropy(ctx))
         indicators.extend(self._yara(ctx))
         indicators.extend(self._format_consistency(ctx))
+        indicators.extend(self._bidi_filename(ctx))
         indicators.extend(self._hash_blocklist(ctx))
         if config.GENERIC_CONTENT_CHECKS:
             indicators.extend(self._content_checks(ctx))
@@ -490,6 +491,56 @@ class GenericPipeline(Pipeline):
                 ),
                 severity=Severity.HIGH,
                 category=CAT_FORMAT,
+            )
+        ]
+
+    # -- BiDi / RLO filename spoofing -------------------------------------- #
+
+    @staticmethod
+    def _has_bidi_control(text: str) -> bool:
+        return any(
+            0x202A <= ord(ch) <= 0x202E or 0x2066 <= ord(ch) <= 0x2069
+            for ch in text
+        )
+
+    @staticmethod
+    def _display_leaf(display_path: str) -> str:
+        """Extract only the final leaf filename from a container display path."""
+        if not display_path:
+            return ""
+        # Container chains use " -> " or " :: " or path separators; inspect only the leaf
+        # so a BiDi character in a parent archive name does not falsely flag a clean child.
+        leaf = display_path
+        for sep in (" -> ", " :: ", "/", "\\"):
+            if sep in leaf:
+                leaf = leaf.rsplit(sep, 1)[-1]
+        return leaf.strip()
+
+    def _bidi_filename(self, ctx: AnalysisContext) -> list[Indicator]:
+        """Flag Unicode BiDi override/isolate controls in filenames (RLO trick).
+
+        Characters U+202A..U+202E and U+2066..U+2069 visually reverse extensions
+        (e.g. ``Rechnung\u202efdp.exe`` renders as ``Rechnungexe.pdf`` in
+        Windows Explorer). Genuine RTL letters (Arabic/Hebrew) are untouched.
+        """
+        candidates = []
+        if ctx.path:
+            candidates.append(ctx.path.name)
+        if ctx.display_path:
+            candidates.append(self._display_leaf(ctx.display_path))
+        if not any(self._has_bidi_control(name) for name in candidates if name):
+            return []
+        return [
+            self._indicator(
+                "GEN_BIDI_NAME",
+                "Dateiname enthält unsichtbare Richtungssteuerung (RLO/BiDi)",
+                detail=(
+                    "Der Dateiname enthält Unicode-BiDi-Steuerzeichen (z. B. U+202E), "
+                    "mit denen echte Dateiendungen optisch getarnt werden."
+                ),
+                severity=Severity.CRITICAL,
+                category=CAT_FORMAT,
+                weight=50,
             )
         ]
 

@@ -215,13 +215,22 @@ _INCOMPLETE_RULES = frozenset(
         # QR (Spec 015)
         "QR_SCAN_INCOMPLETE",
         "GEN_DEOBF_LIMIT",
+        # PE & Image
+        "PE_LIB_MISSING",
+        "PE_SECTION_ENTROPY_LIMIT",
+        "PE_SECTION_PARSE_WARN",
+        "PE_TLS_PARSE_WARN",
+        "PE_IMPORT_PARSE_WARN",
+        "HEIC_BOX_LIMIT",
         # Office
         "OFFICE_LIB_MISSING",
         "OFFICE_STAGE_WARN",
         "OFFICE_DDE_PARSE_WARN",
         "OFFICE_XLM_PARSE_WARN",
         "OFFICE_XLM_PRESENT",
+        "OFFICE_XLM_TIMEOUT",
         "OFFICE_FORMULA_PARSE_WARN",
+        "OFFICE_REL_TRUNCATED",
         # Mail
         "MAIL_PARSE_WARN",
         "MAIL_PARTS_TRUNCATED",
@@ -559,9 +568,3 @@ def type_description(
     label = type_label(detected_type, lang=lang)
     return f"{label} ({mime_hint})" if mime_hint else label
 
-
-def category_explanation(category: str, *, lang: str | None = None) -> str:
-    """Localized plain-language explanation for an indicator category."""
-    from .i18n import localized_category_explanation
-
-    return localized_category_explanation(category, CATEGORY_EXPLANATIONS, lang=lang)

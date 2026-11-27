@@ -14,7 +14,7 @@ from contextlib import suppress
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QGuiApplication, QPalette
-from PySide6.QtWidgets import QApplication, QStyle, QStyledItemDelegate
+from PySide6.QtWidgets import QApplication
 
 from ..design_tokens import PALETTE_DARK, palette_for
 from .settings import app_settings
@@ -100,32 +100,6 @@ def unregister_theme_listener(callback: Callable[[str, dict[str, str]], None]) -
     with suppress(ValueError):
         _LISTENERS.remove(callback)
 
-
-def risk_tint(color_hex: str, *, mode: str | None = None) -> QColor:
-    """Blend a semantic state colour softly onto the active surface."""
-    p = palette_for(mode or _ACTIVE_MODE)
-    base = QColor(p["surface"])
-    accent = QColor(color_hex)
-    alpha = 0.14 if (mode or _ACTIVE_MODE) == "dark" else 0.08
-    r = int(base.red() * (1 - alpha) + accent.red() * alpha)
-    g = int(base.green() * (1 - alpha) + accent.green() * alpha)
-    b = int(base.blue() * (1 - alpha) + accent.blue() * alpha)
-    return QColor(r, g, b)
-
-
-class RiskTintDelegate(QStyledItemDelegate):
-    """Compatibility delegate painting a soft background tint without losing focus."""
-
-    def paint(self, painter, option, index) -> None:
-        if option.state & QStyle.StateFlag.State_Selected:
-            super().paint(painter, option, index)
-            return
-        tint = index.data(Qt.ItemDataRole.BackgroundRole)
-        if isinstance(tint, QColor) and tint.isValid():
-            painter.save()
-            painter.fillRect(option.rect, tint)
-            painter.restore()
-        super().paint(painter, option, index)
 
 
 def build_stylesheet(mode: str = "dark") -> str:

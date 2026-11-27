@@ -376,6 +376,3 @@ def update_ages(now: datetime | None = None) -> list[AgeEntry]:
     entries.append(yara_rules_age(moment))
     return entries
 
-
-def update_age_lines(now: datetime | None = None) -> list[str]:
-    return [f"• {entry.name}: {entry.detail}" for entry in update_ages(now)]

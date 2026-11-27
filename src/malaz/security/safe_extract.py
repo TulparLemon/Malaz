@@ -58,9 +58,10 @@ REASON_DEVICE = "device"  # CON, NUL, COM1 … (Windows-Geraetename)
 REASON_ADS = "ads"  # ":" -> NTFS Alternate Data Stream
 REASON_EMPTY = "empty"  # Komponente wird nach dem Strippen leer
 REASON_DOTNAME = "dotname"  # Name beginnt nach normpath mit ".."
+REASON_NUL = "nul"  # Eingebettetes Nullbyte (C-String-Truncation-Angriff)
 
 # Die Gruende, die einen ANGRIFF belegen. Nur sie rechtfertigen einen Anker.
-ATTACK_REASONS = frozenset({REASON_TRAVERSAL})
+ATTACK_REASONS = frozenset({REASON_TRAVERSAL, REASON_NUL})
 
 
 def unsafe_name_reason(name: str) -> str | None:
@@ -72,6 +73,8 @@ def unsafe_name_reason(name: str) -> str | None:
     """
     if not name or not name.strip():
         return REASON_EMPTY
+    if "\x00" in name:
+        return REASON_NUL
     if _has_drive_or_absolute(name):
         return REASON_TRAVERSAL
 
