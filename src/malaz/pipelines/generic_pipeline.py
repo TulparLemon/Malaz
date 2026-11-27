@@ -511,7 +511,7 @@ class GenericPipeline(Pipeline):
         # Container chains use " -> " or " :: " or path separators; inspect only the leaf
         # so a BiDi character in a parent archive name does not falsely flag a clean child.
         leaf = display_path
-        for sep in (" -> ", " :: ", "!", "/", "\\"):
+        for sep in (" -> ", " :: ", "/", "\\"):
             if sep in leaf:
                 leaf = leaf.rsplit(sep, 1)[-1]
         return leaf.strip()

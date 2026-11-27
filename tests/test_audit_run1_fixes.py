@@ -118,12 +118,27 @@ def test_f1_bidi_display_path_isolates_and_clean_child_in_bidi_parent() -> None:
     inds_disp = pipe._bidi_filename(ctx_disp)
     assert [i.rule_id for i in inds_disp] == ["GEN_BIDI_NAME"]
 
-    # M2 verification: EN & TR translations exist and are non-German
+    # M1 regression: '!' is a valid filename char and must NOT truncate RLO detection
+    ctx_bang = AnalysisContext(
+        path=Path("C:/Temp/sanitized_member.exe"),
+        data=b"MZ" + b"\x00" * 64,
+        detected_type="pe",
+        size=66,
+        depth=1,
+        display_path="outer.zip -> Rechnung\u202e!fdp.exe",
+    )
+    assert [i.rule_id for i in pipe._bidi_filename(ctx_bang)] == ["GEN_BIDI_NAME"]
+
+    # M2 verification: EN & TR translations genuinely differ from German fallback
     ind = inds_disp[0]
-    assert "override" in localized_indicator_title(ind, lang="en").lower()
-    assert "unicode" in localized_indicator_detail(ind, lang="en").lower()
-    assert "bidi" in localized_indicator_title(ind, lang="tr").lower()
-    assert "unicode" in localized_indicator_detail(ind, lang="tr").lower()
+    en_title = localized_indicator_title(ind, lang="en")
+    en_detail = localized_indicator_detail(ind, lang="en")
+    tr_title = localized_indicator_title(ind, lang="tr")
+    tr_detail = localized_indicator_detail(ind, lang="tr")
+    assert en_title != ind.title and "override" in en_title.lower()
+    assert en_detail != ind.detail and "disguise" in en_detail.lower()
+    assert tr_title != ind.title and "dosya" in tr_title.lower()
+    assert tr_detail != ind.detail and "uzantıyı" in tr_detail.lower()
 
     # (b) BiDi isolate U+2066..U+2069 -> MUST detect
     for cp in (0x2066, 0x2067, 0x2068, 0x2069):
