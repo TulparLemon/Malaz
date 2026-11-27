@@ -517,7 +517,7 @@ class GenericPipeline(Pipeline):
         return leaf.strip()
 
     def _bidi_filename(self, ctx: AnalysisContext) -> list[Indicator]:
-        """Flag Unicode BiDi override/isolate controls in filenames (RLO trick).
+        r"""Flag Unicode BiDi override/isolate controls in filenames (RLO trick).
 
         Characters U+202A..U+202E and U+2066..U+2069 visually reverse extensions
         (e.g. ``Rechnung\u202efdp.exe`` renders as ``Rechnungexe.pdf`` in
