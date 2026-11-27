@@ -13,7 +13,7 @@ body:
     attributes:
       label: Malaz version
       description: Run `Malaz.exe --version` or `python -m malaz --version`.
-      placeholder: e.g. 1.2.0
+      placeholder: e.g. 1.3.0
     validations:
       required: true
 

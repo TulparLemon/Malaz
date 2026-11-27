@@ -5,6 +5,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Securit
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-27
+
+### Added
+- **Modern Phishing & Container Format Detection (`DET-001`):**
+  - Added `WebContentPipeline` (`src/malaz/pipelines/web_pipeline.py`) with linear HTML5/XML scanning for **HTML smuggling** (`Blob`/`createObjectURL`/Base64-embedded PE/ZIP/ISO payloads), CHM ActiveX execution, offline credential forms, meta-refresh redirects, and active **SVG** scripts/phishing (`WEB_PARSE_LIMIT` completeness cap).
+  - Added static **Microsoft OneNote (`.one`)** `FileDataStoreObject` extraction (`src/malaz/core/onenote_extract.py`) with recursive child scanning and explicit parse-error markers (`ONENOTE_PARSE_ERROR`, `ONENOTE_OBJ_ERROR`).
+  - Added magic-byte detection and `7-Zip` container routing for **CHM**, **VHDX**, **NTFS**, and **FAT** disk images plus 13 additional risky archive/attachment types with full DE/EN/TR localization.
+- **Offline QR & MicroQR Quishing Analysis (`DET-002`):**
+  - Added 100% offline QR/MicroQR decoding (`src/malaz/core/qr_scan.py`, `src/malaz/pipelines/pdf_qr.py`, Apache-2.0 `zxing-cpp==3.2.0`) across raster images (`PNG`/`JPEG`/`GIF`/`BMP`/`WebP`/`TIFF`), PDF `/XObject /Image`, `/Annots/AP`, `/Form`, `/Pattern`, and `/SMask`/`/Mask` (with decompression/dimension bomb guards), fail-closed `QR_SCAN_INCOMPLETE` detection for PDF inline `BI`/`ID` images, email attachments, and HTML/SVG/EML `data:image/` payloads.
+  - Evaluates decoded QR URLs offline against local blocklists, shorteners, credential/punycode patterns, and dangerous URI schemes with linear O(N) secret redaction and `QR_SCAN_INCOMPLETE` completeness reporting.
+- **Deep Static Script Deobfuscation (`DET-003`):**
+  - Added 100% stdlib, strictly linear O(N), zero-execution static deobfuscators (`src/malaz/core/script_deobf.py`, `src/malaz/core/js_deobf.py`) wired into `generic_pipeline.py`, `pdf_javascript.py`, and `web_pipeline.py`:
+    - **PowerShell:** backtick state machine, `[char[]]`/`[int[]]` decoding, string concatenation, safe `-f` format evaluation, Base64 + bounded GZip/Raw-Deflate decompression, and deduplicated encoded-command extraction.
+    - **Windows Batch:** caret (`^`) state machine, `set` variable/substring slicing, and replacement resolution with self-reference protection.
+    - **JavaScript:** ES6 `\u{...}` escapes, shared array-join merging (including `.reverse().join()`), single-level string tables, and inline `atob()` decoding (`GEN_SCRIPT_DEOBFUSCATED`, `GEN_DEOBF_LIMIT`).
+- **Automated Isolated Malware Lab (`LAB-001`):**
+  - Added zero-unpack 64 KiB streaming host ingest (`scripts/lab_ingest.py`) for password-protected ZIPs (AES-256 & ZipCrypto) with atomic rollback, header-spoof/Zip-Slip/symlink/junction/`zlib`/`lzma` guards, and SHA-256 manifest self-validation.
+  - Added hardened Windows Sandbox orchestration (`scripts/run_lab_sandbox.ps1`, `scripts/sandbox_inner.ps1`, `scripts/lab_guard.ps1 -SandboxGuest`) with XML-DOM `.wsb` generation, `7z l -slt` pre-extract checks, SHA-256 chain of custody, and a strictly read-only, idempotent post-exit output filter (`FindFirstStreamW` NTFS ADS checks, 0 NUL bytes, strict schema/hash checks, `-VerifyOutputOnly`, `-DryRun`).
+  - Added split-filtered regression comparison (`scripts/lab_compare.py`), fail-closed OPSEC leak guard (`src/malaz/lab/opsec.py`), `scripts/triage_misses.py --split`, and operational documentation (`docs/LAB_WORKFLOW.md`).
+- **Community Templates & CI-Verified Benchmarks (`TRUST-001`):**
+  - Added GitHub issue/PR templates (`.github/ISSUE_TEMPLATE/`, `PULL_REQUEST_TEMPLATE.md`) and deterministic 5-corpus benchmark verification (`docs/BENCHMARKS.md`, 555 benchmark fixtures via `scripts/run_corpus.py --check-doc`; 560 golden-snapshot fixtures across 45 file types).
+
+### Changed
+- **Modularized Core & Pipeline Hotspots (`ARCH-001`):** Split `core/eml_analysis.py` (`core/eml_parser.py`), `pipelines/pdf_pipeline.py` (`pdf_streams.py`, `pdf_links.py`, `pdf_javascript.py`), and `core/dispatcher.py` (`core/container_dispatch.py`) with zero behavior change, enforced by a fail-closed facade DAG gate in `scripts/arch_gate.py`.
+- Removed 7 verified unused functions/classes and their unused imports across `src/malaz/`.
+
+### Security
+- **SECURITY:** Added top-level and nested Unicode BiDi/RLO filename spoofing detection (`GEN_BIDI_NAME`, `CRITICAL`/50) via pure ASCII `ord()` checks (`U+202A..U+202E`, `U+2066..U+2069`) on both `ctx.path.name` and the extracted container display-path leaf while preserving genuine Arabic/Hebrew filenames (`0.0%` benign false positives).
+- **SECURITY:** Registered 8 missing incomplete/limit/timeout indicators (`PE_LIB_MISSING`, `PE_SECTION_ENTROPY_LIMIT`, `PE_SECTION_PARSE_WARN`, `PE_TLS_PARSE_WARN`, `PE_IMPORT_PARSE_WARN`, `HEIC_BOX_LIMIT`, `OFFICE_REL_TRUNCATED`, `OFFICE_XLM_TIMEOUT`) in `models._INCOMPLETE_RULES` with full DE/EN/TR parity.
+- **SECURITY:** Hardened `security/safe_extract.py` to reject embedded NUL bytes (`REASON_NUL` in `ATTACK_REASONS`) and aligned `core/yara_signature_base.py` to enforce `is_safe_member_name()` matching `core/yara_update.py`.
+
 ## [1.2.0] - 2026-11-21
 
 ### Added

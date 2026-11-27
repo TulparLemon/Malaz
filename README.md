@@ -55,7 +55,7 @@ When a suspicious invoice, job application, USB file, or email attachment lands 
 
 ### Option 1: Portable Standalone Release (No Python Required)
 
-1. Download `Malaz-1.2.0.zip`, `SHA256SUMS-1.2.0.txt`, `SHA256SUMS-1.2.0.txt.asc`, and [docs/RELEASE-SIGNING-KEY.asc](docs/RELEASE-SIGNING-KEY.asc) from [Releases](https://github.com/TulparLemon/Malaz/releases/latest).
+1. Download `Malaz-1.3.0.zip`, `SHA256SUMS-1.3.0.txt`, `SHA256SUMS-1.3.0.txt.asc`, and [docs/RELEASE-SIGNING-KEY.asc](docs/RELEASE-SIGNING-KEY.asc) from [Releases](https://github.com/TulparLemon/Malaz/releases/latest).
 2. Verify the OpenPGP signature and SHA-256 checksum ([docs/VERIFYING_RELEASES.md](docs/VERIFYING_RELEASES.md)).
 3. Extract the archive and run `Malaz.exe` directly from the extracted folder (no installer, no administrator privileges required).
 
