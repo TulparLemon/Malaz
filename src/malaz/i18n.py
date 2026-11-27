@@ -24,9 +24,7 @@ from contextlib import contextmanager, suppress
 from typing import Any
 
 from .i18n_catalog import (
-    CATEGORY_DE_LABELS,
     CATEGORY_EN_EXPLANATIONS,
-    CATEGORY_EN_LABELS,
     ENGINE_EN_LABELS,
     ENGINE_EN_NAMES,
     INCOMPLETE_REASON_EN,
@@ -40,7 +38,6 @@ from .i18n_catalog import (
 )
 from .i18n_catalog_tr import (
     CATEGORY_TR_EXPLANATIONS,
-    CATEGORY_TR_LABELS,
     ENGINE_TR_LABELS,
     ENGINE_TR_NAMES,
     INCOMPLETE_REASON_TR,
@@ -279,16 +276,6 @@ def localized_type_label(
         return strip_bidi(full_map.get(dt, detected_type or "—"))
     return strip_bidi(detected_type or "—")
 
-
-def localized_category_label(category: str, *, lang: str | None = None) -> str:
-    eff = _effective_lang(lang)
-    key = (category or "").strip().lower()
-    table = (
-        CATEGORY_TR_LABELS
-        if eff == "tr"
-        else (CATEGORY_EN_LABELS if eff == "en" else CATEGORY_DE_LABELS)
-    )
-    return strip_bidi(table.get(key, category.capitalize() if category else ""))
 
 
 def localized_category_explanation(

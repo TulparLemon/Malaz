@@ -48,6 +48,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .. import config
+from ..security.safe_extract import is_safe_member_name
 from .atomicwrite import replace_tree
 from .yara_engine import is_contained, iter_rule_files, read_zip_member_bounded
 
@@ -134,7 +135,7 @@ def _flat_members(archive: bytes) -> dict[str, bytes]:
             if len(parts) != 3 or parts[1] != "yara":
                 continue
             name = parts[2]
-            if not name or ":" in name or name in (".", "..") or name in members:
+            if not is_safe_member_name(name) or name in members:
                 continue
             is_rule = name.lower().endswith(_RULE_SUFFIXES)
             if is_rule:

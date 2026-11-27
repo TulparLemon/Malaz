@@ -314,6 +314,7 @@ class GenericPipeline(Pipeline):
         indicators.extend(self._entropy(ctx))
         indicators.extend(self._yara(ctx))
         indicators.extend(self._format_consistency(ctx))
+        indicators.extend(self._bidi_filename(ctx))
         indicators.extend(self._hash_blocklist(ctx))
         if config.GENERIC_CONTENT_CHECKS:
             indicators.extend(self._content_checks(ctx))
@@ -490,6 +491,37 @@ class GenericPipeline(Pipeline):
                 ),
                 severity=Severity.HIGH,
                 category=CAT_FORMAT,
+            )
+        ]
+
+    # -- BiDi / RLO filename spoofing -------------------------------------- #
+
+    def _bidi_filename(self, ctx: AnalysisContext) -> list[Indicator]:
+        """Flag Unicode BiDi override/isolate controls in filenames (RLO trick).
+
+        Characters U+202A..U+202E and U+2066..U+2069 visually reverse extensions
+        (e.g. ``Rechnung\u202efdp.exe`` renders as ``Rechnungexe.pdf`` in
+        Windows Explorer). Genuine RTL letters (Arabic/Hebrew) are untouched.
+        """
+        raw_name = ctx.path.name if ctx.path else ""
+        if not raw_name and ctx.display_path:
+            raw_name = Path(ctx.display_path).name
+        if not any(
+            "‪" <= ch <= "‮" or "⁦" <= ch <= "⁩"
+            for ch in raw_name
+        ):
+            return []
+        return [
+            self._indicator(
+                "GEN_BIDI_NAME",
+                "Dateiname enthält unsichtbare Richtungssteuerung (RLO/BiDi)",
+                detail=(
+                    "Der Dateiname enthält Unicode-BiDi-Steuerzeichen (z. B. U+202E), "
+                    "mit denen echte Dateiendungen optisch getarnt werden."
+                ),
+                severity=Severity.CRITICAL,
+                category=CAT_FORMAT,
+                weight=50,
             )
         ]
 
