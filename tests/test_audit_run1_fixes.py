@@ -15,7 +15,7 @@ from malaz.security.safe_extract import ATTACK_REASONS, is_safe_member_name, uns
 
 
 def test_f1_top_level_bidi_rlo_filename_is_detected_as_red(tmp_path: Path) -> None:
-    """F1: Top-level RLO trojan filename (Rechnung\u202efdp.exe) must fire GEN_BIDI_NAME -> RED."""
+    r"""F1: Top-level RLO trojan filename (Rechnung\u202efdp.exe) must fire GEN_BIDI_NAME -> RED."""
     disp = Dispatcher(
         av_scanner=WindowsDefenderScanner(enabled=False),
         clam_scanner=ClamAVScanner(enabled=False),
