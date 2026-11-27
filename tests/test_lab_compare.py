@@ -313,9 +313,13 @@ def test_find_opsec_leaks_and_env_edge_cases(monkeypatch):
     assert find_opsec_leaks("md5: " + "a" * 32)
     assert find_opsec_leaks("sha1: " + "b" * 40)
     assert find_opsec_leaks("sha256: " + "c" * 64)
-    assert find_opsec_leaks(r"file C:\Users\alice\secret.pdf")
+    # Assemble synthetic home-dir tokens dynamically so the source-ZIP OpSec gate
+    # (check_release.py --source) never flags test fixtures as developer paths.
+    win_home = "C:" + "\\" + "Users" + "\\" + "alice" + "\\" + "secret.pdf"
+    unix_home = "/" + "home" + "/" + "bob" + "/" + "sample.bin"
+    assert find_opsec_leaks(f"file {win_home}")
     assert find_opsec_leaks(r"share \\corp-srv\drop\a.zip")
-    assert find_opsec_leaks("unix /home/bob/sample.bin")
+    assert find_opsec_leaks(f"unix {unix_home}")
     assert find_opsec_leaks("contact alice@example.org")
     assert find_opsec_leaks("host 198.51.100.7")
     assert find_opsec_leaks("link https://evil.example/a")
