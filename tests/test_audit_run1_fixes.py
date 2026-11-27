@@ -96,3 +96,52 @@ def test_f4_yara_signature_base_rejects_windows_device_and_nul_names() -> None:
         zf.writestr("repo-main/yara/ok_rule.yar", b"rule r4 { condition: true }")
     members = _flat_members(buf.getvalue())
     assert set(members.keys()) == {"ok_rule.yar"}
+
+
+def test_f1_bidi_display_path_isolates_and_clean_child_in_bidi_parent() -> None:
+    """M1 regression: display_path RLO, BiDi isolates (U+2066..U+2069), and clean child isolation."""
+    from malaz.i18n import localized_indicator_detail, localized_indicator_title
+    from malaz.models import AnalysisContext
+    from malaz.pipelines.generic_pipeline import GenericPipeline
+
+    pipe = GenericPipeline(yara=None)
+
+    # (a) Sanitized temp path on disk + RLO in display_path leaf -> MUST detect
+    ctx_disp = AnalysisContext(
+        path=Path("C:/Temp/sanitized_member.exe"),
+        data=b"MZ" + b"\x00" * 64,
+        detected_type="pe",
+        size=66,
+        depth=1,
+        display_path="outer.zip -> invoice\u202efdp.exe",
+    )
+    inds_disp = pipe._bidi_filename(ctx_disp)
+    assert [i.rule_id for i in inds_disp] == ["GEN_BIDI_NAME"]
+
+    # M2 verification: EN & TR translations exist and are non-German
+    ind = inds_disp[0]
+    assert "override" in localized_indicator_title(ind, lang="en").lower()
+    assert "unicode" in localized_indicator_detail(ind, lang="en").lower()
+    assert "bidi" in localized_indicator_title(ind, lang="tr").lower()
+    assert "unicode" in localized_indicator_detail(ind, lang="tr").lower()
+
+    # (b) BiDi isolate U+2066..U+2069 -> MUST detect
+    for cp in (0x2066, 0x2067, 0x2068, 0x2069):
+        ctx_iso = AnalysisContext(
+            path=Path(f"doc_{chr(cp)}fdp.exe"),
+            data=b"hello",
+            detected_type="text",
+            size=5,
+        )
+        assert [i.rule_id for i in pipe._bidi_filename(ctx_iso)] == ["GEN_BIDI_NAME"]
+
+    # (c) Clean child inside a BiDi parent archive -> MUST NOT falsely flag the clean child
+    ctx_clean_child = AnalysisContext(
+        path=Path("C:/Temp/clean.txt"),
+        data=b"clean",
+        detected_type="text",
+        size=5,
+        depth=1,
+        display_path="bad_\u202earchive.zip -> clean.txt",
+    )
+    assert pipe._bidi_filename(ctx_clean_child) == []
